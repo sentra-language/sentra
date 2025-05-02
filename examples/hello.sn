@@ -1,0 +1,7 @@
+let name = "Sentra"
+
+fn greet() {
+  log("Hello, " + name)
+}
+
+greet()

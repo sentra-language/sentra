@@ -1,0 +1,32 @@
+// prelude.sn
+
+// Core runtime helpers
+fn logtest(x) {
+  log(x)
+}
+
+// Math helpers
+fn max(a, b) {
+  if a > b {
+    return a
+  }
+  return b
+}
+
+fn min(a, b) {
+  if a < b {
+    return a
+  }
+  return b
+}
+
+// Boolean helpers
+fn not(x) {
+  return !x
+}
+
+fn isNil(x) {
+  return x == null
+}
+
+// Future: wrappers for channel, spawn, fs, net

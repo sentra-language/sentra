@@ -1,0 +1,8 @@
+fn fact(n) {
+    if n <= 1 {
+        return 1
+    }
+    return n * fact(n - 1)
+}
+
+log(fact(5)) // Should print 120

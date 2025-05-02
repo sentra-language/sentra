@@ -1,0 +1,9 @@
+fn greet(name) {
+    log("Hello, " + name)
+}
+
+fn outer() {
+    greet("Sentra")
+}
+
+outer()

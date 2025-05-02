@@ -1,0 +1,15 @@
+// examples/math.sn
+
+let a = 10
+let b = 4
+
+fn add(x, y) {
+  return x + y
+}
+
+fn double(x) {
+  return x * 2
+}
+
+log(add(a, b))      // 14
+log(double(a))      // 20
