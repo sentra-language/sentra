@@ -1,0 +1,66 @@
+#!/usr/bin/env sentra
+// Sentra Runtime Error Handling Demonstration
+// This script showcases comprehensive error handling with stack traces
+
+log("🛡️  Sentra Runtime Error Handling Demo")
+log("=" * 50)
+
+// Function that calls another function with an error
+fn outer_function() {
+    log("📞 Calling inner_function()...")
+    inner_function()
+}
+
+fn inner_function() {
+    log("💥 About to trigger division by zero...")
+    let result = 42 / 0  // This will throw a RuntimeError
+    log("This line will never execute")
+}
+
+// Array bounds testing
+fn test_array_bounds() {
+    log("\n🔍 Testing array bounds checking...")
+    let numbers = [10, 20, 30, 40, 50]
+    log("Array: " + str(numbers))
+    log("Accessing valid index [2]: " + str(numbers[2]))
+    log("💥 About to access invalid index [99]...")
+    let invalid = numbers[99]  // RuntimeError: Array index out of bounds
+}
+
+// Map key testing  
+fn test_map_keys() {
+    log("\n🗝️  Testing map key validation...")
+    let config = {
+        "host": "localhost",
+        "port": 8080,
+        "ssl": true
+    }
+    log("Config: " + str(config))
+    log("Valid access config['host']: " + config["host"])
+    log("💥 About to access missing key ['password']...")
+    let password = config["password"]  // RuntimeError: Map key not found
+}
+
+// Type checking demonstration
+fn test_type_errors() {
+    log("\n🔤 Testing type validation...")
+    let text = "Hello"
+    let number = 42
+    log("Valid string + number: " + text + " " + str(number))
+    log("💥 About to perform invalid operation...")
+    let invalid = text - number  // This would be a type error if implemented
+}
+
+log("\n🚀 Starting error demonstration...")
+log("Note: This will demonstrate stack traces by intentionally causing errors")
+
+// Uncomment the test you want to run:
+
+log("\n1️⃣  Division by Zero Test:")
+outer_function()  // Shows call stack through multiple functions
+
+// Uncomment to test other error types:
+// test_array_bounds()
+// test_map_keys()
+
+log("\n✅ Demo completed - this message won't show due to error above")

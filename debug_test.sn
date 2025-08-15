@@ -1,0 +1,34 @@
+// Example program for debugging demonstration
+log("🚀 Starting debug demonstration")
+
+fn factorial(n) {
+    log("Computing factorial of " + str(n))
+    if n <= 1 {
+        return 1
+    }
+    let result = n * factorial(n - 1)
+    log("factorial(" + str(n) + ") = " + str(result))
+    return result
+}
+
+fn main_calculation() {
+    log("📊 Beginning main calculation...")
+    let numbers = [5, 3, 7, 2]
+    log("Numbers to process: " + str(numbers))
+    
+    for i in [0, len(numbers) - 1] {
+        let num = numbers[i]
+        log("\n🔢 Processing number: " + str(num))
+        let fact = factorial(num)
+        log("✅ Final result for " + str(num) + "! = " + str(fact))
+    }
+}
+
+let x = 10
+let y = 20
+let sum = x + y
+log("Basic calculation: " + str(x) + " + " + str(y) + " = " + str(sum))
+
+main_calculation()
+
+log("🎯 Debug demonstration completed!")

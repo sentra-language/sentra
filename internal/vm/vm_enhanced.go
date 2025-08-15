@@ -11,6 +11,7 @@ import (
 	"time"
 	"sentra/internal/bytecode"
 	"sentra/internal/compiler"
+	"sentra/internal/errors"
 	"sentra/internal/security"
 	"sentra/internal/network"
 	"sentra/internal/ossec"
@@ -29,6 +30,14 @@ import (
 	"sync/atomic"
 )
 
+// DebugHook is called when the VM encounters debug points
+type DebugHook interface {
+	OnInstruction(vm *EnhancedVM, ip int, debug bytecode.DebugInfo) bool
+	OnCall(vm *EnhancedVM, function string, debug bytecode.DebugInfo)
+	OnReturn(vm *EnhancedVM, debug bytecode.DebugInfo)
+	OnError(vm *EnhancedVM, err error, debug bytecode.DebugInfo)
+}
+
 // EnhancedVM is an optimized virtual machine with advanced features
 type EnhancedVM struct {
 	// Core execution state
@@ -37,6 +46,7 @@ type EnhancedVM struct {
 	stack      []Value
 	stackTop   int // Track stack top for optimization
 	debug      bool // Debug flag
+	debugHook  DebugHook // Debug callback interface
 	
 	// Memory management
 	globals    []Value           // Array-based globals for faster access
@@ -200,6 +210,15 @@ func (vm *EnhancedVM) Run() (Value, error) {
 	for vm.frameCount > 0 {
 		frame = &vm.frames[vm.frameCount-1]
 		
+		// Debug hook: check for breakpoints and step execution
+		if vm.debug && vm.debugHook != nil {
+			debug := frame.chunk.GetDebugInfo(frame.ip)
+			if !vm.debugHook.OnInstruction(vm, frame.ip, debug) {
+				// Debugger requested pause - wait for continue
+				continue
+			}
+		}
+		
 		// Check for runaway execution
 		instrCount++
 		if instrCount > 100000000 {
@@ -253,7 +272,10 @@ func (vm *EnhancedVM) Run() (Value, error) {
 		case bytecode.OpDiv:
 			b := vm.pop()
 			a := vm.pop()
-			result := vm.performDiv(a, b)
+			result, err := vm.safeDivide(a, b)
+			if err != nil {
+				return nil, err
+			}
 			vm.push(result)
 			
 		case bytecode.OpMod:
@@ -419,7 +441,24 @@ func (vm *EnhancedVM) Run() (Value, error) {
 		case bytecode.OpIndex:
 			index := vm.pop()
 			collection := vm.pop()
-			vm.push(vm.performIndex(collection, index))
+			
+			// Safe indexing based on collection type
+			switch coll := collection.(type) {
+			case *Array:
+				result, err := vm.safeArrayAccess(coll, index)
+				if err != nil {
+					return nil, err
+				}
+				vm.push(result)
+			case *Map:
+				result, err := vm.safeMapAccess(coll, index)
+				if err != nil {
+					return nil, err
+				}
+				vm.push(result)
+			default:
+				return nil, vm.runtimeError(fmt.Sprintf("Cannot index value of type %s", ValueType(collection)))
+			}
 			
 		case bytecode.OpSetIndex:
 			value := vm.pop()
@@ -3400,4 +3439,155 @@ func (vm *EnhancedVM) Reset(chunk *bytecode.Chunk) {
 		chunk:    chunk,
 	}
 	vm.precacheConstants()
+}
+
+// SetDebugHook sets the debug callback interface
+func (vm *EnhancedVM) SetDebugHook(hook DebugHook) {
+	vm.debugHook = hook
+	vm.debug = hook != nil
+}
+
+// GetCallStack returns the current call stack for debugging
+func (vm *EnhancedVM) GetCallStack() []map[string]interface{} {
+	stack := make([]map[string]interface{}, 0, vm.frameCount)
+	
+	for i := vm.frameCount - 1; i >= 0; i-- {
+		frame := &vm.frames[i]
+		debug := frame.chunk.GetDebugInfo(frame.ip)
+		
+		stackFrame := map[string]interface{}{
+			"function": debug.Function,
+			"file":     debug.File,
+			"line":     debug.Line,
+			"column":   debug.Column,
+			"ip":       frame.ip,
+		}
+		stack = append(stack, stackFrame)
+	}
+	
+	return stack
+}
+
+// GetCurrentLocation returns the current execution location
+func (vm *EnhancedVM) GetCurrentLocation() bytecode.DebugInfo {
+	if vm.frameCount > 0 {
+		frame := &vm.frames[vm.frameCount-1]
+		return frame.chunk.GetDebugInfo(frame.ip)
+	}
+	return bytecode.DebugInfo{}
+}
+
+// GetGlobalVariable retrieves a global variable by name for debugging
+func (vm *EnhancedVM) GetGlobalVariable(name string) (Value, bool) {
+	if idx, exists := vm.globalMap[name]; exists && idx < len(vm.globals) {
+		return vm.globals[idx], true
+	}
+	return nil, false
+}
+
+// Runtime error handling with stack traces
+func (vm *EnhancedVM) runtimeError(message string) *errors.SentraError {
+	// Get current execution location
+	frame := &vm.frames[vm.frameCount-1]
+	debugInfo := frame.chunk.GetDebugInfo(frame.ip)
+	
+	// Create runtime error
+	err := errors.NewRuntimeError(message, debugInfo.File, debugInfo.Line, debugInfo.Column)
+	
+	// Build call stack
+	var stack []errors.StackFrame
+	for i := vm.frameCount - 1; i >= 0; i-- {
+		f := &vm.frames[i]
+		debug := f.chunk.GetDebugInfo(f.ip)
+		
+		funcName := debug.Function
+		if funcName == "" {
+			funcName = "<script>"
+		}
+		
+		stack = append(stack, errors.StackFrame{
+			Function: funcName,
+			File:     debug.File,
+			Line:     debug.Line,
+			Column:   debug.Column,
+		})
+	}
+	
+	return err.WithStack(stack)
+}
+
+// Safe division with runtime error checking
+func (vm *EnhancedVM) safeDivide(a, b Value) (Value, *errors.SentraError) {
+	aNum := vm.toNumber(a)
+	bNum := vm.toNumber(b)
+	
+	if bNum == 0 {
+		return nil, vm.runtimeError("Division by zero")
+	}
+	
+	return aNum / bNum, nil
+}
+
+// Safe array access with bounds checking
+func (vm *EnhancedVM) safeArrayAccess(arr *Array, index Value) (Value, *errors.SentraError) {
+	idx := int(vm.toNumber(index))
+	
+	if idx < 0 || idx >= len(arr.Elements) {
+		return nil, vm.runtimeError(fmt.Sprintf("Array index out of bounds: %d (array length: %d)", idx, len(arr.Elements)))
+	}
+	
+	return arr.Elements[idx], nil
+}
+
+// Safe map access with key checking
+func (vm *EnhancedVM) safeMapAccess(m *Map, key Value) (Value, *errors.SentraError) {
+	keyStr := ToString(key)
+	
+	m.mu.RLock()
+	value, exists := m.Items[keyStr]
+	m.mu.RUnlock()
+	
+	if !exists {
+		return nil, vm.runtimeError(fmt.Sprintf("Map key not found: '%s'", keyStr))
+	}
+	
+	return value, nil
+}
+
+// Check for null/undefined values
+func (vm *EnhancedVM) checkNotNull(value Value, context string) error {
+	if value == nil {
+		return vm.runtimeError(fmt.Sprintf("Null reference error in %s", context))
+	}
+	return nil
+}
+
+// Type checking for operations
+func (vm *EnhancedVM) checkTypes(a, b Value, operation string) error {
+	aType := ValueType(a)
+	bType := ValueType(b)
+	
+	// Allow certain type combinations
+	switch operation {
+	case "+":
+		if (aType == "number" && bType == "number") ||
+		   (aType == "string" && bType == "string") ||
+		   (aType == "string" || bType == "string") {
+			return nil
+		}
+	case "-", "*", "/", "%":
+		if aType == "number" && bType == "number" {
+			return nil
+		}
+	case "<", ">", "<=", ">=":
+		if aType == bType && (aType == "number" || aType == "string") {
+			return nil
+		}
+	case "==", "!=":
+		return nil // Allow all types for equality
+	default:
+		return nil // Allow other operations for now
+	}
+	
+	return vm.runtimeError(fmt.Sprintf("Type error: cannot perform '%s' on %s and %s", operation, aType, bType))
 }

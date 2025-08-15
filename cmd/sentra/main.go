@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sentra/cmd/sentra/commands"
 	"sentra/internal/compiler"
+	"sentra/internal/debugger"
 	"sentra/internal/errors"
 	"sentra/internal/lexer"
 	"sentra/internal/parser"
@@ -55,6 +56,11 @@ func main() {
 	
 	if args[0] == "repl" {
 		repl.Start()
+		return
+	}
+
+	if args[0] == "debug" && len(args) > 1 {
+		runWithDebugger(args[1:])
 		return
 	}
 
@@ -109,14 +115,19 @@ func main() {
 				stmts = append(stmts, s)
 			}
 		}()
-		compiler := compiler.NewStmtCompiler()
+		compiler := compiler.NewStmtCompilerWithDebug(args[1])
 		chunk := compiler.Compile(stmts)
 
 		// Use the enhanced VM for better performance and features
 		enhancedVM := vm.NewEnhancedVM(chunk)
 		result, err := enhancedVM.Run()
 		if err != nil {
-			log.Fatalf("Runtime error: %v", err)
+			if sentraErr, ok := err.(*errors.SentraError); ok {
+				fmt.Fprintf(os.Stderr, "%s\n", sentraErr.Error())
+				os.Exit(1)
+			} else {
+				log.Fatalf("Runtime error: %v", err)
+			}
 		}
 		// Don't print the result unless it's meaningful
 		_ = result		
@@ -126,11 +137,90 @@ func main() {
 	showUsage()
 }
 
+func runWithDebugger(args []string) {
+	if len(args) == 0 {
+		log.Fatal("Debug command requires a file to debug")
+	}
+	
+	filename := args[0]
+	source, err := os.ReadFile(filename)
+	if err != nil {
+		log.Fatalf("Could not read file: %v", err)
+	}
+
+	// Create scanner with file information
+	scanner := lexer.NewScannerWithFile(string(source), filename)
+	tokens := scanner.ScanTokens()
+
+	// Create parser with source for error reporting
+	p := parser.NewParserWithSource(tokens, string(source), filename)
+	
+	// Wrap parsing in error handler
+	var stmts []interface{}
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if err, ok := r.(*errors.SentraError); ok {
+					fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+					os.Exit(1)
+				} else if err, ok := r.(error); ok {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				} else {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", r)
+					os.Exit(1)
+				}
+			}
+		}()
+		parsed := p.Parse()
+		for _, s := range parsed {
+			stmts = append(stmts, s)
+		}
+	}()
+	
+	// Compile with debug information
+	compiler := compiler.NewStmtCompilerWithDebug(filename)
+	chunk := compiler.Compile(stmts)
+
+	// Create VM and debugger
+	enhancedVM := vm.NewEnhancedVM(chunk)
+	debug := debugger.NewDebugger(enhancedVM)
+	
+	// Load source for debugging
+	debug.LoadSourceFile(filename, string(source))
+	
+	// Create debug hook and attach to VM
+	hook := debugger.NewVMDebugHook(debug)
+	enhancedVM.SetDebugHook(hook)
+	
+	fmt.Printf("🐛 Starting Sentra debugger for: %s\n", filename)
+	fmt.Println("The program will start paused. Type 'help' for commands.")
+	
+	// Start in debug mode
+	debug.SetState(debugger.Paused)
+	debug.RunDebugger()
+	
+	// Run the program with debugging enabled
+	result, err := enhancedVM.Run()
+	if err != nil {
+		if sentraErr, ok := err.(*errors.SentraError); ok {
+			fmt.Fprintf(os.Stderr, "%s\n", sentraErr.Error())
+			os.Exit(1)
+		} else {
+			log.Fatalf("Runtime error: %v", err)
+		}
+	}
+	
+	_ = result
+	fmt.Println("\n🎯 Program execution completed")
+}
+
 func showUsage() {
 	fmt.Println("Sentra - Security Automation Language")
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  sentra run <file.sn>       Run a Sentra script")
+	fmt.Println("  sentra debug <file.sn>     Debug a Sentra script with breakpoints")
 	fmt.Println("  sentra repl                Start interactive REPL")
 	fmt.Println()
 	fmt.Println("Project Management:")

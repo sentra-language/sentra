@@ -9,6 +9,9 @@ import (
 type StmtCompiler struct {
 	Chunk           *bytecode.Chunk
 	currentFunction *Function
+	fileName        string
+	currentLine     int
+	currentColumn   int
 }
 
 type Function struct {
@@ -30,27 +33,63 @@ func NewStmtCompiler() *StmtCompiler {
 	}
 }
 
+func NewStmtCompilerWithDebug(fileName string) *StmtCompiler {
+	return &StmtCompiler{
+		Chunk: bytecode.NewChunk(),
+		currentFunction: &Function{
+			Name:   "<script>",
+			Arity:  0,
+			Params: []string{},
+			Chunk:  nil, // Will be set later
+		},
+		fileName: fileName,
+	}
+}
+
 func (c *StmtCompiler) Compile(stmts []interface{}) *bytecode.Chunk {
-	for _, stmt := range stmts {
+	c.currentLine = 1 // Start from line 1
+	for i, stmt := range stmts {
 		if s, ok := stmt.(parser.Stmt); ok {
+			c.currentLine = i + 1 // Simple line estimation
 			s.Accept(c)
 		}
 	}
-	c.Chunk.WriteOp(bytecode.OpReturn)
+	c.emitOp(bytecode.OpReturn)
 	return c.Chunk
+}
+
+// Helper methods for emitting bytecode with debug info
+func (c *StmtCompiler) emitOp(op bytecode.OpCode) {
+	debug := bytecode.DebugInfo{
+		Line:     c.currentLine,
+		Column:   c.currentColumn,
+		File:     c.fileName,
+		Function: c.currentFunction.Name,
+	}
+	c.Chunk.WriteOpWithDebug(op, debug)
+}
+
+func (c *StmtCompiler) emitByte(b byte) {
+	debug := bytecode.DebugInfo{
+		Line:     c.currentLine,
+		Column:   c.currentColumn,
+		File:     c.fileName,
+		Function: c.currentFunction.Name,
+	}
+	c.Chunk.WriteByteWithDebug(b, debug)
 }
 
 func (c *StmtCompiler) VisitPrintStmt(stmt *parser.PrintStmt) interface{} {
 	stmt.Expr.Accept(c)
-	c.Chunk.WriteOp(bytecode.OpPrint)
+	c.emitOp(bytecode.OpPrint)
 	return nil
 }
 
 func (c *StmtCompiler) VisitLetStmt(stmt *parser.LetStmt) interface{} {
 	stmt.Expr.Accept(c)
 	idx := c.Chunk.AddConstant(stmt.Name)
-	c.Chunk.WriteOp(bytecode.OpDefineGlobal)
-	c.Chunk.WriteByte(byte(idx))
+	c.emitOp(bytecode.OpDefineGlobal)
+	c.emitByte(byte(idx))
 	return nil
 }
 
@@ -392,13 +431,13 @@ func (c *StmtCompiler) VisitBinaryExpr(expr *parser.Binary) interface{} {
 
 	switch expr.Operator {
 	case "+":
-		c.Chunk.WriteOp(bytecode.OpAdd)
+		c.emitOp(bytecode.OpAdd)
 	case "-":
-		c.Chunk.WriteOp(bytecode.OpSub)
+		c.emitOp(bytecode.OpSub)
 	case "*":
-		c.Chunk.WriteOp(bytecode.OpMul)
+		c.emitOp(bytecode.OpMul)
 	case "/":
-		c.Chunk.WriteOp(bytecode.OpDiv)
+		c.emitOp(bytecode.OpDiv)
 	case "==":
 		c.Chunk.WriteOp(bytecode.OpEqual)
 	case "!=":

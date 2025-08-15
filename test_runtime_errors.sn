@@ -1,0 +1,23 @@
+// Test runtime error handling
+
+fn divide_by_zero() {
+    let x = 10
+    let y = 0
+    let result = x / y  // Should trigger division by zero error
+    log("This should not be reached")
+}
+
+fn array_bounds_error() {
+    let arr = [1, 2, 3]
+    let value = arr[5]  // Should trigger array bounds error
+    log("This should not be reached")
+}
+
+fn map_key_error() {
+    let map = {"name": "test", "age": 25}
+    let value = map["missing_key"]  // Should trigger key not found error
+    log("This should not be reached")
+}
+
+// Test division by zero
+divide_by_zero()
