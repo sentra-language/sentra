@@ -1,0 +1,5 @@
+{"timestamp":"2023-12-25T10:00:01Z","level":"info","source":"app","host":"server1","message":"User login successful","user":"john.doe","ip":"192.168.1.50"}
+{"timestamp":"2023-12-25T10:00:02Z","level":"warning","source":"app","host":"server1","message":"Multiple failed login attempts","user":"admin","ip":"10.0.0.100","attempts":5}
+{"timestamp":"2023-12-25T10:00:03Z","level":"error","source":"app","host":"server1","message":"SQL injection attempt detected","query":"SELECT * FROM users WHERE id=1 UNION SELECT password FROM admin","ip":"172.16.0.50"}
+{"timestamp":"2023-12-25T10:00:04Z","level":"critical","source":"security","host":"server1","message":"Malware hash detected","hash":"d41d8cd98f00b204e9800998ecf8427e","file":"/tmp/suspicious.exe"}
+{"timestamp":"2023-12-25T10:00:05Z","level":"info","source":"app","host":"server1","message":"File accessed","file":"../../../etc/passwd","user":"guest"}

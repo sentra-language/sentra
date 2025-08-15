@@ -1,0 +1,6 @@
+Dec 25 10:00:01 webserver sshd: Failed password for admin from 192.168.1.200 port 22 ssh2
+Dec 25 10:00:02 webserver sshd: Failed password for root from 192.168.1.200 port 22 ssh2
+Dec 25 10:00:03 webserver sshd: Failed password for admin from 192.168.1.200 port 22 ssh2
+Dec 25 10:00:04 webserver kernel: TCP: Peer unexpectedly shrunk window
+Dec 25 10:00:05 webserver sshd: Failed password for root from 192.168.1.200 port 22 ssh2
+Dec 25 10:00:06 webserver sudo: user1 : TTY=pts/0 ; PWD=/home/user1 ; USER=root ; COMMAND=/bin/cat /etc/shadow

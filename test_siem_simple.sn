@@ -1,0 +1,22 @@
+#!/usr/bin/env sentra
+
+log("Testing SIEM functions")
+
+// Test SIEM formats
+let formats = siem_get_formats()
+if (formats) {
+    log("SIEM formats available: " + str(len(formats)))
+} else {
+    log("No SIEM formats found")
+}
+
+// Test parsing a single event
+let sample_line = "192.168.1.100 - - [25/Dec/2023:10:00:01 +0000] \"GET /test HTTP/1.1\" 200 1234"
+let parsed_event = siem_parse_event(sample_line, "apache")
+if (parsed_event) {
+    log("Successfully parsed single event")
+} else {
+    log("Failed to parse single event")
+}
+
+log("Test complete")

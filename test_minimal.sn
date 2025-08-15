@@ -1,0 +1,42 @@
+#!/usr/bin/env sentra
+
+log("Testing step by step")
+
+// Test 1: Simple function call
+let result = str(42)
+log("Test 1 passed: " + result)
+
+// Test 2: Function with underscore
+let formats = siem_get_formats()
+log("Test 2 passed")
+
+// Test 3: Check if result exists and get length
+if (formats) {
+    log("Test 3a passed: formats exist")
+    let count = len(formats)
+    log("Test 3b passed: " + str(count))
+}
+
+// Test 4: Parse log file
+let apache_logs = siem_parse_log("examples/sample_logs/apache.log", "apache")
+if (apache_logs) {
+    log("Test 4 passed: " + str(len(apache_logs)) + " log entries parsed")
+    
+    // Test accessing array elements and map fields
+    if (len(apache_logs) > 0) {
+        let entry = apache_logs[0]
+        if (entry) {
+            log("Test 5 passed: first entry accessed")
+            
+            // Test accessing map fields
+            let host = entry["host"]
+            if (host) {
+                log("Test 6 passed: host field accessed")
+            }
+        }
+    }
+} else {
+    log("Test 4 failed: log parsing failed")
+}
+
+log("All tests completed")

@@ -20,6 +20,8 @@ import (
 	"sentra/internal/reporting"
 	"sentra/internal/concurrency"
 	"sentra/internal/memory"
+	"sentra/internal/siem"
+	"sentra/internal/threat_intel"
 	"sync"
 	"sync/atomic"
 )
@@ -777,6 +779,16 @@ func (vm *EnhancedVM) performIndex(collection, index Value) Value {
 			return nil
 		}
 		return string(c.Value[idx])
+	case *siem.Array:
+		idx := int(vm.toNumber(index))
+		if idx < 0 || idx >= len(c.Elements) {
+			return nil
+		}
+		return c.Elements[idx]
+	case *siem.Map:
+		key := ToString(index)
+		val, _ := c.Items[key]
+		return val
 	}
 	return nil
 }
@@ -925,6 +937,8 @@ func (vm *EnhancedVM) registerBuiltins() {
 	reportMod := reporting.NewReportingModule()
 	concMod := concurrency.NewConcurrencyModule()
 	memMod := memory.NewMemoryModule()
+	siemMod := siem.NewSIEMModule()
+	threatMod := threat_intel.NewThreatIntelModule()
 	rand.Seed(time.Now().UnixNano())
 	
 	// Register basic built-in functions
@@ -963,6 +977,10 @@ func (vm *EnhancedVM) registerBuiltins() {
 					return float64(len(v.Items)), nil
 				case string:
 					return float64(len(v)), nil
+				case *siem.Array:
+					return float64(len(v.Elements)), nil
+				case *siem.Map:
+					return float64(len(v.Items)), nil
 				default:
 					return nil, fmt.Errorf("len() not supported for type %T", v)
 				}
@@ -2339,6 +2357,333 @@ func (vm *EnhancedVM) registerBuiltins() {
 			Arity: 0,
 			Function: func(args []Value) (Value, error) {
 				return memMod.AnalyzeProcessTree(), nil
+			},
+		},
+		
+		// SIEM Integration functions
+		"siem_parse_log": {
+			Name:  "siem_parse_log",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("siem_parse_log expects 2 arguments")
+				}
+				return siemMod.ParseLogFile(args[0], args[1]), nil
+			},
+		},
+		"siem_analyze_logs": {
+			Name:  "siem_analyze_logs",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("siem_analyze_logs expects 1 argument")
+				}
+				return siemMod.AnalyzeLogs(args[0]), nil
+			},
+		},
+		"siem_correlate_events": {
+			Name:  "siem_correlate_events",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("siem_correlate_events expects 1 argument")
+				}
+				return siemMod.CorrelateEvents(args[0]), nil
+			},
+		},
+		"siem_detect_threats": {
+			Name:  "siem_detect_threats",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("siem_detect_threats expects 1 argument")
+				}
+				return siemMod.DetectThreats(args[0]), nil
+			},
+		},
+		"siem_parse_event": {
+			Name:  "siem_parse_event",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("siem_parse_event expects 2 arguments")
+				}
+				return siemMod.ParseSingleEvent(args[0], args[1]), nil
+			},
+		},
+		"siem_export_events": {
+			Name:  "siem_export_events",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 3 {
+					return nil, fmt.Errorf("siem_export_events expects 3 arguments")
+				}
+				return siemMod.ExportEvents(args[0], args[1], args[2]), nil
+			},
+		},
+		"siem_send_syslog": {
+			Name:  "siem_send_syslog",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 3 {
+					return nil, fmt.Errorf("siem_send_syslog expects 3 arguments")
+				}
+				return siemMod.SendToSyslog(args[0], args[1], args[2]), nil
+			},
+		},
+		"siem_get_formats": {
+			Name:  "siem_get_formats",
+			Arity: 0,
+			Function: func(args []Value) (Value, error) {
+				return siemMod.GetSupportedFormats(), nil
+			},
+		},
+		"siem_add_rule": {
+			Name:  "siem_add_rule",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("siem_add_rule expects 1 argument")
+				}
+				return siemMod.AddCorrelationRule(args[0]), nil
+			},
+		},
+		"siem_get_rules": {
+			Name:  "siem_get_rules",
+			Arity: 0,
+			Function: func(args []Value) (Value, error) {
+				return siemMod.GetCorrelationRules(), nil
+			},
+		},
+		
+		// Threat Intelligence functions
+		"threat_lookup_ip": {
+			Name:  "threat_lookup_ip",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("threat_lookup_ip expects 1 argument")
+				}
+				ip := ToString(args[0])
+				result := threatMod.LookupIP(ip)
+				if result == nil {
+					return nil, nil
+				}
+				
+				// Convert to VM-compatible map
+				resultMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+				resultMap.Items["indicator"] = result.Indicator
+				resultMap.Items["type"] = result.Type
+				resultMap.Items["reputation"] = result.Reputation
+				resultMap.Items["score"] = float64(result.Score)
+				resultMap.Items["malicious"] = result.Malicious
+				resultMap.Items["geography"] = result.Geography
+				resultMap.Items["asn"] = result.ASN
+				
+				// Convert sources array
+				sources := make([]Value, len(result.Sources))
+				for i, source := range result.Sources {
+					sources[i] = source
+				}
+				resultMap.Items["sources"] = &Array{Elements: sources}
+				
+				// Convert categories array
+				categories := make([]Value, len(result.Categories))
+				for i, cat := range result.Categories {
+					categories[i] = cat
+				}
+				resultMap.Items["categories"] = &Array{Elements: categories}
+				
+				return resultMap, nil
+			},
+		},
+		"threat_lookup_hash": {
+			Name:  "threat_lookup_hash",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("threat_lookup_hash expects 1 argument")
+				}
+				hash := ToString(args[0])
+				result := threatMod.LookupHash(hash)
+				if result == nil {
+					return nil, nil
+				}
+				
+				// Convert to VM-compatible map
+				resultMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+				resultMap.Items["indicator"] = result.Indicator
+				resultMap.Items["type"] = result.Type
+				resultMap.Items["reputation"] = result.Reputation
+				resultMap.Items["score"] = float64(result.Score)
+				resultMap.Items["malicious"] = result.Malicious
+				
+				// Convert sources array
+				sources := make([]Value, len(result.Sources))
+				for i, source := range result.Sources {
+					sources[i] = source
+				}
+				resultMap.Items["sources"] = &Array{Elements: sources}
+				
+				return resultMap, nil
+			},
+		},
+		"threat_lookup_domain": {
+			Name:  "threat_lookup_domain",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("threat_lookup_domain expects 1 argument")
+				}
+				domain := ToString(args[0])
+				result := threatMod.LookupDomain(domain)
+				if result == nil {
+					return nil, nil
+				}
+				
+				// Convert to VM-compatible map
+				resultMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+				resultMap.Items["indicator"] = result.Indicator
+				resultMap.Items["type"] = result.Type
+				resultMap.Items["reputation"] = result.Reputation
+				resultMap.Items["score"] = float64(result.Score)
+				resultMap.Items["malicious"] = result.Malicious
+				
+				// Convert sources array
+				sources := make([]Value, len(result.Sources))
+				for i, source := range result.Sources {
+					sources[i] = source
+				}
+				resultMap.Items["sources"] = &Array{Elements: sources}
+				
+				return resultMap, nil
+			},
+		},
+		"threat_extract_iocs": {
+			Name:  "threat_extract_iocs",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("threat_extract_iocs expects 1 argument")
+				}
+				text := ToString(args[0])
+				iocs := threatMod.ExtractIOCs(text)
+				
+				// Convert to VM-compatible map
+				resultMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+				
+				for iocType, indicators := range iocs {
+					values := make([]Value, len(indicators))
+					for i, indicator := range indicators {
+						values[i] = indicator
+					}
+					resultMap.Items[iocType] = &Array{Elements: values}
+				}
+				
+				return resultMap, nil
+			},
+		},
+		"threat_get_reputation": {
+			Name:  "threat_get_reputation",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("threat_get_reputation expects 1 argument")
+				}
+				indicator := ToString(args[0])
+				return threatMod.GetReputation(indicator), nil
+			},
+		},
+		"threat_bulk_lookup": {
+			Name:  "threat_bulk_lookup",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("threat_bulk_lookup expects 1 argument")
+				}
+				
+				// Convert VM array to Go slice
+				arr, ok := args[0].(*Array)
+				if !ok {
+					return nil, fmt.Errorf("threat_bulk_lookup expects an array")
+				}
+				
+				indicators := make([]string, len(arr.Elements))
+				for i, elem := range arr.Elements {
+					indicators[i] = ToString(elem)
+				}
+				
+				results := threatMod.BulkLookup(indicators)
+				
+				// Convert results to VM-compatible map
+				resultMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+				
+				for indicator, result := range results {
+					if result != nil {
+						itemMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+						itemMap.Items["indicator"] = result.Indicator
+						itemMap.Items["type"] = result.Type
+						itemMap.Items["reputation"] = result.Reputation
+						itemMap.Items["score"] = float64(result.Score)
+						itemMap.Items["malicious"] = result.Malicious
+						
+						// Convert sources array
+						sources := make([]Value, len(result.Sources))
+						for i, source := range result.Sources {
+							sources[i] = source
+						}
+						itemMap.Items["sources"] = &Array{Elements: sources}
+						
+						resultMap.Items[indicator] = itemMap
+					}
+				}
+				
+				return resultMap, nil
+			},
+		},
+		"threat_set_api_key": {
+			Name:  "threat_set_api_key",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("threat_set_api_key expects 2 arguments")
+				}
+				source := ToString(args[0])
+				apiKey := ToString(args[1])
+				return threatMod.SetAPIKey(source, apiKey), nil
+			},
+		},
+		"threat_generate_md5": {
+			Name:  "threat_generate_md5",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("threat_generate_md5 expects 1 argument")
+				}
+				data := ToString(args[0])
+				return threatMod.GenerateMD5(data), nil
+			},
+		},
+		"threat_generate_sha1": {
+			Name:  "threat_generate_sha1",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("threat_generate_sha1 expects 1 argument")
+				}
+				data := ToString(args[0])
+				return threatMod.GenerateSHA1(data), nil
+			},
+		},
+		"threat_generate_sha256": {
+			Name:  "threat_generate_sha256",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("threat_generate_sha256 expects 1 argument")
+				}
+				data := ToString(args[0])
+				return threatMod.GenerateSHA256(data), nil
 			},
 		},
 	}

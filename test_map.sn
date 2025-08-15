@@ -1,10 +1,16 @@
-// Simple map test
+#!/usr/bin/env sentra
 
-let person = {
-    "name": "Alice",
-    "age": 30
+log("Testing map access")
+
+// Test map indexing
+let map_test = {"key": "value", "name": "test"}
+log("Map created")
+
+// Try different access patterns
+if (map_test) {
+    log("Map exists")
+    // Test string key access
+    log("Value: " + map_test["key"])
 }
 
-log(person)
-log(person["name"])
-log(person["age"])
+log("Test complete")

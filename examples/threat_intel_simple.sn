@@ -1,0 +1,67 @@
+#!/usr/bin/env sentra
+
+log("Threat Intelligence Simple Test")
+log("===============================")
+
+// Test IOC extraction
+log("Testing IOC extraction")
+let simple_text = "IP 8.8.8.8 and domain google.com"
+let iocs = threat_extract_iocs(simple_text)
+if (iocs) {
+    log("IOCs extracted successfully")
+    
+    // Check for extracted IPs
+    let ips = iocs["ip"]
+    if (ips && len(ips) > 0) {
+        log("Found " + str(len(ips)) + " IP addresses")
+        log("First IP: " + ips[0])
+    }
+    
+    // Check for extracted domains
+    let domains = iocs["domain"]
+    if (domains && len(domains) > 0) {
+        log("Found " + str(len(domains)) + " domains")
+        log("First domain: " + domains[0])
+    }
+} else {
+    log("No IOCs found")
+}
+
+// Test IP lookup
+log("Testing IP reputation lookup")
+let test_ip = "8.8.8.8"
+let reputation = threat_get_reputation(test_ip)
+log("IP reputation: " + reputation)
+
+// Test detailed IP lookup
+let ip_info = threat_lookup_ip(test_ip)
+if (ip_info) {
+    log("IP lookup successful")
+    log("Type: " + ip_info["type"])
+    log("Reputation: " + ip_info["reputation"])
+} else {
+    log("IP lookup failed")
+}
+
+// Test hash generation
+log("Testing hash generation")
+let data = "test"
+let md5 = threat_generate_md5(data)
+let sha1 = threat_generate_sha1(data)
+let sha256 = threat_generate_sha256(data)
+
+log("MD5: " + md5)
+log("SHA1: " + sha1) 
+log("SHA256: " + sha256)
+
+// Test hash lookup
+log("Testing hash lookup")
+let hash_info = threat_lookup_hash(md5)
+if (hash_info) {
+    log("Hash lookup successful")
+    log("Hash type: " + hash_info["type"])
+} else {
+    log("Hash lookup returned no data")
+}
+
+log("Threat Intelligence test complete!")

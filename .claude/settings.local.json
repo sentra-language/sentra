@@ -41,7 +41,16 @@
       "Bash(../sentra.exe mod list)",
       "Bash(../sentra.exe run main.sn)",
       "Bash(../sentra.exe run simple.sn)",
-      "Bash(../sentra.exe mod tidy)"
+      "Bash(../sentra.exe mod tidy)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/siem_demo.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_simple.sn)",
+      "Bash(true)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_map.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_siem_simple.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_underscore.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_func_underscore.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_minimal.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/siem_working_demo.sn)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

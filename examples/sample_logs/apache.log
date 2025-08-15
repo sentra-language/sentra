@@ -1,0 +1,5 @@
+192.168.1.100 - - [25/Dec/2023:10:00:01 +0000] "GET /index.html HTTP/1.1" 200 1234 "-" "Mozilla/5.0"
+192.168.1.101 - admin [25/Dec/2023:10:00:02 +0000] "POST /admin/login HTTP/1.1" 200 567 "http://example.com/admin" "Mozilla/5.0"
+10.0.0.5 - - [25/Dec/2023:10:00:03 +0000] "GET /admin/../../../etc/passwd HTTP/1.1" 404 890 "-" "curl/7.68.0"
+192.168.1.102 - - [25/Dec/2023:10:00:04 +0000] "POST /search?q=<script>alert('xss')</script> HTTP/1.1" 400 234 "-" "AttackBot/1.0"
+172.16.0.10 - - [25/Dec/2023:10:00:05 +0000] "GET /api/users?id=1 UNION SELECT * FROM passwords HTTP/1.1" 500 0 "-" "sqlmap/1.6"

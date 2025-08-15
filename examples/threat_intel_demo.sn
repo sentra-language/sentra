@@ -1,0 +1,137 @@
+#!/usr/bin/env sentra
+
+log("Threat Intelligence API Integration Demo")
+log("========================================")
+
+// Demo IOC extraction from text
+log("IOC Extraction from Sample Text")
+log("-------------------------------")
+let sample_text = "Found suspicious activity from 192.168.1.100 and malware hash a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4 connecting to evil.example.com"
+let extracted_iocs = threat_extract_iocs(sample_text)
+
+if (extracted_iocs) {
+    log("Extracted IOCs:")
+    
+    // Check for IPs
+    let ips = extracted_iocs["ip"]
+    if (ips && len(ips) > 0) {
+        log("  IPs found: " + str(len(ips)))
+        log("    " + ips[0])
+    }
+    
+    // Check for hashes
+    let hashes = extracted_iocs["hash"]
+    if (hashes && len(hashes) > 0) {
+        log("  Hashes found: " + str(len(hashes)))
+        log("    " + hashes[0])
+    }
+    
+    // Check for domains
+    let domains = extracted_iocs["domain"]
+    if (domains && len(domains) > 0) {
+        log("  Domains found: " + str(len(domains)))
+        log("    " + domains[0])
+    }
+}
+
+// Demo IP reputation lookup
+log("IP Reputation Lookup")
+log("--------------------")
+let test_ip = "8.8.8.8"
+let ip_reputation = threat_get_reputation(test_ip)
+log("Reputation for " + test_ip + ": " + ip_reputation)
+
+// Detailed IP lookup
+let ip_details = threat_lookup_ip(test_ip)
+if (ip_details) {
+    log("IP Details:")
+    log("  Indicator: " + ip_details["indicator"])
+    log("  Type: " + ip_details["type"])
+    log("  Reputation: " + ip_details["reputation"])
+    log("  Score: " + str(ip_details["score"]))
+    log("  Malicious: " + str(ip_details["malicious"]))
+    
+    let sources = ip_details["sources"]
+    if (sources && len(sources) > 0) {
+        log("  Sources: " + str(len(sources)))
+    }
+}
+
+// Demo hash lookup
+log("Hash Reputation Lookup")
+log("---------------------")
+let test_hash = "d41d8cd98f00b204e9800998ecf8427e"
+let hash_reputation = threat_get_reputation(test_hash)
+log("Reputation for hash: " + hash_reputation)
+
+let hash_details = threat_lookup_hash(test_hash)
+if (hash_details) {
+    log("Hash Details:")
+    log("  Type: " + hash_details["type"])
+    log("  Reputation: " + hash_details["reputation"])
+    log("  Score: " + str(hash_details["score"]))
+}
+
+// Demo domain lookup
+log("Domain Reputation Lookup")
+log("-----------------------")
+let test_domain = "google.com"
+let domain_reputation = threat_get_reputation(test_domain)
+log("Reputation for " + test_domain + ": " + domain_reputation)
+
+let domain_details = threat_lookup_domain(test_domain)
+if (domain_details) {
+    log("Domain Details:")
+    log("  Type: " + domain_details["type"])
+    log("  Reputation: " + domain_details["reputation"])
+    log("  Score: " + str(domain_details["score"]))
+}
+
+// Demo bulk lookup
+log("Bulk IOC Lookup")
+log("---------------")
+let indicators = ["8.8.8.8", "malware.com", "d41d8cd98f00b204e9800998ecf8427e"]
+let bulk_results = threat_bulk_lookup(indicators)
+
+if (bulk_results) {
+    log("Bulk lookup results:")
+    log("  Total indicators processed: " + str(len(indicators)))
+    
+    // Check first indicator result
+    let first_result = bulk_results["8.8.8.8"]
+    if (first_result) {
+        log("  8.8.8.8 reputation: " + first_result["reputation"])
+    }
+}
+
+// Demo hash generation utilities
+log("Hash Generation")
+log("---------------")
+let test_data = "Hello, Threat Intelligence!"
+let md5_hash = threat_generate_md5(test_data)
+let sha1_hash = threat_generate_sha1(test_data)
+let sha256_hash = threat_generate_sha256(test_data)
+
+log("Generated hashes for: " + test_data)
+log("  MD5: " + md5_hash)
+log("  SHA1: " + sha1_hash)
+log("  SHA256: " + sha256_hash)
+
+// Demo API key configuration (commented out - would set real keys)
+// log("API Key Configuration")
+// log("---------------------")
+// let vt_key_set = threat_set_api_key("virustotal", "your-api-key-here")
+// let abuse_key_set = threat_set_api_key("abuseipdb", "your-api-key-here")
+// log("VirusTotal API key configured: " + str(vt_key_set))
+// log("AbuseIPDB API key configured: " + str(abuse_key_set))
+
+log("Threat Intelligence Demo Complete!")
+log("Demonstrated capabilities:")
+log("  IOC extraction from unstructured text")
+log("  IP address reputation lookups")
+log("  File hash reputation analysis")
+log("  Domain reputation checking")
+log("  Bulk indicator processing")
+log("  Hash generation utilities")
+log("  API key management for threat feeds")
+log("  Integration with multiple threat intelligence sources")

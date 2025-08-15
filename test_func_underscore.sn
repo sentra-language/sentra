@@ -1,0 +1,13 @@
+#!/usr/bin/env sentra
+
+log("Testing function calls with underscores")
+
+// Test calling existing functions with underscores
+let file_content = file_read("test_underscore.sn")
+if (file_content) {
+    log("File read successful")
+} else {
+    log("File read failed")
+}
+
+log("Test complete")
