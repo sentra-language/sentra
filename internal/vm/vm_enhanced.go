@@ -19,6 +19,7 @@ import (
 	"sentra/internal/cryptoanalysis"
 	"sentra/internal/reporting"
 	"sentra/internal/concurrency"
+	"sentra/internal/memory"
 	"sync"
 	"sync/atomic"
 )
@@ -923,6 +924,7 @@ func (vm *EnhancedVM) registerBuiltins() {
 	cryptoMod := cryptoanalysis.NewCryptoAnalysisModule()
 	reportMod := reporting.NewReportingModule()
 	concMod := concurrency.NewConcurrencyModule()
+	memMod := memory.NewMemoryModule()
 	rand.Seed(time.Now().UnixNano())
 	
 	// Register basic built-in functions
@@ -2240,6 +2242,103 @@ func (vm *EnhancedVM) registerBuiltins() {
 				result.Items["goroutine_count"] = float64(metrics.GoroutineCount)
 				result.Items["memory_usage"] = float64(metrics.MemoryUsage)
 				return result, nil
+			},
+		},
+		
+		// Memory Forensics functions
+		"mem_list_processes": {
+			Name:  "mem_list_processes",
+			Arity: 0,
+			Function: func(args []Value) (Value, error) {
+				return memMod.ListProcesses(), nil
+			},
+		},
+		"mem_get_process_info": {
+			Name:  "mem_get_process_info",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("mem_get_process_info expects 1 argument")
+				}
+				return memMod.GetProcessInfo(args[0]), nil
+			},
+		},
+		"mem_dump_process": {
+			Name:  "mem_dump_process",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("mem_dump_process expects 2 arguments")
+				}
+				outputPath := ToString(args[1])
+				return memMod.DumpProcessMemory(args[0], outputPath), nil
+			},
+		},
+		"mem_get_memory_regions": {
+			Name:  "mem_get_memory_regions",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("mem_get_memory_regions expects 1 argument")
+				}
+				return memMod.GetMemoryRegions(args[0]), nil
+			},
+		},
+		"mem_scan_malware": {
+			Name:  "mem_scan_malware",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("mem_scan_malware expects 1 argument")
+				}
+				return memMod.ScanForMalware(args[0]), nil
+			},
+		},
+		"mem_detect_hollowing": {
+			Name:  "mem_detect_hollowing",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("mem_detect_hollowing expects 1 argument")
+				}
+				return memMod.DetectProcessHollowing(args[0]), nil
+			},
+		},
+		"mem_analyze_injection": {
+			Name:  "mem_analyze_injection",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("mem_analyze_injection expects 1 argument")
+				}
+				return memMod.AnalyzeInjection(args[0]), nil
+			},
+		},
+		"mem_find_process": {
+			Name:  "mem_find_process",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("mem_find_process expects 1 argument")
+				}
+				return memMod.FindProcessByName(args[0]), nil
+			},
+		},
+		"mem_get_children": {
+			Name:  "mem_get_children",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("mem_get_children expects 1 argument")
+				}
+				return memMod.GetProcessChildren(args[0]), nil
+			},
+		},
+		"mem_process_tree": {
+			Name:  "mem_process_tree",
+			Arity: 0,
+			Function: func(args []Value) (Value, error) {
+				return memMod.AnalyzeProcessTree(), nil
 			},
 		},
 	}

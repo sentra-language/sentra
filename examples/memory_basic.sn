@@ -1,0 +1,11 @@
+#!/usr/bin/env sentra
+
+log("Memory Forensics Test")
+
+let processes = mem_list_processes()
+log("Got process list")
+
+let tree = mem_process_tree()
+log("Got process tree")
+
+log("Test completed!")

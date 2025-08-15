@@ -1,0 +1,17 @@
+#!/usr/bin/env sentra
+
+log("🔒 Sentra Security Scanner")
+log("==========================")
+
+// Basic system check
+let sys = os_info()
+log("Hostname: " + sys["hostname"])
+
+// Simple port check
+let results = port_scan("127.0.0.1", 80, 80, "TCP")
+if (len(results) > 0) {
+    let port = results[0]
+    log("Port 80 status: " + port["state"])
+}
+
+log("✅ Simple security check completed!")

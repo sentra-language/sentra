@@ -34,7 +34,14 @@
       "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/concurrency_test_new.sn)",
       "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/concurrency_simple.sn)",
       "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/concurrency_minimal.sn)",
-      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/concurrency_debug.sn)"
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/concurrency_debug.sn)",
+      "Bash(./sentra.exe)",
+      "Bash(../sentra.exe mod init github.com/test/security-scanner)",
+      "Bash(cat:*)",
+      "Bash(../sentra.exe mod list)",
+      "Bash(../sentra.exe run main.sn)",
+      "Bash(../sentra.exe run simple.sn)",
+      "Bash(../sentra.exe mod tidy)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

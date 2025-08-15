@@ -1,0 +1,29 @@
+// strings - String manipulation utilities
+// Standard library module  
+
+export fn split(str, delimiter) {
+    // Native implementation would go here
+    return [str]  // Simplified
+}
+
+export fn join(array, delimiter) {
+    // Native implementation  
+    return "joined"
+}
+
+export fn contains(haystack, needle) {
+    // Native implementation
+    return false
+}
+
+export fn trim(str) {
+    // Native implementation
+    return str
+}
+
+export fn replace(str, old, new) {
+    // Native implementation
+    return str
+}
+
+export const EMPTY = ""

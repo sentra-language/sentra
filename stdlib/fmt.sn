@@ -1,0 +1,17 @@
+// fmt - Formatting utilities for Sentra
+// Standard library module
+
+export fn sprintf(format, args) {
+    // Implementation would use native formatting
+    return "formatted string"
+}
+
+export fn printf(format, args) {
+    log(sprintf(format, args))
+}
+
+export fn println(message) {
+    log(str(message))
+}
+
+export const VERSION = "1.0.0"

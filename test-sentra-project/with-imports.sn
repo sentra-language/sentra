@@ -1,0 +1,15 @@
+#!/usr/bin/env sentra
+
+import "fmt"
+import "strings"
+import "github.com/sentra-security/network"
+
+log("Testing imports...")
+
+// Using standard library
+fmt.println("Hello from fmt!")
+
+// Using remote package (would be downloaded)
+// network.advanced_scan("192.168.1.0/24")
+
+log("Import test complete!")
