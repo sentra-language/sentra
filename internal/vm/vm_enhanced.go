@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"sentra/internal/memory"
 	"sentra/internal/siem"
 	"sentra/internal/threat_intel"
+	"sentra/internal/container"
 	"sync"
 	"sync/atomic"
 )
@@ -939,6 +941,7 @@ func (vm *EnhancedVM) registerBuiltins() {
 	memMod := memory.NewMemoryModule()
 	siemMod := siem.NewSIEMModule()
 	threatMod := threat_intel.NewThreatIntelModule()
+	containerMod := container.NewContainerScanner()
 	rand.Seed(time.Now().UnixNano())
 	
 	// Register basic built-in functions
@@ -1326,23 +1329,209 @@ func (vm *EnhancedVM) registerBuiltins() {
 				return arr, nil
 			},
 		},
-		"sort": {
-			Name:  "sort",
+		"shift": {
+			Name:  "shift",
 			Arity: 1,
 			Function: func(args []Value) (Value, error) {
 				arr, ok := args[0].(*Array)
 				if !ok {
-					return nil, fmt.Errorf("sort expects an array")
+					return nil, fmt.Errorf("shift expects an array")
 				}
-				// Simple numeric sort for now
-				for i := 0; i < len(arr.Elements)-1; i++ {
-					for j := i + 1; j < len(arr.Elements); j++ {
-						if ToNumber(arr.Elements[i]) > ToNumber(arr.Elements[j]) {
-							arr.Elements[i], arr.Elements[j] = arr.Elements[j], arr.Elements[i]
+				if len(arr.Elements) == 0 {
+					return nil, nil
+				}
+				val := arr.Elements[0]
+				arr.Elements = arr.Elements[1:]
+				return val, nil
+			},
+		},
+		"unshift": {
+			Name:  "unshift",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				arr, ok := args[0].(*Array)
+				if !ok {
+					return nil, fmt.Errorf("unshift expects an array")
+				}
+				arr.Elements = append([]Value{args[1]}, arr.Elements...)
+				return arr, nil
+			},
+		},
+		"slice": {
+			Name:  "slice",
+			Arity: -1, // Variable arguments
+			Function: func(args []Value) (Value, error) {
+				if len(args) < 1 || len(args) > 3 {
+					return nil, fmt.Errorf("slice expects 1-3 arguments")
+				}
+				arr, ok := args[0].(*Array)
+				if !ok {
+					return nil, fmt.Errorf("slice expects an array")
+				}
+				
+				start := 0
+				end := len(arr.Elements)
+				
+				if len(args) >= 2 {
+					start = int(ToNumber(args[1]))
+					if start < 0 {
+						start = len(arr.Elements) + start
+						if start < 0 {
+							start = 0
 						}
 					}
 				}
+				
+				if len(args) >= 3 {
+					end = int(ToNumber(args[2]))
+					if end < 0 {
+						end = len(arr.Elements) + end
+						if end < 0 {
+							end = 0
+						}
+					}
+				}
+				
+				if start > len(arr.Elements) {
+					start = len(arr.Elements)
+				}
+				if end > len(arr.Elements) {
+					end = len(arr.Elements)
+				}
+				if start > end {
+					start = end
+				}
+				
+				newElements := make([]Value, end-start)
+				copy(newElements, arr.Elements[start:end])
+				return &Array{Elements: newElements}, nil
+			},
+		},
+		"remove": {
+			Name:  "remove",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				arr, ok := args[0].(*Array)
+				if !ok {
+					return nil, fmt.Errorf("remove expects an array")
+				}
+				
+				index := int(ToNumber(args[1]))
+				if index < 0 || index >= len(arr.Elements) {
+					return nil, fmt.Errorf("index out of bounds")
+				}
+				
+				val := arr.Elements[index]
+				arr.Elements = append(arr.Elements[:index], arr.Elements[index+1:]...)
+				return val, nil
+			},
+		},
+		"insert": {
+			Name:  "insert",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				arr, ok := args[0].(*Array)
+				if !ok {
+					return nil, fmt.Errorf("insert expects an array")
+				}
+				
+				index := int(ToNumber(args[1]))
+				if index < 0 {
+					index = 0
+				}
+				if index > len(arr.Elements) {
+					index = len(arr.Elements)
+				}
+				
+				// Insert value at index
+				arr.Elements = append(arr.Elements[:index], 
+					append([]Value{args[2]}, arr.Elements[index:]...)...)
 				return arr, nil
+			},
+		},
+		"clear": {
+			Name:  "clear",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				arr, ok := args[0].(*Array)
+				if !ok {
+					return nil, fmt.Errorf("clear expects an array")
+				}
+				arr.Elements = []Value{}
+				return arr, nil
+			},
+		},
+		"array_contains": {
+			Name:  "array_contains",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				arr, ok := args[0].(*Array)
+				if !ok {
+					return nil, fmt.Errorf("array_contains expects an array")
+				}
+				
+				searchVal := args[1]
+				for _, elem := range arr.Elements {
+					if valuesEqual(elem, searchVal) {
+						return true, nil
+					}
+				}
+				return false, nil
+			},
+		},
+		"index_of": {
+			Name:  "index_of",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				arr, ok := args[0].(*Array)
+				if !ok {
+					return nil, fmt.Errorf("index_of expects an array")
+				}
+				
+				searchVal := args[1]
+				for i, elem := range arr.Elements {
+					if valuesEqual(elem, searchVal) {
+						return float64(i), nil
+					}
+				}
+				return float64(-1), nil
+			},
+		},
+		"join": {
+			Name:  "join",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				arr, ok := args[0].(*Array)
+				if !ok {
+					return nil, fmt.Errorf("join expects an array")
+				}
+				
+				separator := ToString(args[1])
+				parts := make([]string, len(arr.Elements))
+				for i, elem := range arr.Elements {
+					parts[i] = ToString(elem)
+				}
+				return strings.Join(parts, separator), nil
+			},
+		},
+		"array_sort": {
+			Name:  "array_sort",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				arr, ok := args[0].(*Array)
+				if !ok {
+					return nil, fmt.Errorf("array_sort expects an array")
+				}
+				
+				// Create a copy to avoid modifying original
+				newArr := &Array{Elements: make([]Value, len(arr.Elements))}
+				copy(newArr.Elements, arr.Elements)
+				
+				// Simple string-based sort for now
+				sort.Slice(newArr.Elements, func(i, j int) bool {
+					return ToString(newArr.Elements[i]) < ToString(newArr.Elements[j])
+				})
+				return newArr, nil
 			},
 		},
 		// Type functions
@@ -2684,6 +2873,219 @@ func (vm *EnhancedVM) registerBuiltins() {
 				}
 				data := ToString(args[0])
 				return threatMod.GenerateSHA256(data), nil
+			},
+		},
+		
+		// Container Security functions
+		"container_scan_image": {
+			Name:  "container_scan_image",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("container_scan_image expects 1 argument")
+				}
+				imagePath := ToString(args[0])
+				result, err := containerMod.ScanImage(imagePath)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert to VM-compatible map
+				resultMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+				resultMap.Items["image_id"] = result.ImageID
+				resultMap.Items["image_name"] = result.ImageName
+				resultMap.Items["scan_time"] = result.ScanTime.Format(time.RFC3339)
+				resultMap.Items["risk_score"] = float64(result.RiskScore)
+				
+				// Convert vulnerabilities
+				vulns := make([]Value, len(result.Vulnerabilities))
+				for i, vuln := range result.Vulnerabilities {
+					vulnMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+					vulnMap.Items["id"] = vuln.ID
+					vulnMap.Items["package"] = vuln.Package
+					vulnMap.Items["version"] = vuln.Version
+					vulnMap.Items["severity"] = vuln.Severity
+					vulnMap.Items["description"] = vuln.Description
+					vulnMap.Items["cvss_score"] = vuln.CVSSScore
+					vulns[i] = vulnMap
+				}
+				resultMap.Items["vulnerabilities"] = &Array{Elements: vulns}
+				
+				// Convert compliance issues
+				compliance := make([]Value, len(result.ComplianceIssues))
+				for i, issue := range result.ComplianceIssues {
+					issueMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+					issueMap.Items["rule_id"] = issue.RuleID
+					issueMap.Items["category"] = issue.Category
+					issueMap.Items["severity"] = issue.Severity
+					issueMap.Items["description"] = issue.Description
+					issueMap.Items["remediation"] = issue.Remediation
+					compliance[i] = issueMap
+				}
+				resultMap.Items["compliance_issues"] = &Array{Elements: compliance}
+				
+				// Convert secrets
+				secrets := make([]Value, len(result.Secrets))
+				for i, secret := range result.Secrets {
+					secretMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+					secretMap.Items["type"] = secret.Type
+					secretMap.Items["file"] = secret.File
+					secretMap.Items["line"] = float64(secret.Line)
+					secretMap.Items["severity"] = secret.Severity
+					secrets[i] = secretMap
+				}
+				resultMap.Items["secrets"] = &Array{Elements: secrets}
+				
+				// Convert malware
+				malware := make([]Value, len(result.Malware))
+				for i, mal := range result.Malware {
+					malMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+					malMap.Items["name"] = mal.Name
+					malMap.Items["type"] = mal.Type
+					malMap.Items["file"] = mal.File
+					malMap.Items["severity"] = mal.Severity
+					malware[i] = malMap
+				}
+				resultMap.Items["malware"] = &Array{Elements: malware}
+				
+				// Add summary
+				summaryMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+				summaryMap.Items["total_vulnerabilities"] = float64(result.Summary.TotalVulnerabilities)
+				summaryMap.Items["total_secrets"] = float64(result.Summary.TotalSecrets)
+				summaryMap.Items["total_malware"] = float64(result.Summary.TotalMalware)
+				summaryMap.Items["compliance_score"] = result.Summary.ComplianceScore
+				summaryMap.Items["passed"] = result.Summary.Passed
+				resultMap.Items["summary"] = summaryMap
+				
+				return resultMap, nil
+			},
+		},
+		"container_scan_dockerfile": {
+			Name:  "container_scan_dockerfile",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("container_scan_dockerfile expects 1 argument")
+				}
+				dockerfilePath := ToString(args[0])
+				analysis, err := containerMod.ScanDockerfile(dockerfilePath)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert to VM-compatible map
+				resultMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+				resultMap.Items["file"] = analysis.File
+				
+				// Convert issues
+				issues := make([]Value, len(analysis.Issues))
+				for i, issue := range analysis.Issues {
+					issueMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+					issueMap.Items["line"] = float64(issue.Line)
+					issueMap.Items["severity"] = issue.Severity
+					issueMap.Items["type"] = issue.Type
+					issueMap.Items["message"] = issue.Message
+					issueMap.Items["remediation"] = issue.Remediation
+					issues[i] = issueMap
+				}
+				resultMap.Items["issues"] = &Array{Elements: issues}
+				
+				// Convert best practices
+				practices := make([]Value, len(analysis.BestPractices))
+				for i, practice := range analysis.BestPractices {
+					practices[i] = practice
+				}
+				resultMap.Items["best_practices"] = &Array{Elements: practices}
+				
+				return resultMap, nil
+			},
+		},
+		"container_get_scan_result": {
+			Name:  "container_get_scan_result",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("container_get_scan_result expects 1 argument")
+				}
+				imageID := ToString(args[0])
+				result := containerMod.GetScanResult(imageID)
+				if result == nil {
+					return nil, nil
+				}
+				
+				// Convert to VM-compatible map (simplified)
+				resultMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+				resultMap.Items["image_id"] = result.ImageID
+				resultMap.Items["image_name"] = result.ImageName
+				resultMap.Items["risk_score"] = float64(result.RiskScore)
+				resultMap.Items["total_vulnerabilities"] = float64(result.Summary.TotalVulnerabilities)
+				resultMap.Items["passed"] = result.Summary.Passed
+				
+				return resultMap, nil
+			},
+		},
+		"container_validate_policy": {
+			Name:  "container_validate_policy",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("container_validate_policy expects 2 arguments")
+				}
+				
+				// Get scan result
+				scanResultMap, ok := args[0].(*Map)
+				if !ok {
+					return nil, fmt.Errorf("first argument must be a scan result")
+				}
+				
+				policyID := ToString(args[1])
+				
+				// Create a minimal ScanResult from the map
+				// (In production, would properly reconstruct the full result)
+				imageID, _ := scanResultMap.Items["image_id"].(string)
+				storedResult := containerMod.GetScanResult(imageID)
+				if storedResult == nil {
+					return false, nil
+				}
+				
+				passed, violations := containerMod.ValidateAgainstPolicy(storedResult, policyID)
+				
+				// Return result map
+				resultMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+				resultMap.Items["passed"] = passed
+				
+				violationsList := make([]Value, len(violations))
+				for i, v := range violations {
+					violationsList[i] = v
+				}
+				resultMap.Items["violations"] = &Array{Elements: violationsList}
+				
+				return resultMap, nil
+			},
+		},
+		"container_add_policy": {
+			Name:  "container_add_policy",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("container_add_policy expects 1 argument")
+				}
+				
+				policyMap, ok := args[0].(*Map)
+				if !ok {
+					return nil, fmt.Errorf("policy must be a map")
+				}
+				
+				// Create policy from map
+				policy := &container.SecurityPolicy{
+					ID:                ToString(policyMap.Items["id"]),
+					Name:              ToString(policyMap.Items["name"]),
+					SeverityThreshold: ToString(policyMap.Items["severity_threshold"]),
+					BlockOnFail:       ToBool(policyMap.Items["block_on_fail"]),
+				}
+				
+				containerMod.AddPolicy(policy)
+				return true, nil
 			},
 		},
 	}

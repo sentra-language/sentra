@@ -1,0 +1,15 @@
+#!/usr/bin/env sentra
+
+log("Test map access in nested if")
+
+let map = {"key": "value", "name": "test"}
+if (map) {
+    log("Map exists")
+    if (map["key"]) {
+        log("Key exists")
+        let val = map["key"]
+        log("Value: " + val)
+    }
+}
+
+log("Test complete")

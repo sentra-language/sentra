@@ -409,6 +409,10 @@ func (c *StmtCompiler) VisitBinaryExpr(expr *parser.Binary) interface{} {
 		c.Chunk.WriteOp(bytecode.OpGreaterEqual)
 	case "<=":
 		c.Chunk.WriteOp(bytecode.OpLessEqual)
+	case "&&":
+		c.Chunk.WriteOp(bytecode.OpAnd)
+	case "||":
+		c.Chunk.WriteOp(bytecode.OpOr)
 	}
 	return nil
 }

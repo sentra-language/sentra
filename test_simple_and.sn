@@ -1,0 +1,11 @@
+#!/usr/bin/env sentra
+
+let a = true
+let b = false
+
+// Test without parentheses
+if a && b {
+    log("Should not print")
+}
+
+log("Done")

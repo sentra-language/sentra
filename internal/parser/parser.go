@@ -8,16 +8,22 @@ import (
 
 // Add operator precedence (optional for debug)
 var precedence = map[lexer.TokenType]int{
-	lexer.TokenPlus:        1,
-	lexer.TokenMinus:       1,
-	lexer.TokenStar:        2,
-	lexer.TokenSlash:       2,
-	lexer.TokenDoubleEqual: 0, // Add this line - equality has lower precedence
-	lexer.TokenNotEqual:    0, // Add this line
-	lexer.TokenLT:          0, // Add this line
-	lexer.TokenGT:          0, // Add this line
-	lexer.TokenLE:          0, // Add this line
-	lexer.TokenGE:          0, // Add this line
+	// Logical operators (lowest precedence)
+	lexer.TokenOr:          1,  // ||
+	lexer.TokenAnd:         2,  // &&
+	// Comparison operators
+	lexer.TokenDoubleEqual: 3,  // ==
+	lexer.TokenNotEqual:    3,  // !=
+	lexer.TokenLT:          3,  // <
+	lexer.TokenGT:          3,  // >
+	lexer.TokenLE:          3,  // <=
+	lexer.TokenGE:          3,  // >=
+	// Arithmetic operators
+	lexer.TokenPlus:        4,  // +
+	lexer.TokenMinus:       4,  // -
+	lexer.TokenStar:        5,  // *
+	lexer.TokenSlash:       5,  // /
+	lexer.TokenPercent:     5,  // %
 }
 
 type Parser struct {

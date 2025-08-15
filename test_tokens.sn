@@ -1,0 +1,4 @@
+#!/usr/bin/env sentra
+if a && b {
+    log("test")
+}

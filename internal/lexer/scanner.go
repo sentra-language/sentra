@@ -279,17 +279,44 @@ func (s *Scanner) number() {
 }
 
 func (s *Scanner) string() {
+	var result []byte
+	
 	for s.peek() != '"' && !s.isAtEnd() {
-		if s.peek() == '\n' {
-			s.line++
+		if s.peek() == '\\' && !s.isAtEnd() {
+			s.advance() // consume backslash
+			if !s.isAtEnd() {
+				next := s.advance()
+				switch next {
+				case 'n':
+					result = append(result, '\n')
+				case 't':
+					result = append(result, '\t')
+				case 'r':
+					result = append(result, '\r')
+				case '\\':
+					result = append(result, '\\')
+				case '"':
+					result = append(result, '"')
+				default:
+					// Unknown escape sequence, keep the backslash and character
+					result = append(result, '\\', next)
+				}
+			}
+		} else {
+			if s.peek() == '\n' {
+				s.line++
+			}
+			result = append(result, s.advance())
 		}
-		s.advance()
 	}
+	
 	if s.isAtEnd() {
 		return // Unterminated string; ignore for now
 	}
-	s.advance()
-	value := s.source[s.start+1 : s.current-1]
+	s.advance() // consume closing quote
+	
+	// Use the processed string with escape sequences resolved
+	value := string(result)
 	s.tokens = append(s.tokens, Token{Type: TokenString, Lexeme: value, Line: s.line})
 }
 

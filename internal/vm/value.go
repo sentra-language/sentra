@@ -237,6 +237,83 @@ func PrintValue(val Value) {
 	fmt.Println(ToString(val))
 }
 
+// valuesEqual checks if two values are equal
+func valuesEqual(a, b Value) bool {
+	// Handle nil cases
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	
+	// Type switch for a
+	switch av := a.(type) {
+	case bool:
+		bv, ok := b.(bool)
+		return ok && av == bv
+	case int:
+		return compareNumbers(float64(av), b)
+	case int64:
+		return compareNumbers(float64(av), b)
+	case float64:
+		return compareNumbers(av, b)
+	case string:
+		bv, ok := b.(string)
+		if ok {
+			return av == bv
+		}
+		bs, ok := b.(*String)
+		return ok && av == bs.Value
+	case *String:
+		bv, ok := b.(string)
+		if ok {
+			return av.Value == bv
+		}
+		bs, ok := b.(*String)
+		return ok && av.Value == bs.Value
+	case *Array:
+		bv, ok := b.(*Array)
+		if !ok || len(av.Elements) != len(bv.Elements) {
+			return false
+		}
+		for i := range av.Elements {
+			if !valuesEqual(av.Elements[i], bv.Elements[i]) {
+				return false
+			}
+		}
+		return true
+	case *Map:
+		bv, ok := b.(*Map)
+		if !ok || len(av.Items) != len(bv.Items) {
+			return false
+		}
+		for k, v := range av.Items {
+			bval, exists := bv.Items[k]
+			if !exists || !valuesEqual(v, bval) {
+				return false
+			}
+		}
+		return true
+	default:
+		return a == b
+	}
+}
+
+// compareNumbers compares numeric values accounting for type differences
+func compareNumbers(a float64, b Value) bool {
+	switch bv := b.(type) {
+	case int:
+		return a == float64(bv)
+	case int64:
+		return a == float64(bv)
+	case float64:
+		return a == bv
+	default:
+		return false
+	}
+}
+
 // Helper functions for collections
 
 // NewArray creates a new array

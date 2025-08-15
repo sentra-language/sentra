@@ -50,7 +50,11 @@
       "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_underscore.sn)",
       "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_func_underscore.sn)",
       "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_minimal.sn)",
-      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/siem_working_demo.sn)"
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/siem_working_demo.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_simple_if.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_simple_and.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_operators.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_array_functions.sn)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

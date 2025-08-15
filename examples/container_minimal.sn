@@ -1,0 +1,18 @@
+#!/usr/bin/env sentra
+
+log("Container Security Minimal Test")
+
+// Basic container scan
+let result = container_scan_image("test-image")
+log("Scan completed")
+
+// Basic Dockerfile scan  
+let dockerfile = container_scan_dockerfile("Dockerfile")
+log("Dockerfile scan completed")
+
+// Create policy
+let policy = {"id": "test", "name": "Test", "severity_threshold": "high", "block_on_fail": true}
+let added = container_add_policy(policy)
+log("Policy operation completed")
+
+log("Test finished")

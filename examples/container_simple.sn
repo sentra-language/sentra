@@ -1,0 +1,51 @@
+#!/usr/bin/env sentra
+
+log("Container Security Test")
+log("=======================")
+
+// Test container image scanning
+log("Testing container scan")
+let image = "test-image"
+let result = container_scan_image(image)
+
+if (result) {
+    log("Scan successful")
+    log("Image ID: " + result["image_id"])
+    log("Risk Score: " + str(result["risk_score"]))
+    
+    let summary = result["summary"]
+    if (summary) {
+        log("Vulnerabilities: " + str(summary["total_vulnerabilities"]))
+        log("Compliance Score: " + str(summary["compliance_score"]))
+        log("Scan Passed: " + str(summary["passed"]))
+    }
+} else {
+    log("Scan failed")
+}
+
+// Test Dockerfile scanning
+log("Testing Dockerfile scan")
+let dockerfile = container_scan_dockerfile("Dockerfile")
+if (dockerfile) {
+    log("Dockerfile scan successful")
+    log("File: " + dockerfile["file"])
+    
+    let issues = dockerfile["issues"]
+    if (issues && len(issues) > 0) {
+        log("Issues found: " + str(len(issues)))
+    }
+} else {
+    log("Dockerfile scan failed")
+}
+
+// Test policy creation
+log("Testing policy management")
+let policy = {"id": "test", "name": "Test Policy", "severity_threshold": "high", "block_on_fail": true}
+let added = container_add_policy(policy)
+if (added) {
+    log("Policy added successfully")
+} else {
+    log("Failed to add policy")
+}
+
+log("Container security test complete!")

@@ -1,0 +1,34 @@
+#!/usr/bin/env sentra
+
+log("SIEM Integration Demo")
+log("=====================")
+
+// Show supported log formats
+log("Supported Log Formats")
+log("---------------------")
+let formats = siem_get_formats()
+if (formats) {
+    log("Supported formats available: " + str(len(formats)))
+} else {
+    log("No SIEM formats found")
+}
+
+// Parse Apache access logs
+log("Parsing Apache Access Logs")
+log("---------------------------")
+let apache_logs = siem_parse_log("examples/sample_logs/apache.log", "apache")
+if (apache_logs) {
+    log("Parsed " + str(len(apache_logs)) + " Apache log entries")
+    
+    // Show first entry details
+    if (len(apache_logs) > 0) {
+        let entry = apache_logs[0]
+        log("Sample entry:")
+        log("  Host: " + entry["host"])
+        log("  Message: " + entry["message"])
+    }
+} else {
+    log("Failed to parse Apache logs")
+}
+
+log("Done")

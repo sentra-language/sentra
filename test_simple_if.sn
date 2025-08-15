@@ -1,0 +1,5 @@
+#!/usr/bin/env sentra
+let a = true
+if a {
+    log("a is true")
+}

@@ -1,0 +1,15 @@
+#!/usr/bin/env sentra
+
+log("Test 1: Simple parentheses")
+let x = (1 + 2)
+log("Result: " + str(x))
+
+log("Test 2: Nested if")
+if (true) {
+    log("Inside if")
+    if (false) {
+        log("Should not print")
+    }
+}
+
+log("Test complete")
