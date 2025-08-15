@@ -1,0 +1,15 @@
+# Sentra
+dist/
+vendor/
+*.snb
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

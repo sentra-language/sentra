@@ -1,0 +1,15 @@
+#!/usr/bin/env sentra
+// Main entry point for the project
+
+import "sentra/security"
+
+fn main() {
+    log("Starting security automation...")
+    
+    // Your code here
+    
+    log("Done!")
+}
+
+// Run the main function
+main()

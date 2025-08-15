@@ -1,0 +1,195 @@
+#!/usr/bin/env sentra
+// Cloud Security Posture Management Demo
+
+log("=== Cloud Security Posture Management Demo ===")
+log("")
+
+// Add AWS provider
+let aws_creds = {
+    "access_key": "AKIA...",
+    "secret_key": "...",
+    "region": "us-east-1"
+}
+cloud_provider_add("production-aws", "AWS", aws_creds)
+log("✓ AWS provider configured")
+
+// Add Azure provider
+let azure_creds = {
+    "tenant_id": "...",
+    "client_id": "...",
+    "client_secret": "...",
+    "subscription_id": "..."
+}
+cloud_provider_add("production-azure", "Azure", azure_creds)
+log("✓ Azure provider configured")
+
+// Add GCP provider
+let gcp_creds = {
+    "project_id": "my-project",
+    "credentials_json": "{...}"
+}
+cloud_provider_add("production-gcp", "GCP", gcp_creds)
+log("✓ GCP provider configured")
+
+log("")
+log("Scanning cloud providers for compliance...")
+log("")
+
+// Scan AWS environment
+log("=== AWS Scan Results ===")
+let aws_report = cloud_scan("production-aws")
+log("Provider: " + aws_report["provider"])
+log("Resources scanned: " + str(aws_report["resources"]))
+log("Overall compliance score: " + str(aws_report["overall_score"]) + "%")
+log("Critical findings: " + str(aws_report["critical_findings"]))
+log("High findings: " + str(aws_report["high_findings"]))
+
+// Check specific policy results
+let policies = aws_report["policy_results"]
+if len(policies) > 0 {
+    log("")
+    log("Policy Results:")
+    for i in [0, 1, 2] {
+        if i < len(policies) {
+            let policy = policies[i]
+            log("  - " + policy["policy_name"])
+            log("    Compliance: " + str(policy["compliance_score"]) + "%")
+            log("    Checks: " + str(policy["passed_checks"]) + "/" + str(policy["total_checks"]))
+            
+            // Show findings if any
+            let findings = policy["findings"]
+            if len(findings) > 0 {
+                log("    Findings:")
+                for j in [0, 1] {
+                    if j < len(findings) {
+                        let finding = findings[j]
+                        log("      • [" + finding["severity"] + "] " + finding["description"])
+                        log("        Fix: " + finding["remediation"])
+                    }
+                }
+            }
+        }
+    }
+}
+
+log("")
+log("=== Azure Scan Results ===")
+let azure_report = cloud_scan("production-azure")
+log("Provider: " + azure_report["provider"])
+log("Resources scanned: " + str(azure_report["resources"]))
+log("Overall compliance score: " + str(azure_report["overall_score"]) + "%")
+
+log("")
+log("=== GCP Scan Results ===")
+let gcp_report = cloud_scan("production-gcp")
+log("Provider: " + gcp_report["provider"])
+log("Resources scanned: " + str(gcp_report["resources"]))
+log("Overall compliance score: " + str(gcp_report["overall_score"]) + "%")
+
+// Get all open findings
+log("")
+log("=== Open Security Findings ===")
+let open_findings = cloud_findings("open")
+log("Total open findings: " + str(len(open_findings)))
+
+if len(open_findings) > 0 {
+    // Show first few findings
+    for i in [0, 1, 2] {
+        if i < len(open_findings) {
+            let finding = open_findings[i]
+            log("")
+            log("Finding ID: " + finding["id"])
+            log("  Resource: " + finding["resource_id"])
+            log("  Severity: " + finding["severity"])
+            log("  Issue: " + finding["description"])
+            log("  Remediation: " + finding["remediation"])
+        }
+    }
+}
+
+// Validate an IAM policy
+log("")
+log("=== IAM Policy Validation ===")
+let sample_policy = `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "*"
+      },
+      "Action": "s3:*",
+      "Resource": "*"
+    }
+  ]
+}`
+
+let iam_issues = cloud_validate_iam(sample_policy)
+if len(iam_issues) > 0 {
+    log("⚠ IAM Policy Issues Found:")
+    for i in [0, 1, 2, 3] {
+        if i < len(iam_issues) {
+            log("  - " + iam_issues[i])
+        }
+    }
+} else {
+    log("✓ IAM policy validation passed")
+}
+
+// Cost analysis
+log("")
+log("=== Cloud Cost Analysis ===")
+let cost_report = cloud_cost_analysis("production-aws")
+log("Provider: " + cost_report["provider"])
+log("Total monthly cost: $" + str(cost_report["total_cost"]))
+log("  Compute: $" + str(cost_report["compute_cost"]))
+log("  Storage: $" + str(cost_report["storage_cost"]))
+log("  Network: $" + str(cost_report["network_cost"]))
+log("Unused resources: " + str(cost_report["unused_resources"]))
+log("Potential savings: $" + str(cost_report["potential_savings"]))
+
+log("")
+log("Cost Optimization Recommendations:")
+let recommendations = cost_report["recommendations"]
+for i in [0, 1, 2, 3] {
+    if i < len(recommendations) {
+        log("  • " + recommendations[i])
+    }
+}
+
+// Run compliance benchmark
+log("")
+log("=== Compliance Benchmark ===")
+let benchmark_result = cloud_benchmark_run("AWS", "CIS AWS Foundations v1.4")
+log("Benchmark: " + benchmark_result["benchmark"])
+log("Compliance Score: " + str(benchmark_result["score"]) + "%")
+log("Passed: " + str(benchmark_result["passed"]))
+log("Failed: " + str(benchmark_result["failed"]))
+log("Skipped: " + str(benchmark_result["skipped"]))
+
+// Generate compliance report
+log("")
+log("=== Generating Compliance Report ===")
+let report = cloud_compliance_report("text")
+log(report)
+
+// Auto-remediate a finding (demo)
+if len(open_findings) > 0 {
+    log("")
+    log("=== Auto-Remediation Demo ===")
+    let finding_to_fix = open_findings[0]["id"]
+    log("Attempting to auto-remediate finding: " + finding_to_fix)
+    
+    let remediation_result = cloud_auto_remediate(finding_to_fix)
+    log("Status: " + remediation_result["status"])
+    log("Action taken: " + remediation_result["action_taken"])
+    
+    // Mark as resolved
+    cloud_resolve_finding(finding_to_fix)
+    log("✓ Finding marked as resolved")
+}
+
+log("")
+log("=== Cloud Security Scan Complete ===")
+log("Review the findings and apply recommended remediations.")
+log("Consider enabling continuous monitoring for real-time compliance.")

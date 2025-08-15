@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sentra/cmd/sentra/commands"
 	"sentra/internal/compiler"
 	"sentra/internal/lexer"
 	"sentra/internal/parser"
@@ -18,6 +19,30 @@ func main() {
 	args := os.Args[1:]
 	if len(args) == 0 {
 		showUsage()
+		return
+	}
+	
+	// Handle build commands
+	switch args[0] {
+	case "init":
+		if err := commands.InitCommand(args[1:]); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		return
+	case "build":
+		if err := commands.BuildCommand(args[1:]); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		return
+	case "watch":
+		if err := commands.WatchCommand(args[1:]); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		return
+	case "clean":
+		if err := commands.CleanCommand(args[1:]); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
 		return
 	}
 	
@@ -81,6 +106,12 @@ func showUsage() {
 	fmt.Println("  sentra run <file.sn>       Run a Sentra script")
 	fmt.Println("  sentra repl                Start interactive REPL")
 	fmt.Println()
+	fmt.Println("Project Management:")
+	fmt.Println("  sentra init [name]         Initialize a new Sentra project")
+	fmt.Println("  sentra build               Build the project")
+	fmt.Println("  sentra watch               Watch and rebuild on changes")
+	fmt.Println("  sentra clean               Clean build artifacts")
+	fmt.Println()
 	fmt.Println("Package Management:")
 	fmt.Println("  sentra mod init <path>     Initialize a new module")
 	fmt.Println("  sentra get <package>       Add a dependency")
@@ -91,7 +122,9 @@ func showUsage() {
 	fmt.Println("  sentra mod list            List all dependencies")
 	fmt.Println()
 	fmt.Println("Examples:")
+	fmt.Println("  sentra init my-scanner")
 	fmt.Println("  sentra run scanner.sn")
+	fmt.Println("  sentra build")
 	fmt.Println("  sentra mod init github.com/user/project")
 	fmt.Println("  sentra get github.com/sentra-security/network@latest")
 }

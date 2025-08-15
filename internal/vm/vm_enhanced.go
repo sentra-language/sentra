@@ -24,6 +24,7 @@ import (
 	"sentra/internal/siem"
 	"sentra/internal/threat_intel"
 	"sentra/internal/container"
+	"sentra/internal/cloud"
 	"sync"
 	"sync/atomic"
 )
@@ -924,6 +925,47 @@ func (vm *EnhancedVM) checkGCPressure() {
 	if m.Alloc > 100*1024*1024 { // 100MB threshold
 		runtime.GC()
 		vm.gcPressure++
+	}
+}
+
+// convertToVMValue converts an interface{} value to a VM Value
+func convertToVMValue(v interface{}) Value {
+	if v == nil {
+		return nil
+	}
+	
+	switch val := v.(type) {
+	case bool:
+		return val
+	case int:
+		return float64(val)
+	case int64:
+		return float64(val)
+	case float64:
+		return val
+	case string:
+		return val
+	case []string:
+		arr := &Array{Elements: []Value{}}
+		for _, s := range val {
+			arr.Elements = append(arr.Elements, s)
+		}
+		return arr
+	case []interface{}:
+		arr := &Array{Elements: []Value{}}
+		for _, item := range val {
+			arr.Elements = append(arr.Elements, convertToVMValue(item))
+		}
+		return arr
+	case map[string]interface{}:
+		m := &Map{Items: make(map[string]Value)}
+		for k, v := range val {
+			m.Items[k] = convertToVMValue(v)
+		}
+		return m
+	default:
+		// Try to convert to string as fallback
+		return fmt.Sprintf("%v", v)
 	}
 }
 
@@ -3088,6 +3130,167 @@ func (vm *EnhancedVM) registerBuiltins() {
 				return true, nil
 			},
 		},
+	}
+	
+	// Add cloud security functions
+	cloudMod := cloud.GetCloudModule()
+	
+	// Register cloud security functions
+	cloudBuiltins := map[string]*NativeFunction{
+		"cloud_provider_add": {
+			Name:  "cloud_provider_add",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				name := ToString(args[0])
+				providerType := ToString(args[1])
+				
+				// Parse credentials from map
+				creds := make(map[string]string)
+				if m, ok := args[2].(*Map); ok {
+					for k, v := range m.Items {
+						creds[k] = ToString(v)
+					}
+				}
+				
+				err := cloud.CloudProviderAdd(cloudMod, name, providerType, creds)
+				if err != nil {
+					return nil, err
+				}
+				return true, nil
+			},
+		},
+		"cloud_scan": {
+			Name:  "cloud_scan",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				providerName := ToString(args[0])
+				
+				report, err := cloud.CloudScan(cloudMod, providerName)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert to VM map
+				result := &Map{Items: make(map[string]Value)}
+				for k, v := range report {
+					result.Items[k] = convertToVMValue(v)
+				}
+				return result, nil
+			},
+		},
+		"cloud_findings": {
+			Name:  "cloud_findings",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				status := ToString(args[0])
+				findings := cloud.CloudGetFindings(cloudMod, status)
+				
+				// Convert to VM array
+				result := &Array{Elements: []Value{}}
+				for _, f := range findings {
+					findingMap := &Map{Items: make(map[string]Value)}
+					for k, v := range f {
+						findingMap.Items[k] = convertToVMValue(v)
+					}
+					result.Elements = append(result.Elements, findingMap)
+				}
+				return result, nil
+			},
+		},
+		"cloud_resolve_finding": {
+			Name:  "cloud_resolve_finding",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				findingID := ToString(args[0])
+				err := cloud.CloudResolveFinding(cloudMod, findingID)
+				if err != nil {
+					return false, err
+				}
+				return true, nil
+			},
+		},
+		"cloud_compliance_report": {
+			Name:  "cloud_compliance_report",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				format := ToString(args[0])
+				report, err := cloud.CloudComplianceReport(cloudMod, format)
+				if err != nil {
+					return nil, err
+				}
+				return report, nil
+			},
+		},
+		"cloud_validate_iam": {
+			Name:  "cloud_validate_iam",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				policyJSON := ToString(args[0])
+				issues, err := cloud.CloudValidateIAM(cloudMod, policyJSON)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert to VM array
+				result := &Array{Elements: []Value{}}
+				for _, issue := range issues {
+					result.Elements = append(result.Elements, issue)
+				}
+				return result, nil
+			},
+		},
+		"cloud_cost_analysis": {
+			Name:  "cloud_cost_analysis",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				providerName := ToString(args[0])
+				costReport := cloud.CloudCostAnalysis(providerName)
+				
+				// Convert to VM map
+				result := &Map{Items: make(map[string]Value)}
+				for k, v := range costReport {
+					result.Items[k] = convertToVMValue(v)
+				}
+				return result, nil
+			},
+		},
+		"cloud_benchmark_run": {
+			Name:  "cloud_benchmark_run",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				provider := ToString(args[0])
+				benchmark := ToString(args[1])
+				
+				benchmarkResult := cloud.CloudBenchmarkRun(provider, benchmark)
+				
+				// Convert to VM map
+				result := &Map{Items: make(map[string]Value)}
+				for k, v := range benchmarkResult {
+					result.Items[k] = convertToVMValue(v)
+				}
+				return result, nil
+			},
+		},
+		"cloud_auto_remediate": {
+			Name:  "cloud_auto_remediate",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				findingID := ToString(args[0])
+				remediationResult := cloud.CloudAutoRemediate(findingID)
+				
+				// Convert to VM map
+				result := &Map{Items: make(map[string]Value)}
+				for k, v := range remediationResult {
+					result.Items[k] = convertToVMValue(v)
+				}
+				return result, nil
+			},
+		},
+	}
+	
+	// Add cloud functions to main builtins
+	for name, fn := range cloudBuiltins {
+		builtins[name] = fn
 	}
 	
 	// Add all built-in functions to globals

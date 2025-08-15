@@ -1,0 +1,13 @@
+#!/usr/bin/env sentra
+// Sample test file
+
+import "sentra/testing"
+
+fn test_example() {
+    let result = 2 + 2
+    assert(result == 4, "Math should work")
+}
+
+// Run tests
+test_example()
+log("All tests passed!")
