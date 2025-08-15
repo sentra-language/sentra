@@ -57,7 +57,10 @@
       "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_array_functions.sn)",
       "Bash(./sentra.exe init:*)",
       "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/cloud_security_demo.sn)",
-      "Bash(./sentra.exe build:*)"
+      "Bash(./sentra.exe build:*)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_syntax_error.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run test_parser_error.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run debug_scanner.go)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

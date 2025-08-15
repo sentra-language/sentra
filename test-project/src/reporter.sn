@@ -68,11 +68,9 @@ fn generateSummary(findings) {
     for f in findings {
         if f["risk"] == "HIGH" {
             high = high + 1
-        }
-        if f["risk"] == "MEDIUM" {
+        } else if f["risk"] == "MEDIUM" {
             medium = medium + 1
-        }
-        if f["risk"] == "LOW" {
+        } else {
             low = low + 1
         }
     }

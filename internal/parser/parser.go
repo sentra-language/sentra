@@ -3,7 +3,9 @@ package parser
 
 import (
 	"fmt"
+	"sentra/internal/errors"
 	"sentra/internal/lexer"
+	"strings"
 )
 
 // Add operator precedence (optional for debug)
@@ -27,9 +29,11 @@ var precedence = map[lexer.TokenType]int{
 }
 
 type Parser struct {
-	tokens  []lexer.Token
-	current int
-	Errors  []error
+	tokens     []lexer.Token
+	current    int
+	Errors     []error
+	file       string
+	sourceLines []string // Source lines for error reporting
 }
 
 func NewParser(tokens []lexer.Token) *Parser {
@@ -37,6 +41,16 @@ func NewParser(tokens []lexer.Token) *Parser {
 		tokens:  tokens,
 		current: 0,
 		Errors:  []error{},
+	}
+}
+
+func NewParserWithSource(tokens []lexer.Token, source string, file string) *Parser {
+	return &Parser{
+		tokens:      tokens,
+		current:     0,
+		Errors:      []error{},
+		file:        file,
+		sourceLines: strings.Split(source, "\n"),
 	}
 }
 
@@ -390,7 +404,13 @@ func (p *Parser) primary() Expr {
 		thenBranch := p.parseBlockExpr()
 		var elseBranch Expr = nil
 		if p.match(lexer.TokenElse) {
-			elseBranch = p.parseBlockExpr()
+			if p.check(lexer.TokenIf) {
+				// else if - parse as nested if expression
+				elseBranch = p.primary()
+			} else {
+				// else block
+				elseBranch = p.parseBlockExpr()
+			}
 		}
 		return &IfExpr{
 			Cond:       cond,
@@ -398,7 +418,16 @@ func (p *Parser) primary() Expr {
 			ElseBranch: elseBranch,
 		}
 	default:
-		panic("Unexpected token in expression: " + tok.Lexeme)
+		err := errors.NewSyntaxError(
+			fmt.Sprintf("Unexpected token in expression: '%s'", tok.Lexeme),
+			tok.File,
+			tok.Line,
+			tok.Column,
+		)
+		if p.sourceLines != nil && tok.Line > 0 && tok.Line <= len(p.sourceLines) {
+			err = err.WithSource(p.sourceLines[tok.Line-1])
+		}
+		panic(err)
 	}
 }
 
@@ -507,7 +536,21 @@ func (p *Parser) consume(t lexer.TokenType, msg string) lexer.Token {
 	if p.check(t) {
 		return p.advance()
 	}
-	panic(msg)
+	// Create error with location information
+	currentToken := p.peek()
+	err := errors.NewSyntaxError(
+		fmt.Sprintf("%s (got '%s')", msg, currentToken.Lexeme),
+		currentToken.File,
+		currentToken.Line,
+		currentToken.Column,
+	)
+	
+	// Add source line if available
+	if p.sourceLines != nil && currentToken.Line > 0 && currentToken.Line <= len(p.sourceLines) {
+		err = err.WithSource(p.sourceLines[currentToken.Line-1])
+	}
+	
+	panic(err)
 }
 
 func (p *Parser) check(t lexer.TokenType) bool {

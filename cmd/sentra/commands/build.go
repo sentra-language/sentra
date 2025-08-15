@@ -4,6 +4,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sentra/internal/build"
 )
 
@@ -13,8 +14,14 @@ func BuildCommand(args []string) error {
 	if len(args) > 0 {
 		projectRoot = args[0]
 	}
+	
+	// Convert to absolute path
+	absRoot, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return fmt.Errorf("failed to resolve project path: %w", err)
+	}
 
-	builder, err := build.NewBuilder(projectRoot)
+	builder, err := build.NewBuilder(absRoot)
 	if err != nil {
 		return fmt.Errorf("failed to initialize builder: %w", err)
 	}

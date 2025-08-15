@@ -74,6 +74,8 @@ type Token struct {
 	Type   TokenType
 	Lexeme string
 	Line   int
+	Column int
+	File   string // File path for error reporting
 }
 
 func (t Token) String() string {
@@ -81,17 +83,30 @@ func (t Token) String() string {
 }
 
 type Scanner struct {
-	source  string
-	tokens  []Token
-	start   int
-	current int
-	line    int
+	source     string
+	tokens     []Token
+	start      int
+	current    int
+	line       int
+	column     int
+	startCol   int // Column where current token started
+	file       string // File path for error reporting
 }
 
 func NewScanner(source string) *Scanner {
 	return &Scanner{
 		source: source,
 		line:   1,
+		column: 1,
+	}
+}
+
+func NewScannerWithFile(source, file string) *Scanner {
+	return &Scanner{
+		source: source,
+		line:   1,
+		column: 1,
+		file:   file,
 	}
 }
 
@@ -104,6 +119,7 @@ func (s *Scanner) ScanTokens() []Token {
 	for !s.isAtEnd() {
 		s.sanitize()
 		s.start = s.current
+		s.startCol = s.column
 		if s.isAtEnd() { // Prevent scanToken from running at EOF
 			break
 		}
@@ -196,7 +212,7 @@ func (s *Scanner) scanToken() {
 			s.addToken(TokenOr)
 		}
 	case '\n':
-		s.line++
+		// Line and column already handled in advance()
 	case ' ', '\r', '\t':
 		// Ignore whitespace
 	default:
@@ -275,7 +291,13 @@ func (s *Scanner) number() {
 	for isDigit(s.peek()) {
 		s.advance()
 	}
-	s.tokens = append(s.tokens, Token{Type: TokenNumber, Lexeme: s.source[s.start:s.current], Line: s.line})
+	s.tokens = append(s.tokens, Token{
+		Type:   TokenNumber,
+		Lexeme: s.source[s.start:s.current],
+		Line:   s.line,
+		Column: s.startCol,
+		File:   s.file,
+	})
 }
 
 func (s *Scanner) string() {
@@ -317,17 +339,36 @@ func (s *Scanner) string() {
 	
 	// Use the processed string with escape sequences resolved
 	value := string(result)
-	s.tokens = append(s.tokens, Token{Type: TokenString, Lexeme: value, Line: s.line})
+	s.tokens = append(s.tokens, Token{
+		Type:   TokenString,
+		Lexeme: value,
+		Line:   s.line,
+		Column: s.startCol,
+		File:   s.file,
+	})
 }
 
 func (s *Scanner) addToken(t TokenType) {
 	text := s.source[s.start:s.current]
-	s.tokens = append(s.tokens, Token{Type: t, Lexeme: text, Line: s.line})
+	s.tokens = append(s.tokens, Token{
+		Type:   t,
+		Lexeme: text,
+		Line:   s.line,
+		Column: s.startCol,
+		File:   s.file,
+	})
 }
 
 func (s *Scanner) advance() byte {
+	c := s.source[s.current]
 	s.current++
-	return s.source[s.current-1]
+	if c == '\n' {
+		s.line++
+		s.column = 1
+	} else {
+		s.column++
+	}
+	return c
 }
 
 func (s *Scanner) peek() byte {
@@ -343,10 +384,7 @@ func (s *Scanner) isAtEnd() bool {
 
 func (s *Scanner) sanitize() {
 	for !s.isAtEnd() && unicode.IsSpace(rune(s.peek())) {
-		if s.peek() == '\n' {
-			s.line++
-		}
-		s.advance()
+		s.advance() // advance() already handles line counting
 	}
 }
 

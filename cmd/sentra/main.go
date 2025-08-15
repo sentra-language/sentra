@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sentra/cmd/sentra/commands"
 	"sentra/internal/compiler"
+	"sentra/internal/errors"
 	"sentra/internal/lexer"
 	"sentra/internal/parser"
 	"sentra/internal/packages"
@@ -71,7 +72,9 @@ func main() {
 		// fmt.Println(string(fullSource))
 		// fmt.Println("============================")
 
-		tokens := lexer.NewScanner(string(fullSource)).ScanTokens()
+		// Create scanner with file information
+		scanner := lexer.NewScannerWithFile(string(fullSource), args[1])
+		tokens := scanner.ScanTokens()
 
 		// --- And here ---
 		// fmt.Println("===== TOKENS =====")
@@ -81,7 +84,31 @@ func main() {
 		// fmt.Println("==================")
 		// -----------------------------
 
-		stmts := parser.NewParser(tokens).Parse()
+		// Create parser with source for error reporting
+		p := parser.NewParserWithSource(tokens, string(fullSource), args[1])
+		
+		// Wrap parsing in error handler
+		var stmts []interface{}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if err, ok := r.(*errors.SentraError); ok {
+						fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+						os.Exit(1)
+					} else if err, ok := r.(error); ok {
+						fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+						os.Exit(1)
+					} else {
+						fmt.Fprintf(os.Stderr, "Error: %v\n", r)
+						os.Exit(1)
+					}
+				}
+			}()
+			parsed := p.Parse()
+			for _, s := range parsed {
+				stmts = append(stmts, s)
+			}
+		}()
 		compiler := compiler.NewStmtCompiler()
 		chunk := compiler.Compile(stmts)
 

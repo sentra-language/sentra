@@ -487,6 +487,34 @@ func (vm *EnhancedVM) Run() (Value, error) {
 			m.mu.Unlock()
 			vm.push(value)
 			
+		case bytecode.OpMapDelete:
+			key := ToString(vm.pop())
+			m := vm.pop().(*Map)
+			m.mu.Lock()
+			delete(m.Items, key)
+			m.mu.Unlock()
+			vm.push(nil)
+			
+		case bytecode.OpMapKeys:
+			m := vm.pop().(*Map)
+			m.mu.RLock()
+			keys := &Array{Elements: make([]Value, 0, len(m.Items))}
+			for k := range m.Items {
+				keys.Elements = append(keys.Elements, k)
+			}
+			m.mu.RUnlock()
+			vm.push(keys)
+			
+		case bytecode.OpMapValues:
+			m := vm.pop().(*Map)
+			m.mu.RLock()
+			values := &Array{Elements: make([]Value, 0, len(m.Items))}
+			for _, v := range m.Items {
+				values.Elements = append(values.Elements, v)
+			}
+			m.mu.RUnlock()
+			vm.push(values)
+			
 		// String operations
 		case bytecode.OpConcat:
 			b := ToString(vm.pop())

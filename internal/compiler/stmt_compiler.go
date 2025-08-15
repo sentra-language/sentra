@@ -30,9 +30,11 @@ func NewStmtCompiler() *StmtCompiler {
 	}
 }
 
-func (c *StmtCompiler) Compile(stmts []parser.Stmt) *bytecode.Chunk {
+func (c *StmtCompiler) Compile(stmts []interface{}) *bytecode.Chunk {
 	for _, stmt := range stmts {
-		stmt.Accept(c)
+		if s, ok := stmt.(parser.Stmt); ok {
+			s.Accept(c)
+		}
 	}
 	c.Chunk.WriteOp(bytecode.OpReturn)
 	return c.Chunk

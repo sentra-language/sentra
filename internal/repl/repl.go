@@ -34,7 +34,12 @@ func Start() {
 		stmts := p.Parse()
 
 		c := compiler.NewStmtCompiler()         // ⚠️ new compiler
-		chunk := c.Compile(stmts)               // fresh chunk
+		// Convert to interface{} slice
+		var stmtInterfaces []interface{}
+		for _, s := range stmts {
+			stmtInterfaces = append(stmtInterfaces, s)
+		}
+		chunk := c.Compile(stmtInterfaces)               // fresh chunk
 		sentraVM.ResetWithChunk(chunk)          // swap chunk
 
 		sentraVM.Run()

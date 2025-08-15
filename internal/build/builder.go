@@ -123,8 +123,13 @@ func (b *Builder) Build() error {
 	outputPath := b.config.OutputPath
 	if outputPath == "" {
 		outputPath = filepath.Join(b.projectRoot, "dist", b.manifest.Name+".snb")
+	} else {
+		// If output path is relative, make it relative to project root
+		if !filepath.IsAbs(outputPath) {
+			outputPath = filepath.Join(b.projectRoot, outputPath)
+		}
 	}
-
+	
 	if err := b.writeBundle(bundle, outputPath); err != nil {
 		return fmt.Errorf("failed to write bundle: %w", err)
 	}

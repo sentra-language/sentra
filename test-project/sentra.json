@@ -4,7 +4,7 @@
   "description": "A Sentra security automation project",
   "author": "",
   "license": "MIT",
-  "entry_point": "simple_main.sn",
+  "entry_point": "main.sn",
   "dependencies": {},
   "scripts": {
     "start": "sentra run main.sn",
