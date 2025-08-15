@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -896,4 +897,643 @@ func (w *WebClientModule) PostForm(clientID string, targetURL string, formData m
 	}
 
 	return w.Request(clientID, req)
+}
+
+// API Security Testing Functions
+
+// APIScan performs comprehensive API security scanning
+func (w *WebClientModule) APIScan(baseURL string, options map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	vulnerabilities := []map[string]interface{}{}
+	
+	// Parse scan options
+	scanRateLimit := true
+	scanCORS := true
+	scanHeaders := true
+	
+	if val, ok := options["scan_rate_limit"]; ok {
+		if b, ok := val.(bool); ok {
+			scanRateLimit = b
+		}
+	}
+	if val, ok := options["scan_cors"]; ok {
+		if b, ok := val.(bool); ok {
+			scanCORS = b
+		}
+	}
+	if val, ok := options["scan_headers"]; ok {
+		if b, ok := val.(bool); ok {
+			scanHeaders = b
+		}
+	}
+	
+	// Create HTTP client for scanning
+	client := &http.Client{Timeout: 30 * time.Second}
+	
+	// Perform security header check
+	if scanHeaders {
+		headers := w.testSecurityHeaders(client, baseURL)
+		if missing, ok := headers["missing"].([]string); ok && len(missing) > 0 {
+			vuln := map[string]interface{}{
+				"type":     "security_headers",
+				"severity": "medium",
+				"details":  missing,
+			}
+			vulnerabilities = append(vulnerabilities, vuln)
+		}
+	}
+	
+	// Test for CORS misconfigurations
+	if scanCORS {
+		corsResult := w.testCORS(client, baseURL, "http://evil.com")
+		if vulnerable, ok := corsResult["vulnerable"].(bool); ok && vulnerable {
+			vuln := map[string]interface{}{
+				"type":     "cors_misconfiguration",
+				"severity": "high",
+				"details":  corsResult,
+			}
+			vulnerabilities = append(vulnerabilities, vuln)
+		}
+	}
+	
+	// Test for rate limiting
+	if scanRateLimit {
+		rateResult := w.testRateLimiting(client, baseURL, 100, 10)
+		if hasLimit, ok := rateResult["has_rate_limit"].(bool); ok && !hasLimit {
+			vuln := map[string]interface{}{
+				"type":     "no_rate_limiting",
+				"severity": "medium",
+				"details":  rateResult,
+			}
+			vulnerabilities = append(vulnerabilities, vuln)
+		}
+	}
+	
+	result["url"] = baseURL
+	result["vulnerabilities"] = vulnerabilities
+	result["scan_time"] = time.Now().Format(time.RFC3339)
+	result["vulnerability_count"] = len(vulnerabilities)
+	
+	return result
+}
+
+// TestAuthentication tests various authentication vulnerabilities
+func (w *WebClientModule) TestAuthentication(endpoint string, config map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	issues := []map[string]interface{}{}
+	
+	client := &http.Client{Timeout: 30 * time.Second}
+	
+	// Test for missing authentication
+	resp, err := client.Get(endpoint)
+	if err == nil {
+		defer resp.Body.Close()
+		
+		if resp.StatusCode == 200 {
+			issue := map[string]interface{}{
+				"type":        "no_authentication",
+				"description": "Endpoint accessible without authentication",
+			}
+			issues = append(issues, issue)
+		}
+	}
+	
+	// Test weak authentication methods
+	weakTokens := []string{
+		"test", "admin", "password", "123456", "default",
+	}
+	
+	for _, token := range weakTokens {
+		req, _ := http.NewRequest("GET", endpoint, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			
+			if resp.StatusCode == 200 {
+				issue := map[string]interface{}{
+					"type":        "weak_token",
+					"description": fmt.Sprintf("Weak token accepted: %s", token),
+				}
+				issues = append(issues, issue)
+			}
+		}
+	}
+	
+	result["endpoint"] = endpoint
+	result["issues"] = issues
+	result["vulnerable"] = len(issues) > 0
+	
+	return result
+}
+
+// TestInjection tests for various injection vulnerabilities
+func (w *WebClientModule) TestInjection(endpoint string, injectionType string, params map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	vulnerabilities := []map[string]interface{}{}
+	
+	client := &http.Client{Timeout: 30 * time.Second}
+	
+	payloads := map[string][]string{
+		"sql": {
+			"' OR '1'='1",
+			"'; DROP TABLE users--",
+			"' UNION SELECT NULL--",
+			"1' AND '1' = '1",
+		},
+		"nosql": {
+			`{"$ne": null}`,
+			`{"$gt": ""}`,
+			`{"$regex": ".*"}`,
+		},
+		"command": {
+			"; ls -la",
+			"| whoami",
+			"` id `",
+			"$(whoami)",
+		},
+		"xxe": {
+			`<?xml version="1.0"?><!DOCTYPE root [<!ENTITY test SYSTEM "file:///etc/passwd">]><root>&test;</root>`,
+		},
+		"xpath": {
+			"' or '1'='1",
+			"'] | //user/*",
+		},
+	}
+	
+	testPayloads, ok := payloads[injectionType]
+	if !ok {
+		result["error"] = fmt.Sprintf("unknown injection type: %s", injectionType)
+		return result
+	}
+	
+	for _, payload := range testPayloads {
+		// Test each parameter with the payload
+		for key := range params {
+			testParams := make(map[string]string)
+			for k, v := range params {
+				testParams[k] = fmt.Sprintf("%v", v)
+			}
+			testParams[key] = payload
+			
+			// Build URL with parameters
+			u, _ := url.Parse(endpoint)
+			q := u.Query()
+			for k, v := range testParams {
+				q.Set(k, v)
+			}
+			u.RawQuery = q.Encode()
+			
+			resp, err := client.Get(u.String())
+			if err == nil {
+				defer resp.Body.Close()
+				body, _ := io.ReadAll(resp.Body)
+				
+				// Check for signs of injection
+				if w.detectInjection(string(body), injectionType) {
+					vuln := map[string]interface{}{
+						"parameter": key,
+						"payload":   payload,
+						"type":      injectionType,
+					}
+					vulnerabilities = append(vulnerabilities, vuln)
+				}
+			}
+		}
+	}
+	
+	result["endpoint"] = endpoint
+	result["injection_type"] = injectionType
+	result["vulnerabilities"] = vulnerabilities
+	result["vulnerable"] = len(vulnerabilities) > 0
+	
+	return result
+}
+
+// TestRateLimiting tests if an API endpoint has rate limiting
+func (w *WebClientModule) TestRateLimiting(endpoint string, requests int, duration int) map[string]interface{} {
+	return w.testRateLimiting(&http.Client{Timeout: 30 * time.Second}, endpoint, requests, duration)
+}
+
+func (w *WebClientModule) testRateLimiting(client *http.Client, endpoint string, requests int, duration int) map[string]interface{} {
+	result := make(map[string]interface{})
+	
+	start := time.Now()
+	successful := 0
+	rateLimited := false
+	
+	for i := 0; i < requests; i++ {
+		resp, err := client.Get(endpoint)
+		if err == nil {
+			defer resp.Body.Close()
+			
+			if resp.StatusCode == 429 {
+				rateLimited = true
+				break
+			} else if resp.StatusCode == 200 {
+				successful++
+			}
+		}
+		
+		// Check if we've exceeded the duration
+		if time.Since(start).Seconds() > float64(duration) {
+			break
+		}
+	}
+	
+	elapsed := time.Since(start)
+	
+	result["endpoint"] = endpoint
+	result["requests_sent"] = successful
+	result["duration"] = elapsed.Seconds()
+	result["has_rate_limit"] = rateLimited
+	result["requests_per_second"] = float64(successful) / elapsed.Seconds()
+	
+	return result
+}
+
+// TestCORS tests for CORS misconfigurations
+func (w *WebClientModule) TestCORS(endpoint string, origin string) map[string]interface{} {
+	return w.testCORS(&http.Client{Timeout: 30 * time.Second}, endpoint, origin)
+}
+
+func (w *WebClientModule) testCORS(client *http.Client, endpoint string, origin string) map[string]interface{} {
+	result := make(map[string]interface{})
+	
+	req, err := http.NewRequest("OPTIONS", endpoint, nil)
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+	
+	req.Header.Set("Origin", origin)
+	req.Header.Set("Access-Control-Request-Method", "GET")
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+	defer resp.Body.Close()
+	
+	allowOrigin := resp.Header.Get("Access-Control-Allow-Origin")
+	allowCredentials := resp.Header.Get("Access-Control-Allow-Credentials")
+	
+	vulnerable := false
+	issues := []string{}
+	
+	// Check for wildcard with credentials
+	if allowOrigin == "*" && allowCredentials == "true" {
+		vulnerable = true
+		issues = append(issues, "Wildcard origin with credentials enabled")
+	}
+	
+	// Check if arbitrary origin is reflected
+	if allowOrigin == origin {
+		vulnerable = true
+		issues = append(issues, "Arbitrary origin reflected")
+	}
+	
+	result["endpoint"] = endpoint
+	result["test_origin"] = origin
+	result["allow_origin"] = allowOrigin
+	result["allow_credentials"] = allowCredentials
+	result["vulnerable"] = vulnerable
+	result["issues"] = issues
+	
+	return result
+}
+
+// TestSecurityHeaders checks for missing security headers
+func (w *WebClientModule) TestSecurityHeaders(endpoint string) map[string]interface{} {
+	return w.testSecurityHeaders(&http.Client{Timeout: 30 * time.Second}, endpoint)
+}
+
+func (w *WebClientModule) testSecurityHeaders(client *http.Client, endpoint string) map[string]interface{} {
+	result := make(map[string]interface{})
+	
+	resp, err := client.Get(endpoint)
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+	defer resp.Body.Close()
+	
+	requiredHeaders := []string{
+		"X-Content-Type-Options",
+		"X-Frame-Options",
+		"X-XSS-Protection",
+		"Strict-Transport-Security",
+		"Content-Security-Policy",
+	}
+	
+	present := []string{}
+	missing := []string{}
+	
+	for _, header := range requiredHeaders {
+		if resp.Header.Get(header) != "" {
+			present = append(present, header)
+		} else {
+			missing = append(missing, header)
+		}
+	}
+	
+	result["endpoint"] = endpoint
+	result["present"] = present
+	result["missing"] = missing
+	result["score"] = float64(len(present)) / float64(len(requiredHeaders)) * 100
+	
+	return result
+}
+
+// FuzzAPI performs API fuzzing
+func (w *WebClientModule) FuzzAPI(endpoint string, config map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	errors := []map[string]interface{}{}
+	
+	client := &http.Client{Timeout: 30 * time.Second}
+	
+	// Generate fuzz payloads
+	fuzzPayloads := []string{
+		strings.Repeat("A", 10000),           // Long string
+		"null",                                // Null value
+		"undefined",                           // Undefined
+		"-1",                                  // Negative number
+		"99999999999999999999",               // Large number
+		"!@#$%^&*(){}[]|\\:;\"'<>?,./",       // Special characters
+		"\x00\x01\x02\x03\x04\x05",          // Control characters
+		"../../../etc/passwd",                 // Path traversal
+	}
+	
+	for _, payload := range fuzzPayloads {
+		// Try different HTTP methods
+		methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH"}
+		
+		for _, method := range methods {
+			var req *http.Request
+			
+			if method == "GET" || method == "DELETE" {
+				u, _ := url.Parse(endpoint)
+				q := u.Query()
+				q.Set("fuzz", payload)
+				u.RawQuery = q.Encode()
+				req, _ = http.NewRequest(method, u.String(), nil)
+			} else {
+				body := map[string]string{"fuzz": payload}
+				jsonBody, _ := json.Marshal(body)
+				req, _ = http.NewRequest(method, endpoint, bytes.NewBuffer(jsonBody))
+				req.Header.Set("Content-Type", "application/json")
+			}
+			
+			resp, err := client.Do(req)
+			if err == nil {
+				defer resp.Body.Close()
+				
+				// Check for errors
+				if resp.StatusCode >= 500 {
+					errInfo := map[string]interface{}{
+						"method":      method,
+						"payload":     payload,
+						"status_code": resp.StatusCode,
+					}
+					errors = append(errors, errInfo)
+				}
+			}
+		}
+	}
+	
+	result["endpoint"] = endpoint
+	result["errors_found"] = errors
+	result["error_count"] = len(errors)
+	
+	return result
+}
+
+// TestAuthorization tests for authorization vulnerabilities
+func (w *WebClientModule) TestAuthorization(endpoint string, config map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	issues := []map[string]interface{}{}
+	
+	client := &http.Client{Timeout: 30 * time.Second}
+	
+	// Get user tokens from config
+	var user1Token, user2Token, adminToken string
+	
+	if val, ok := config["user1_token"]; ok {
+		user1Token = fmt.Sprintf("%v", val)
+	}
+	if val, ok := config["user2_token"]; ok {
+		user2Token = fmt.Sprintf("%v", val)
+	}
+	if val, ok := config["admin_token"]; ok {
+		adminToken = fmt.Sprintf("%v", val)
+	}
+	
+	// Test horizontal privilege escalation
+	if user1Token != "" && user2Token != "" {
+		// Try accessing user2's resources with user1's token
+		req, _ := http.NewRequest("GET", endpoint, nil)
+		req.Header.Set("Authorization", "Bearer "+user1Token)
+		
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			
+			if resp.StatusCode == 200 {
+				issue := map[string]interface{}{
+					"type":        "horizontal_privilege_escalation",
+					"description": "User can access other user's resources",
+				}
+				issues = append(issues, issue)
+			}
+		}
+	}
+	
+	// Test vertical privilege escalation
+	if user1Token != "" && adminToken != "" {
+		// Try accessing admin resources with user token
+		adminEndpoint := strings.Replace(endpoint, "/user/", "/admin/", 1)
+		req, _ := http.NewRequest("GET", adminEndpoint, nil)
+		req.Header.Set("Authorization", "Bearer "+user1Token)
+		
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			
+			if resp.StatusCode == 200 {
+				issue := map[string]interface{}{
+					"type":        "vertical_privilege_escalation",
+					"description": "User can access admin resources",
+				}
+				issues = append(issues, issue)
+			}
+		}
+	}
+	
+	result["endpoint"] = endpoint
+	result["issues"] = issues
+	result["vulnerable"] = len(issues) > 0
+	
+	return result
+}
+
+// ScanOpenAPI scans an API based on OpenAPI specification
+func (w *WebClientModule) ScanOpenAPI(specURL string, baseURL string) map[string]interface{} {
+	result := make(map[string]interface{})
+	
+	client := &http.Client{Timeout: 30 * time.Second}
+	
+	// Fetch OpenAPI spec
+	resp, err := client.Get(specURL)
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+	defer resp.Body.Close()
+	
+	var spec map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&spec); err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+	
+	endpoints := []map[string]interface{}{}
+	vulnerabilities := []map[string]interface{}{}
+	
+	// Parse paths from OpenAPI spec
+	if paths, ok := spec["paths"].(map[string]interface{}); ok {
+		for path, pathItem := range paths {
+			if methods, ok := pathItem.(map[string]interface{}); ok {
+				for method := range methods {
+					endpoint := map[string]interface{}{
+						"path":   path,
+						"method": strings.ToUpper(method),
+						"url":    baseURL + path,
+					}
+					endpoints = append(endpoints, endpoint)
+					
+					// Test this endpoint
+					fullURL := baseURL + path
+					if method == "get" || method == "post" {
+						// Test for common issues
+						headers := w.testSecurityHeaders(client, fullURL)
+						if score, ok := headers["score"].(float64); ok && score < 60 {
+							vuln := map[string]interface{}{
+								"endpoint": fullURL,
+								"issue":    "Missing security headers",
+								"score":    score,
+							}
+							vulnerabilities = append(vulnerabilities, vuln)
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	result["spec_url"] = specURL
+	result["base_url"] = baseURL
+	result["endpoints"] = endpoints
+	result["endpoint_count"] = len(endpoints)
+	result["vulnerabilities"] = vulnerabilities
+	
+	return result
+}
+
+// TestJWT tests for JWT vulnerabilities
+func (w *WebClientModule) TestJWT(endpoint string, token string) map[string]interface{} {
+	result := make(map[string]interface{})
+	vulnerabilities := []map[string]interface{}{}
+	
+	client := &http.Client{Timeout: 30 * time.Second}
+	
+	// Test with no signature (alg: none)
+	parts := strings.Split(token, ".")
+	if len(parts) == 3 {
+		// Create token with alg: none
+		header := `{"alg":"none","typ":"JWT"}`
+		encodedHeader := base64URLEncode([]byte(header))
+		noneToken := encodedHeader + "." + parts[1] + "."
+		
+		req, _ := http.NewRequest("GET", endpoint, nil)
+		req.Header.Set("Authorization", "Bearer "+noneToken)
+		
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			
+			if resp.StatusCode == 200 {
+				vuln := map[string]interface{}{
+					"type":        "jwt_none_algorithm",
+					"description": "JWT accepts 'none' algorithm",
+				}
+				vulnerabilities = append(vulnerabilities, vuln)
+			}
+		}
+	}
+	
+	// Test with weak secrets
+	weakSecrets := []string{
+		"secret", "password", "123456", "admin", "key",
+	}
+	
+	for _, secret := range weakSecrets {
+		// In a real implementation, we would re-sign the JWT with the weak secret
+		// For now, we'll just note this as a test to perform
+		vuln := map[string]interface{}{
+			"type":           "jwt_weak_secret_test",
+			"description":    fmt.Sprintf("Test with weak secret: %s", secret),
+			"recommendation": "Verify JWT is not using weak secret",
+		}
+		vulnerabilities = append(vulnerabilities, vuln)
+	}
+	
+	result["endpoint"] = endpoint
+	result["vulnerabilities"] = vulnerabilities
+	result["vulnerable"] = len(vulnerabilities) > 0
+	
+	return result
+}
+
+// detectInjection checks response for signs of injection
+func (w *WebClientModule) detectInjection(response string, injectionType string) bool {
+	indicators := map[string][]string{
+		"sql": {
+			"SQL syntax",
+			"mysql_fetch",
+			"ORA-",
+			"PostgreSQL",
+			"SQLite",
+			"Microsoft SQL Server",
+		},
+		"command": {
+			"root:",
+			"bin/bash",
+			"uid=",
+			"gid=",
+			"/etc/passwd",
+		},
+		"xxe": {
+			"root:x:0:0",
+			"<!ENTITY",
+			"SYSTEM",
+		},
+	}
+	
+	if patterns, ok := indicators[injectionType]; ok {
+		for _, pattern := range patterns {
+			if strings.Contains(response, pattern) {
+				return true
+			}
+		}
+	}
+	
+	return false
+}
+
+// base64URLEncode performs URL-safe base64 encoding
+func base64URLEncode(data []byte) string {
+	encoded := base64.RawURLEncoding.EncodeToString(data)
+	return encoded
 }

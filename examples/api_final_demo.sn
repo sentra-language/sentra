@@ -1,0 +1,32 @@
+// Final API Security Demo - Robust Version
+log("🔒 Sentra API Security Testing")
+log("=" * 40)
+
+// Test endpoint
+let endpoint = "https://httpbin.org/get"
+log("Target: " + endpoint)
+
+log("\n🛡️ Security Headers Test...")
+let headers = test_headers(endpoint)
+log("Score: " + headers["score"] + "%")
+
+log("\n🌐 CORS Test...")
+let cors = test_cors(endpoint, "http://test.com")
+log("Vulnerable: " + cors["vulnerable"])
+
+log("\n⏱️ Rate Limit Test...")
+let rate = test_rate_limiting(endpoint, 3, 1)
+log("Has limiting: " + rate["has_rate_limit"])
+
+log("\n🔐 Auth Test...")
+let auth_cfg = {"test": true}
+let auth = test_authentication(endpoint, auth_cfg)
+log("Auth secure: " + !auth["vulnerable"])
+
+log("\n✅ API Security Analysis Complete!")
+log("- Headers need improvement if score < 80%")
+log("- CORS should not be vulnerable")  
+log("- Rate limiting recommended")
+log("- Strong authentication required")
+
+log("\n🎯 Sentra API Security Testing Ready!")

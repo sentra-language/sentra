@@ -1,0 +1,20 @@
+// Network Security Test - Simple
+log("🔒 Testing Network Security Functions")
+
+// Quick traffic analysis test
+log("\n1. Traffic Analysis:")
+let traffic = analyze_traffic("eth0", 2)
+log("Packets: " + traffic["total_packets"])
+log("Bytes: " + traffic["total_bytes"])
+
+// Quick intrusion detection test
+log("\n2. Intrusion Detection:")
+let alerts = detect_intrusions("eth0", 2)
+log("Alerts: " + len(alerts))
+
+// Quick port scan test
+log("\n3. Port Scanning:")
+let scan = advanced_port_scan("127.0.0.1", 80, 82, "tcp_connect")
+log("Scanned ports: " + len(scan))
+
+log("\n✅ Network security tests complete!")

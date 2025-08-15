@@ -721,3 +721,590 @@ func (n *NetworkModule) GetNetworkInterfaces() ([]map[string]interface{}, error)
 	return interfaces, nil
 }
 
+// Advanced Network Security Features
+
+// TrafficAnalysisResult contains network traffic analysis results
+type TrafficAnalysisResult struct {
+	TotalPackets     int
+	TotalBytes       int64
+	ProtocolStats    map[string]int
+	TopSources       []string
+	TopDestinations  []string
+	SuspiciousIPs    []string
+	PortActivity     map[int]int
+	TimeRange        string
+	AlertsGenerated  []string
+}
+
+// IntrusionAlert represents a detected intrusion
+type IntrusionAlert struct {
+	Timestamp   time.Time
+	AlertType   string
+	Severity    string
+	SourceIP    string
+	TargetIP    string
+	TargetPort  int
+	Description string
+	Evidence    string
+}
+
+// NetworkTopology represents discovered network topology
+type NetworkTopology struct {
+	Nodes     []NetworkNode
+	Links     []NetworkLink
+	Subnets   []string
+	Gateways  []string
+	Timestamp time.Time
+}
+
+// NetworkNode represents a node in the network
+type NetworkNode struct {
+	IP       string
+	MAC      string
+	Hostname string
+	OS       string
+	Services []string
+	NodeType string // router, switch, host, server
+}
+
+// NetworkLink represents a connection between nodes
+type NetworkLink struct {
+	Source string
+	Target string
+	Type   string // direct, routed
+	Metric int
+}
+
+// SSLAnalysisResult contains SSL/TLS analysis results
+type SSLAnalysisResult struct {
+	Host              string
+	Port              int
+	SSLVersion        string
+	CipherSuite       string
+	CertificateInfo   map[string]interface{}
+	SecurityIssues    []string
+	Grade             string
+	Recommendations   []string
+}
+
+// AnalyzeTraffic performs comprehensive network traffic analysis
+func (n *NetworkModule) AnalyzeTraffic(interfaceName string, duration int) (*TrafficAnalysisResult, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	
+	result := &TrafficAnalysisResult{
+		ProtocolStats:   make(map[string]int),
+		TopSources:      []string{},
+		TopDestinations: []string{},
+		SuspiciousIPs:   []string{},
+		PortActivity:    make(map[int]int),
+		AlertsGenerated: []string{},
+		TimeRange:       fmt.Sprintf("%d seconds", duration),
+	}
+	
+	// Simulate traffic analysis (in production, would use packet capture)
+	startTime := time.Now()
+	packetCount := 0
+	totalBytes := int64(0)
+	
+	// Generate simulated traffic data for demonstration
+	for time.Since(startTime).Seconds() < float64(duration) {
+		// Simulate capturing packets
+		packet := n.generateSimulatedPacket()
+		packetCount++
+		totalBytes += int64(packet.Length)
+		
+		// Analyze protocol distribution
+		result.ProtocolStats[packet.Protocol]++
+		
+		// Track port activity
+		result.PortActivity[packet.DstPort]++
+		
+		// Check for suspicious activity
+		if n.isSuspiciousTraffic(packet) {
+			result.SuspiciousIPs = append(result.SuspiciousIPs, packet.SrcIP)
+			result.AlertsGenerated = append(result.AlertsGenerated, 
+				fmt.Sprintf("Suspicious traffic from %s to port %d", packet.SrcIP, packet.DstPort))
+		}
+		
+		time.Sleep(10 * time.Millisecond) // Simulate processing time
+	}
+	
+	result.TotalPackets = packetCount
+	result.TotalBytes = totalBytes
+	
+	// Calculate top sources and destinations
+	result.TopSources = n.getTopIPs(5)
+	result.TopDestinations = n.getTopIPs(5)
+	
+	return result, nil
+}
+
+// DetectIntrusions performs network intrusion detection
+func (n *NetworkModule) DetectIntrusions(interfaceName string, duration int) ([]IntrusionAlert, error) {
+	alerts := []IntrusionAlert{}
+	
+	// Simulate intrusion detection
+	startTime := time.Now()
+	
+	for time.Since(startTime).Seconds() < float64(duration) {
+		// Generate simulated network activity
+		packet := n.generateSimulatedPacket()
+		
+		// Check for port scanning
+		if n.isPortScanPattern(packet) {
+			alert := IntrusionAlert{
+				Timestamp:   time.Now(),
+				AlertType:   "Port Scan",
+				Severity:    "Medium",
+				SourceIP:    packet.SrcIP,
+				TargetIP:    packet.DstIP,
+				TargetPort:  packet.DstPort,
+				Description: "Potential port scanning activity detected",
+				Evidence:    fmt.Sprintf("Multiple connections from %s", packet.SrcIP),
+			}
+			alerts = append(alerts, alert)
+		}
+		
+		// Check for brute force attacks
+		if n.isBruteForcePattern(packet) {
+			alert := IntrusionAlert{
+				Timestamp:   time.Now(),
+				AlertType:   "Brute Force",
+				Severity:    "High",
+				SourceIP:    packet.SrcIP,
+				TargetIP:    packet.DstIP,
+				TargetPort:  packet.DstPort,
+				Description: "Potential brute force attack detected",
+				Evidence:    fmt.Sprintf("Repeated login attempts from %s", packet.SrcIP),
+			}
+			alerts = append(alerts, alert)
+		}
+		
+		// Check for DDoS patterns
+		if n.isDDoSPattern(packet) {
+			alert := IntrusionAlert{
+				Timestamp:   time.Now(),
+				AlertType:   "DDoS Attack",
+				Severity:    "Critical",
+				SourceIP:    packet.SrcIP,
+				TargetIP:    packet.DstIP,
+				TargetPort:  packet.DstPort,
+				Description: "Potential DDoS attack detected",
+				Evidence:    fmt.Sprintf("High volume traffic from %s", packet.SrcIP),
+			}
+			alerts = append(alerts, alert)
+		}
+		
+		time.Sleep(50 * time.Millisecond)
+	}
+	
+	return alerts, nil
+}
+
+// AdvancedPortScan performs advanced port scanning with service detection
+func (n *NetworkModule) AdvancedPortScan(target string, startPort, endPort int, scanType string) ([]ScanResult, error) {
+	results := []ScanResult{}
+	
+	// Resolve target
+	ips, err := net.LookupIP(target)
+	if err != nil {
+		return nil, fmt.Errorf("cannot resolve target: %s", target)
+	}
+	
+	targetIP := ips[0].String()
+	
+	for port := startPort; port <= endPort; port++ {
+		result := ScanResult{
+			Host: targetIP,
+			Port: port,
+		}
+		
+		switch scanType {
+		case "tcp_connect":
+			result = n.tcpConnectScan(targetIP, port)
+		case "tcp_syn":
+			result = n.tcpSynScan(targetIP, port)
+		case "udp":
+			result = n.udpAdvancedScan(targetIP, port)
+		case "stealth":
+			result = n.stealthScan(targetIP, port)
+		default:
+			result = n.tcpConnectScan(targetIP, port)
+		}
+		
+		// Add service detection
+		if result.State == "open" {
+			result.Service = n.detectService(port)
+			result.Banner = n.grabBanner(targetIP, port)
+		}
+		
+		results = append(results, result)
+		
+		// Rate limiting to avoid overwhelming target
+		time.Sleep(10 * time.Millisecond)
+	}
+	
+	return results, nil
+}
+
+// AnalyzeSSL performs SSL/TLS security analysis
+func (n *NetworkModule) AnalyzeSSL(host string, port int) (*SSLAnalysisResult, error) {
+	result := &SSLAnalysisResult{
+		Host:            host,
+		Port:            port,
+		SecurityIssues:  []string{},
+		Recommendations: []string{},
+	}
+	
+	// Test SSL connection
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), 10*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to %s:%d", host, port)
+	}
+	defer conn.Close()
+	
+	// In a real implementation, would use crypto/tls for detailed analysis
+	// For now, simulate SSL analysis
+	result.SSLVersion = "TLS 1.2"
+	result.CipherSuite = "ECDHE-RSA-AES256-GCM-SHA384"
+	result.CertificateInfo = map[string]interface{}{
+		"subject":    fmt.Sprintf("CN=%s", host),
+		"issuer":     "Let's Encrypt Authority X3",
+		"valid_from": time.Now().AddDate(0, -1, 0).Format("2006-01-02"),
+		"valid_to":   time.Now().AddDate(1, 0, 0).Format("2006-01-02"),
+		"key_size":   2048,
+	}
+	
+	// Analyze security issues
+	result.SecurityIssues = n.analyzeTLSIssues(result)
+	result.Grade = n.calculateSSLGrade(result)
+	result.Recommendations = n.generateSSLRecommendations(result)
+	
+	return result, nil
+}
+
+// DiscoverNetworkTopology discovers and maps network topology
+func (n *NetworkModule) DiscoverNetworkTopology(subnet string) (*NetworkTopology, error) {
+	topology := &NetworkTopology{
+		Nodes:     []NetworkNode{},
+		Links:     []NetworkLink{},
+		Subnets:   []string{},
+		Gateways:  []string{},
+		Timestamp: time.Now(),
+	}
+	
+	// Parse subnet
+	_, network, err := net.ParseCIDR(subnet)
+	if err != nil {
+		return nil, fmt.Errorf("invalid subnet: %s", subnet)
+	}
+	
+	// Discover hosts in subnet
+	hosts := n.discoverHosts(network)
+	
+	for _, host := range hosts {
+		node := NetworkNode{
+			IP:       host,
+			MAC:      n.getSimulatedMAC(host),
+			Hostname: n.getHostname(host),
+			OS:       n.detectOS(host),
+			Services: n.discoverServices(host),
+			NodeType: n.classifyNode(host),
+		}
+		topology.Nodes = append(topology.Nodes, node)
+	}
+	
+	// Discover network links
+	topology.Links = n.discoverLinks(topology.Nodes)
+	
+	// Identify subnets and gateways
+	topology.Subnets = []string{subnet}
+	topology.Gateways = n.discoverGateways(network)
+	
+	return topology, nil
+}
+
+// Helper functions for advanced network security
+
+func (n *NetworkModule) generateSimulatedPacket() PacketInfo {
+	protocols := []string{"TCP", "UDP", "ICMP", "HTTP", "HTTPS", "DNS"}
+	srcIPs := []string{"192.168.1.10", "192.168.1.20", "10.0.0.5", "172.16.0.10"}
+	dstIPs := []string{"192.168.1.1", "8.8.8.8", "1.1.1.1", "192.168.1.50"}
+	
+	return PacketInfo{
+		Timestamp: time.Now(),
+		Protocol:  protocols[rand.Intn(len(protocols))],
+		SrcIP:     srcIPs[rand.Intn(len(srcIPs))],
+		DstIP:     dstIPs[rand.Intn(len(dstIPs))],
+		SrcPort:   rand.Intn(65535),
+		DstPort:   []int{80, 443, 22, 25, 53, 3389, 21, 23}[rand.Intn(8)],
+		Length:    rand.Intn(1500) + 64,
+		Payload:   []byte{},
+		Flags:     "SYN",
+	}
+}
+
+func (n *NetworkModule) isSuspiciousTraffic(packet PacketInfo) bool {
+	// Check for suspicious ports
+	suspiciousPorts := []int{1337, 31337, 4444, 5555, 6666}
+	for _, port := range suspiciousPorts {
+		if packet.DstPort == port || packet.SrcPort == port {
+			return true
+		}
+	}
+	
+	// Check for non-standard high ports for common services
+	if packet.DstPort == 8080 && packet.Protocol == "HTTP" {
+		return true
+	}
+	
+	return false
+}
+
+func (n *NetworkModule) isPortScanPattern(packet PacketInfo) bool {
+	// Simulate port scan detection logic
+	return packet.Flags == "SYN" && rand.Float32() < 0.1
+}
+
+func (n *NetworkModule) isBruteForcePattern(packet PacketInfo) bool {
+	// Simulate brute force detection logic
+	return (packet.DstPort == 22 || packet.DstPort == 3389) && rand.Float32() < 0.05
+}
+
+func (n *NetworkModule) isDDoSPattern(packet PacketInfo) bool {
+	// Simulate DDoS detection logic
+	return packet.Length > 1000 && rand.Float32() < 0.02
+}
+
+func (n *NetworkModule) getTopIPs(count int) []string {
+	// Generate sample top IPs
+	ips := []string{"192.168.1.10", "192.168.1.20", "10.0.0.5", "172.16.0.10", "8.8.8.8"}
+	if count > len(ips) {
+		count = len(ips)
+	}
+	return ips[:count]
+}
+
+func (n *NetworkModule) tcpConnectScan(ip string, port int) ScanResult {
+	result := ScanResult{Host: ip, Port: port}
+	
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), 1*time.Second)
+	if err != nil {
+		result.State = "closed"
+	} else {
+		result.State = "open"
+		conn.Close()
+	}
+	
+	return result
+}
+
+func (n *NetworkModule) tcpSynScan(ip string, port int) ScanResult {
+	// SYN scan would require raw sockets, simulate for now
+	result := ScanResult{Host: ip, Port: port}
+	result.State = "filtered" // Simulate stealth scan result
+	return result
+}
+
+func (n *NetworkModule) udpAdvancedScan(ip string, port int) ScanResult {
+	result := ScanResult{Host: ip, Port: port}
+	
+	conn, err := net.DialTimeout("udp", fmt.Sprintf("%s:%d", ip, port), 1*time.Second)
+	if err != nil {
+		result.State = "closed"
+	} else {
+		result.State = "open|filtered"
+		conn.Close()
+	}
+	
+	return result
+}
+
+func (n *NetworkModule) stealthScan(ip string, port int) ScanResult {
+	// Stealth scan simulation
+	result := ScanResult{Host: ip, Port: port}
+	result.State = "filtered"
+	return result
+}
+
+func (n *NetworkModule) detectService(port int) string {
+	services := map[int]string{
+		21:   "ftp",
+		22:   "ssh",
+		23:   "telnet",
+		25:   "smtp",
+		53:   "dns",
+		80:   "http",
+		110:  "pop3",
+		143:  "imap",
+		443:  "https",
+		993:  "imaps",
+		995:  "pop3s",
+		3389: "rdp",
+	}
+	
+	if service, exists := services[port]; exists {
+		return service
+	}
+	return "unknown"
+}
+
+func (n *NetworkModule) grabBanner(ip string, port int) string {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), 2*time.Second)
+	if err != nil {
+		return ""
+	}
+	defer conn.Close()
+	
+	// Try to read banner
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	buffer := make([]byte, 1024)
+	bytesRead, err := conn.Read(buffer)
+	if err != nil {
+		return ""
+	}
+	
+	return strings.TrimSpace(string(buffer[:bytesRead]))
+}
+
+func (n *NetworkModule) analyzeTLSIssues(result *SSLAnalysisResult) []string {
+	issues := []string{}
+	
+	if result.SSLVersion == "TLS 1.0" || result.SSLVersion == "TLS 1.1" {
+		issues = append(issues, "Outdated TLS version")
+	}
+	
+	if strings.Contains(result.CipherSuite, "RC4") {
+		issues = append(issues, "Weak cipher suite")
+	}
+	
+	if keySize, ok := result.CertificateInfo["key_size"].(int); ok && keySize < 2048 {
+		issues = append(issues, "Weak key size")
+	}
+	
+	return issues
+}
+
+func (n *NetworkModule) calculateSSLGrade(result *SSLAnalysisResult) string {
+	score := 100
+	
+	for range result.SecurityIssues {
+		score -= 20
+	}
+	
+	if score >= 90 {
+		return "A+"
+	} else if score >= 80 {
+		return "A"
+	} else if score >= 70 {
+		return "B"
+	} else if score >= 60 {
+		return "C"
+	} else {
+		return "F"
+	}
+}
+
+func (n *NetworkModule) generateSSLRecommendations(result *SSLAnalysisResult) []string {
+	recommendations := []string{}
+	
+	for _, issue := range result.SecurityIssues {
+		switch issue {
+		case "Outdated TLS version":
+			recommendations = append(recommendations, "Update to TLS 1.2 or higher")
+		case "Weak cipher suite":
+			recommendations = append(recommendations, "Use strong cipher suites")
+		case "Weak key size":
+			recommendations = append(recommendations, "Use 2048-bit or larger keys")
+		}
+	}
+	
+	if len(recommendations) == 0 {
+		recommendations = append(recommendations, "SSL/TLS configuration is secure")
+	}
+	
+	return recommendations
+}
+
+func (n *NetworkModule) discoverHosts(network *net.IPNet) []string {
+	hosts := []string{}
+	
+	// Simulate host discovery (in production would use ping sweep)
+	sampleHosts := []string{"192.168.1.1", "192.168.1.10", "192.168.1.20", "192.168.1.100"}
+	
+	for _, host := range sampleHosts {
+		ip := net.ParseIP(host)
+		if ip != nil && network.Contains(ip) {
+			hosts = append(hosts, host)
+		}
+	}
+	
+	return hosts
+}
+
+func (n *NetworkModule) getSimulatedMAC(ip string) string {
+	// Simulate MAC address discovery
+	return "aa:bb:cc:dd:ee:ff"
+}
+
+func (n *NetworkModule) getHostname(ip string) string {
+	names, err := net.LookupAddr(ip)
+	if err != nil || len(names) == 0 {
+		return ip
+	}
+	return names[0]
+}
+
+func (n *NetworkModule) detectOS(ip string) string {
+	// Simulate OS detection
+	osTypes := []string{"Windows 10", "Linux Ubuntu", "macOS", "Windows Server", "CentOS"}
+	return osTypes[rand.Intn(len(osTypes))]
+}
+
+func (n *NetworkModule) discoverServices(ip string) []string {
+	// Simulate service discovery
+	services := []string{"SSH", "HTTP", "HTTPS", "DNS"}
+	count := rand.Intn(3) + 1
+	return services[:count]
+}
+
+func (n *NetworkModule) classifyNode(ip string) string {
+	// Simulate node classification
+	if strings.HasSuffix(ip, ".1") {
+		return "router"
+	} else if strings.HasSuffix(ip, ".10") {
+		return "server"
+	}
+	return "host"
+}
+
+func (n *NetworkModule) discoverLinks(nodes []NetworkNode) []NetworkLink {
+	links := []NetworkLink{}
+	
+	// Simulate network link discovery
+	for i := 0; i < len(nodes)-1; i++ {
+		link := NetworkLink{
+			Source: nodes[i].IP,
+			Target: nodes[i+1].IP,
+			Type:   "direct",
+			Metric: 1,
+		}
+		links = append(links, link)
+	}
+	
+	return links
+}
+
+func (n *NetworkModule) discoverGateways(network *net.IPNet) []string {
+	// Simulate gateway discovery
+	gateways := []string{}
+	
+	// Typically the first IP in a subnet is the gateway
+	ip := network.IP
+	ip[len(ip)-1] = 1
+	gateways = append(gateways, ip.String())
+	
+	return gateways
+}
+

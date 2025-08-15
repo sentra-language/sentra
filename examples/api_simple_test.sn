@@ -1,0 +1,20 @@
+// Simple API Security Test
+log("🔒 Simple API Security Test")
+
+// Test a simple endpoint for security headers
+let target = "https://httpbin.org/get"
+
+log("Testing security headers...")
+let headers_result = test_headers(target)
+log("Security score: " + headers_result["score"] + "%")
+
+log("Missing headers:")
+for header in headers_result["missing"] {
+    log("  - " + header)
+}
+
+log("Testing CORS...")
+let cors_result = test_cors(target, "http://evil.com")
+log("CORS vulnerable: " + cors_result["vulnerable"])
+
+log("✅ Simple API security test completed!")

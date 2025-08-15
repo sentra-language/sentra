@@ -1,0 +1,99 @@
+// Machine Learning Security Demo
+log("🤖 Sentra Machine Learning Security Features")
+log("=" * 50)
+
+// Test anomaly detection
+log("\n🔍 Anomaly Detection Test...")
+let test_data = {
+    "request_rate": 150,
+    "error_rate": 80,
+    "response_time": 2000,
+    "user_agent": "suspicious-bot/1.0"
+}
+
+let anomaly_result = ml_detect_anomalies(test_data, "web_security_model")
+log("• Anomalous behavior detected: " + anomaly_result["is_anomalous"])
+log("• Anomaly score: " + anomaly_result["score"])
+log("• Explanation: " + anomaly_result["explanation"])
+log("• Recommendations: " + len(anomaly_result["recommendations"]) + " items")
+
+// Test threat classification
+log("\n🎯 Threat Classification Test...")
+let threat_features = {
+    "ip_reputation": 20,
+    "request_pattern": "scanning", 
+    "payload_entropy": 75,
+    "geographic_risk": 80
+}
+
+let classification = ml_classify_threat(threat_features, "threat_classifier")
+log("• Predicted threat class: " + classification["predicted_class"])
+log("• Confidence: " + classification["confidence"])
+log("• Model used: " + classification["model_used"])
+
+// Test behavioral analysis
+log("\n📊 Behavioral Analysis Test...")
+let behavior_data = [
+    {"activity_count": 50, "timestamp": "2024-01-01"},
+    {"activity_count": 45, "timestamp": "2024-01-02"},
+    {"activity_count": 52, "timestamp": "2024-01-03"},
+    {"activity_count": 48, "timestamp": "2024-01-04"},
+    {"activity_count": 120, "timestamp": "2024-01-05"}
+]
+
+let behavior_analysis = ml_analyze_behavior("user_123", behavior_data)
+log("• Entity ID: " + behavior_analysis["entity_id"])
+log("• Risk level: " + behavior_analysis["risk_level"])
+log("• Deviation: " + behavior_analysis["deviation"])
+log("• Baseline score: " + behavior_analysis["baseline_score"])
+log("• Current score: " + behavior_analysis["current_score"])
+
+// Test model training
+log("\n🎓 Model Training Test...")
+let training_data = [
+    {"request_rate": 10, "error_rate": 10, "label": "benign"},
+    {"request_rate": 200, "error_rate": 90, "label": "malicious"},
+    {"request_rate": 50, "error_rate": 30, "label": "suspicious"},
+    {"request_rate": 15, "error_rate": 5, "label": "benign"},
+    {"request_rate": 300, "error_rate": 95, "label": "malicious"}
+]
+
+let training_metrics = ml_train_model("security_classifier", "classification", training_data)
+log("• Model accuracy: " + training_metrics["accuracy"])
+log("• Precision: " + training_metrics["precision"])
+log("• Recall: " + training_metrics["recall"])
+log("• F1 Score: " + training_metrics["f1_score"])
+
+// Test model listing
+log("\n📋 Available Models...")
+let models = ml_list_models()
+log("• Total models: " + len(models))
+if len(models) > 0 {
+    let model = models[0]
+    log("• Sample model: " + model["name"] + " (" + model["type"] + ")")
+}
+
+// Test threat profile creation
+log("\n🛡️ Threat Profile Creation...")
+let indicators = ["port_scan", "brute_force", "sql_injection"]
+let threat_profile = ml_create_threat_profile("advanced_attacker", "network_attack", indicators)
+log("• Profile name: " + threat_profile["name"])
+log("• Threat type: " + threat_profile["threat_type"])
+log("• Confidence: " + threat_profile["confidence"])
+log("• Indicators: " + len(threat_profile["indicators"]) + " items")
+log("• Attack patterns: " + len(threat_profile["attack_patterns"]) + " patterns")
+log("• Countermeasures: " + len(threat_profile["countermeasures"]) + " measures")
+
+log("\n" + "=" * 50)
+log("🎯 Machine Learning Security Analysis Complete!")
+log("=" * 50)
+
+log("\n🧠 ML Security Capabilities:")
+log("• Anomaly detection identifies unusual patterns")
+log("• Threat classification categorizes security events")
+log("• Behavioral analysis tracks entity risk levels")
+log("• Model training improves detection accuracy")
+log("• Threat profiles enable proactive defense")
+
+log("\n✅ All ML security features operational!")
+log("🚀 Ready for intelligent security automation!")

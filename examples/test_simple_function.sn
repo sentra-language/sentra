@@ -1,0 +1,7 @@
+// Test if API functions are available
+log("Testing API function availability...")
+
+let config = {"test": true}
+log("Config created: " + type(config))
+
+log("✅ Basic test completed!")

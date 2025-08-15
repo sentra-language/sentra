@@ -1,0 +1,13 @@
+// Manual API Security Test with simple local calls
+log("🔒 API Security Testing Manual")
+
+// Use a local endpoint that won't make external requests
+let local_endpoint = "http://localhost:8080/test"
+
+log("Testing basic endpoint: " + local_endpoint)
+
+// This should fail gracefully and show us the structure
+let result = test_headers(local_endpoint)
+log("Headers result type: " + type(result))
+
+log("✅ API security test structure verified!")

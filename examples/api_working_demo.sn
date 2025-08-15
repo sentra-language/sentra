@@ -1,0 +1,72 @@
+// Working API Security Demo
+log("🔒 API Security Testing Suite - Production Ready")
+log("=" * 50)
+
+// Use httpbin.org which is designed for testing HTTP clients
+let test_endpoint = "https://httpbin.org/json"
+
+log("📡 Testing API Security on: " + test_endpoint)
+
+// Test 1: Security Headers
+log("\n🛡️ Testing Security Headers...")
+let headers_result = test_headers(test_endpoint)
+log("Security header score: " + headers_result["score"] + "%")
+log("Missing headers: " + len(headers_result["missing"]) + " items")
+
+// Test 2: CORS Configuration
+log("\n🌐 Testing CORS...")
+let cors_result = test_cors(test_endpoint, "http://evil.com")
+log("CORS vulnerable: " + cors_result["vulnerable"])
+
+// Test 3: Rate Limiting (quick test)
+log("\n⏱️ Testing Rate Limiting (5 requests)...")
+let rate_result = test_rate_limiting(test_endpoint, 5, 2)
+log("Has rate limiting: " + rate_result["has_rate_limit"])
+log("Requests per second: " + rate_result["requests_per_second"])
+
+// Test 4: JWT Testing with sample token
+log("\n🔑 Testing JWT Security...")
+let sample_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+let jwt_result = test_jwt(test_endpoint, sample_jwt)
+log("JWT vulnerabilities found: " + len(jwt_result["vulnerabilities"]))
+
+// Test 5: Authentication Testing
+log("\n🔐 Testing Authentication...")
+let auth_config = {"test_weak_tokens": true}
+let auth_result = test_authentication(test_endpoint, auth_config)
+log("Authentication issues found: " + len(auth_result["issues"]))
+
+log("\n" + "=" * 50)
+log("📈 API Security Assessment Summary")
+log("=" * 50)
+
+// Calculate basic security score
+let issues_found = 0
+if headers_result["score"] < 80 {
+    issues_found = issues_found + 1
+}
+if cors_result["vulnerable"] {
+    issues_found = issues_found + 1
+}
+if !rate_result["has_rate_limit"] {
+    issues_found = issues_found + 1
+}
+
+log("Security issues detected: " + issues_found + "/3 tests")
+
+if issues_found == 0 {
+    log("✅ API security appears GOOD")
+} else if issues_found <= 1 {
+    log("⚠️ API security needs MINOR improvements")
+} else {
+    log("❌ API security needs SIGNIFICANT improvements")
+}
+
+log("\n💡 Recommendations:")
+log("1. Implement security headers (X-Frame-Options, CSP, etc.)")
+log("2. Configure CORS properly for your domain")
+log("3. Implement rate limiting to prevent abuse")
+log("4. Use strong JWT secrets and proper algorithms")
+log("5. Implement robust authentication mechanisms")
+
+log("\n🎯 API Security Testing Complete!")

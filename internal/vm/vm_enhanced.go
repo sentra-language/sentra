@@ -26,7 +26,7 @@ import (
 	"sentra/internal/threat_intel"
 	"sentra/internal/container"
 	"sentra/internal/cloud"
-	"sentra/internal/modules"
+	"sentra/internal/ml"
 	"sync"
 	"sync/atomic"
 )
@@ -1083,7 +1083,7 @@ func (vm *EnhancedVM) registerBuiltins() {
 	siemMod := siem.NewSIEMModule()
 	threatMod := threat_intel.NewThreatIntelModule()
 	containerMod := container.NewContainerScanner()
-	apiSecMod := modules.NewAPISecurityModule()
+	mlMod := ml.NewMLModule()
 	rand.Seed(time.Now().UnixNano())
 	
 	// Register basic built-in functions
@@ -1974,6 +1974,232 @@ func (vm *EnhancedVM) registerBuiltins() {
 				return arr, nil
 			},
 		},
+		
+		// Advanced Network Security functions
+		"analyze_traffic": {
+			Name:  "analyze_traffic",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				interfaceName := ToString(args[0])
+				duration := int(ToNumber(args[1]))
+				
+				result, err := netMod.AnalyzeTraffic(interfaceName, duration)
+				if err != nil {
+					return nil, err
+				}
+				
+				m := NewMap()
+				m.Items["total_packets"] = float64(result.TotalPackets)
+				m.Items["total_bytes"] = float64(result.TotalBytes)
+				m.Items["time_range"] = result.TimeRange
+				
+				// Protocol stats
+				protocolStats := NewMap()
+				for protocol, count := range result.ProtocolStats {
+					protocolStats.Items[protocol] = float64(count)
+				}
+				m.Items["protocol_stats"] = protocolStats
+				
+				// Top sources
+				sources := NewArray(len(result.TopSources))
+				for _, src := range result.TopSources {
+					sources.Elements = append(sources.Elements, src)
+				}
+				m.Items["top_sources"] = sources
+				
+				// Top destinations
+				destinations := NewArray(len(result.TopDestinations))
+				for _, dst := range result.TopDestinations {
+					destinations.Elements = append(destinations.Elements, dst)
+				}
+				m.Items["top_destinations"] = destinations
+				
+				// Suspicious IPs
+				suspicious := NewArray(len(result.SuspiciousIPs))
+				for _, ip := range result.SuspiciousIPs {
+					suspicious.Elements = append(suspicious.Elements, ip)
+				}
+				m.Items["suspicious_ips"] = suspicious
+				
+				// Port activity
+				portActivity := NewMap()
+				for port, count := range result.PortActivity {
+					portActivity.Items[fmt.Sprintf("%d", port)] = float64(count)
+				}
+				m.Items["port_activity"] = portActivity
+				
+				// Alerts
+				alerts := NewArray(len(result.AlertsGenerated))
+				for _, alert := range result.AlertsGenerated {
+					alerts.Elements = append(alerts.Elements, alert)
+				}
+				m.Items["alerts"] = alerts
+				
+				return m, nil
+			},
+		},
+		"detect_intrusions": {
+			Name:  "detect_intrusions",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				interfaceName := ToString(args[0])
+				duration := int(ToNumber(args[1]))
+				
+				alerts, err := netMod.DetectIntrusions(interfaceName, duration)
+				if err != nil {
+					return nil, err
+				}
+				
+				arr := NewArray(len(alerts))
+				for _, alert := range alerts {
+					m := NewMap()
+					m.Items["timestamp"] = alert.Timestamp.Format("2006-01-02 15:04:05")
+					m.Items["alert_type"] = alert.AlertType
+					m.Items["severity"] = alert.Severity
+					m.Items["source_ip"] = alert.SourceIP
+					m.Items["target_ip"] = alert.TargetIP
+					m.Items["target_port"] = float64(alert.TargetPort)
+					m.Items["description"] = alert.Description
+					m.Items["evidence"] = alert.Evidence
+					arr.Elements = append(arr.Elements, m)
+				}
+				return arr, nil
+			},
+		},
+		"advanced_port_scan": {
+			Name:  "advanced_port_scan",
+			Arity: 4,
+			Function: func(args []Value) (Value, error) {
+				target := ToString(args[0])
+				startPort := int(ToNumber(args[1]))
+				endPort := int(ToNumber(args[2]))
+				scanType := ToString(args[3])
+				
+				results, err := netMod.AdvancedPortScan(target, startPort, endPort, scanType)
+				if err != nil {
+					return nil, err
+				}
+				
+				arr := NewArray(len(results))
+				for _, result := range results {
+					m := NewMap()
+					m.Items["host"] = result.Host
+					m.Items["port"] = float64(result.Port)
+					m.Items["state"] = result.State
+					m.Items["service"] = result.Service
+					m.Items["banner"] = result.Banner
+					arr.Elements = append(arr.Elements, m)
+				}
+				return arr, nil
+			},
+		},
+		"analyze_ssl": {
+			Name:  "analyze_ssl",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				host := ToString(args[0])
+				port := int(ToNumber(args[1]))
+				
+				result, err := netMod.AnalyzeSSL(host, port)
+				if err != nil {
+					return nil, err
+				}
+				
+				m := NewMap()
+				m.Items["host"] = result.Host
+				m.Items["port"] = float64(result.Port)
+				m.Items["ssl_version"] = result.SSLVersion
+				m.Items["cipher_suite"] = result.CipherSuite
+				m.Items["grade"] = result.Grade
+				
+				// Certificate info
+				certInfo := NewMap()
+				for key, value := range result.CertificateInfo {
+					certInfo.Items[key] = fmt.Sprintf("%v", value)
+				}
+				m.Items["certificate"] = certInfo
+				
+				// Security issues
+				issues := NewArray(len(result.SecurityIssues))
+				for _, issue := range result.SecurityIssues {
+					issues.Elements = append(issues.Elements, issue)
+				}
+				m.Items["security_issues"] = issues
+				
+				// Recommendations
+				recommendations := NewArray(len(result.Recommendations))
+				for _, rec := range result.Recommendations {
+					recommendations.Elements = append(recommendations.Elements, rec)
+				}
+				m.Items["recommendations"] = recommendations
+				
+				return m, nil
+			},
+		},
+		"discover_network_topology": {
+			Name:  "discover_network_topology",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				subnet := ToString(args[0])
+				
+				topology, err := netMod.DiscoverNetworkTopology(subnet)
+				if err != nil {
+					return nil, err
+				}
+				
+				m := NewMap()
+				m.Items["timestamp"] = topology.Timestamp.Format("2006-01-02 15:04:05")
+				
+				// Nodes
+				nodes := NewArray(len(topology.Nodes))
+				for _, node := range topology.Nodes {
+					nodeMap := NewMap()
+					nodeMap.Items["ip"] = node.IP
+					nodeMap.Items["mac"] = node.MAC
+					nodeMap.Items["hostname"] = node.Hostname
+					nodeMap.Items["os"] = node.OS
+					nodeMap.Items["node_type"] = node.NodeType
+					
+					services := NewArray(len(node.Services))
+					for _, service := range node.Services {
+						services.Elements = append(services.Elements, service)
+					}
+					nodeMap.Items["services"] = services
+					
+					nodes.Elements = append(nodes.Elements, nodeMap)
+				}
+				m.Items["nodes"] = nodes
+				
+				// Links
+				links := NewArray(len(topology.Links))
+				for _, link := range topology.Links {
+					linkMap := NewMap()
+					linkMap.Items["source"] = link.Source
+					linkMap.Items["target"] = link.Target
+					linkMap.Items["type"] = link.Type
+					linkMap.Items["metric"] = float64(link.Metric)
+					links.Elements = append(links.Elements, linkMap)
+				}
+				m.Items["links"] = links
+				
+				// Subnets
+				subnets := NewArray(len(topology.Subnets))
+				for _, subnet := range topology.Subnets {
+					subnets.Elements = append(subnets.Elements, subnet)
+				}
+				m.Items["subnets"] = subnets
+				
+				// Gateways
+				gateways := NewArray(len(topology.Gateways))
+				for _, gateway := range topology.Gateways {
+					gateways.Elements = append(gateways.Elements, gateway)
+				}
+				m.Items["gateways"] = gateways
+				
+				return m, nil
+			},
+		},
+		
 		// OS Security functions
 		"os_processes": {
 			Name:  "os_processes",
@@ -3417,8 +3643,493 @@ func (vm *EnhancedVM) registerBuiltins() {
 		builtins[name] = fn
 	}
 	
+	// Machine Learning Security functions
+	mlBuiltins := map[string]*NativeFunction{
+		"ml_detect_anomalies": {
+			Name:  "ml_detect_anomalies",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				data := args[0]
+				modelName := ToString(args[1])
+				
+				// Convert VM data to map
+				dataMap := make(map[string]interface{})
+				if mapVal, ok := data.(*Map); ok {
+					for k, v := range mapVal.Items {
+						dataMap[k] = vmValueToInterface(v)
+					}
+				}
+				
+				result, err := mlMod.DetectAnomalies(dataMap, modelName)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert result to VM format
+				resultMap := NewMap()
+				resultMap.Items["is_anomalous"] = result.IsAnomalous
+				resultMap.Items["score"] = result.Score
+				resultMap.Items["threshold"] = result.Threshold
+				resultMap.Items["explanation"] = result.Explanation
+				
+				features := NewMap()
+				for k, v := range result.Features {
+					features.Items[k] = v
+				}
+				resultMap.Items["features"] = features
+				
+				recommendations := NewArray(len(result.Recommendations))
+				for _, rec := range result.Recommendations {
+					recommendations.Elements = append(recommendations.Elements, rec)
+				}
+				resultMap.Items["recommendations"] = recommendations
+				
+				return resultMap, nil
+			},
+		},
+		"ml_classify_threat": {
+			Name:  "ml_classify_threat",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				features := args[0]
+				modelName := ToString(args[1])
+				
+				// Convert VM data to map
+				featureMap := make(map[string]interface{})
+				if mapVal, ok := features.(*Map); ok {
+					for k, v := range mapVal.Items {
+						featureMap[k] = vmValueToInterface(v)
+					}
+				}
+				
+				result, err := mlMod.ClassifyThreat(featureMap, modelName)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert result to VM format
+				resultMap := NewMap()
+				resultMap.Items["predicted_class"] = result.PredictedClass
+				resultMap.Items["confidence"] = result.Confidence
+				resultMap.Items["model_used"] = result.ModelUsed
+				
+				probabilities := NewMap()
+				for class, prob := range result.Probabilities {
+					probabilities.Items[class] = prob
+				}
+				resultMap.Items["probabilities"] = probabilities
+				
+				featuresArray := NewArray(len(result.Features))
+				for _, feature := range result.Features {
+					featuresArray.Elements = append(featuresArray.Elements, feature)
+				}
+				resultMap.Items["features"] = featuresArray
+				
+				return resultMap, nil
+			},
+		},
+		"ml_analyze_behavior": {
+			Name:  "ml_analyze_behavior",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				entityID := ToString(args[0])
+				behaviorData := args[1]
+				
+				// Convert VM array to slice of maps
+				var dataSlice []map[string]interface{}
+				if arrayVal, ok := behaviorData.(*Array); ok {
+					for _, element := range arrayVal.Elements {
+						if mapVal, ok := element.(*Map); ok {
+							dataMap := make(map[string]interface{})
+							for k, v := range mapVal.Items {
+								dataMap[k] = vmValueToInterface(v)
+							}
+							dataSlice = append(dataSlice, dataMap)
+						}
+					}
+				}
+				
+				result, err := mlMod.AnalyzeBehavior(entityID, dataSlice)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert result to VM format
+				resultMap := NewMap()
+				resultMap.Items["entity_id"] = result.EntityID
+				resultMap.Items["behavior_type"] = result.BehaviorType
+				resultMap.Items["baseline_score"] = result.BaselineScore
+				resultMap.Items["current_score"] = result.CurrentScore
+				resultMap.Items["deviation"] = result.Deviation
+				resultMap.Items["risk_level"] = result.RiskLevel
+				
+				trends := NewArray(len(result.TrendAnalysis))
+				for _, trend := range result.TrendAnalysis {
+					trendMap := NewMap()
+					trendMap.Items["timestamp"] = trend.Timestamp.Format("2006-01-02 15:04:05")
+					trendMap.Items["value"] = trend.Value
+					trendMap.Items["metric"] = trend.Metric
+					trends.Elements = append(trends.Elements, trendMap)
+				}
+				resultMap.Items["trend_analysis"] = trends
+				
+				recommendations := NewArray(len(result.Recommendations))
+				for _, rec := range result.Recommendations {
+					recommendations.Elements = append(recommendations.Elements, rec)
+				}
+				resultMap.Items["recommendations"] = recommendations
+				
+				return resultMap, nil
+			},
+		},
+		"ml_train_model": {
+			Name:  "ml_train_model",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				modelName := ToString(args[0])
+				modelType := ToString(args[1])
+				trainingData := args[2]
+				
+				// Convert VM array to slice of maps
+				var dataSlice []map[string]interface{}
+				if arrayVal, ok := trainingData.(*Array); ok {
+					for _, element := range arrayVal.Elements {
+						if mapVal, ok := element.(*Map); ok {
+							dataMap := make(map[string]interface{})
+							for k, v := range mapVal.Items {
+								dataMap[k] = vmValueToInterface(v)
+							}
+							dataSlice = append(dataSlice, dataMap)
+						}
+					}
+				}
+				
+				metrics, err := mlMod.TrainModel(modelName, modelType, dataSlice)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert metrics to VM format
+				resultMap := NewMap()
+				resultMap.Items["accuracy"] = metrics.Accuracy
+				resultMap.Items["precision"] = metrics.Precision
+				resultMap.Items["recall"] = metrics.Recall
+				resultMap.Items["f1_score"] = metrics.F1Score
+				resultMap.Items["auc"] = metrics.AUC
+				
+				return resultMap, nil
+			},
+		},
+		"ml_get_model_info": {
+			Name:  "ml_get_model_info",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				modelName := ToString(args[0])
+				
+				info, err := mlMod.GetModelInfo(modelName)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert info to VM format
+				resultMap := NewMap()
+				for k, v := range info {
+					resultMap.Items[k] = interfaceToVMValue(v)
+				}
+				
+				return resultMap, nil
+			},
+		},
+		"ml_list_models": {
+			Name:  "ml_list_models",
+			Arity: 0,
+			Function: func(args []Value) (Value, error) {
+				models := mlMod.ListModels()
+				
+				// Convert models list to VM format
+				resultArray := NewArray(len(models))
+				for _, model := range models {
+					modelMap := NewMap()
+					for k, v := range model {
+						modelMap.Items[k] = interfaceToVMValue(v)
+					}
+					resultArray.Elements = append(resultArray.Elements, modelMap)
+				}
+				
+				return resultArray, nil
+			},
+		},
+		"ml_create_threat_profile": {
+			Name:  "ml_create_threat_profile",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				name := ToString(args[0])
+				threatType := ToString(args[1])
+				indicators := args[2]
+				
+				// Convert indicators array to slice
+				var indicatorSlice []string
+				if arrayVal, ok := indicators.(*Array); ok {
+					for _, element := range arrayVal.Elements {
+						indicatorSlice = append(indicatorSlice, ToString(element))
+					}
+				}
+				
+				profile := mlMod.CreateThreatProfile(name, threatType, indicatorSlice)
+				
+				// Convert profile to VM format
+				resultMap := NewMap()
+				resultMap.Items["name"] = profile.Name
+				resultMap.Items["threat_type"] = profile.ThreatType
+				resultMap.Items["confidence"] = profile.Confidence
+				resultMap.Items["updated_at"] = profile.UpdatedAt.Format("2006-01-02 15:04:05")
+				
+				indicatorsArray := NewArray(len(profile.Indicators))
+				for _, indicator := range profile.Indicators {
+					indicatorsArray.Elements = append(indicatorsArray.Elements, indicator)
+				}
+				resultMap.Items["indicators"] = indicatorsArray
+				
+				patternsArray := NewArray(len(profile.AttackPatterns))
+				for _, pattern := range profile.AttackPatterns {
+					patternMap := NewMap()
+					patternMap.Items["name"] = pattern.Name
+					patternMap.Items["description"] = pattern.Description
+					patternMap.Items["frequency"] = pattern.Frequency
+					
+					techniquesArray := NewArray(len(pattern.Techniques))
+					for _, technique := range pattern.Techniques {
+						techniquesArray.Elements = append(techniquesArray.Elements, technique)
+					}
+					patternMap.Items["techniques"] = techniquesArray
+					
+					patternsArray.Elements = append(patternsArray.Elements, patternMap)
+				}
+				resultMap.Items["attack_patterns"] = patternsArray
+				
+				measuresArray := NewArray(len(profile.Countermeasures))
+				for _, measure := range profile.Countermeasures {
+					measuresArray.Elements = append(measuresArray.Elements, measure)
+				}
+				resultMap.Items["countermeasures"] = measuresArray
+				
+				return resultMap, nil
+			},
+		},
+	}
+	
+	// Add ML functions to main builtins
+	for name, fn := range mlBuiltins {
+		builtins[name] = fn
+	}
+	
 	// Add API security functions to main builtins
-	for name, fn := range apiSecMod.GetFunctions() {
+	apiSecBuiltins := map[string]*NativeFunction{
+		"api_scan": {
+			Name:  "api_scan",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				baseURL := ToString(args[0])
+				optionsMap := args[1].(*Map)
+				
+				// Convert to Go map
+				options := make(map[string]interface{})
+				for k, v := range optionsMap.Items {
+					options[k] = v
+				}
+				
+				result := webMod.APIScan(baseURL, options)
+				
+				// Convert to VM map
+				resultMap := &Map{Items: make(map[string]Value)}
+				for k, v := range result {
+					resultMap.Items[k] = convertToVMValue(v)
+				}
+				return resultMap, nil
+			},
+		},
+		"test_authentication": {
+			Name:  "test_authentication",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				endpoint := ToString(args[0])
+				configMap := args[1].(*Map)
+				
+				// Convert to Go map
+				config := make(map[string]interface{})
+				for k, v := range configMap.Items {
+					config[k] = v
+				}
+				
+				result := webMod.TestAuthentication(endpoint, config)
+				
+				// Convert to VM map
+				resultMap := &Map{Items: make(map[string]Value)}
+				for k, v := range result {
+					resultMap.Items[k] = convertToVMValue(v)
+				}
+				return resultMap, nil
+			},
+		},
+		"test_injection": {
+			Name:  "test_injection",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				endpoint := ToString(args[0])
+				injectionType := ToString(args[1])
+				paramsMap := args[2].(*Map)
+				
+				// Convert to Go map
+				params := make(map[string]interface{})
+				for k, v := range paramsMap.Items {
+					params[k] = v
+				}
+				
+				result := webMod.TestInjection(endpoint, injectionType, params)
+				
+				// Convert to VM map
+				resultMap := &Map{Items: make(map[string]Value)}
+				for k, v := range result {
+					resultMap.Items[k] = convertToVMValue(v)
+				}
+				return resultMap, nil
+			},
+		},
+		"test_rate_limiting": {
+			Name:  "test_rate_limiting",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				endpoint := ToString(args[0])
+				requests := int(ToNumber(args[1]))
+				duration := int(ToNumber(args[2]))
+				
+				result := webMod.TestRateLimiting(endpoint, requests, duration)
+				
+				// Convert to VM map
+				resultMap := &Map{Items: make(map[string]Value)}
+				for k, v := range result {
+					resultMap.Items[k] = convertToVMValue(v)
+				}
+				return resultMap, nil
+			},
+		},
+		"test_cors": {
+			Name:  "test_cors",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				endpoint := ToString(args[0])
+				origin := ToString(args[1])
+				
+				result := webMod.TestCORS(endpoint, origin)
+				
+				// Convert to VM map
+				resultMap := &Map{Items: make(map[string]Value)}
+				for k, v := range result {
+					resultMap.Items[k] = convertToVMValue(v)
+				}
+				return resultMap, nil
+			},
+		},
+		"test_headers": {
+			Name:  "test_headers",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				endpoint := ToString(args[0])
+				
+				result := webMod.TestSecurityHeaders(endpoint)
+				
+				// Convert to VM map
+				resultMap := &Map{Items: make(map[string]Value)}
+				for k, v := range result {
+					resultMap.Items[k] = convertToVMValue(v)
+				}
+				return resultMap, nil
+			},
+		},
+		"fuzz_api": {
+			Name:  "fuzz_api",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				endpoint := ToString(args[0])
+				configMap := args[1].(*Map)
+				
+				// Convert to Go map
+				config := make(map[string]interface{})
+				for k, v := range configMap.Items {
+					config[k] = v
+				}
+				
+				result := webMod.FuzzAPI(endpoint, config)
+				
+				// Convert to VM map
+				resultMap := &Map{Items: make(map[string]Value)}
+				for k, v := range result {
+					resultMap.Items[k] = convertToVMValue(v)
+				}
+				return resultMap, nil
+			},
+		},
+		"test_authorization": {
+			Name:  "test_authorization",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				endpoint := ToString(args[0])
+				configMap := args[1].(*Map)
+				
+				// Convert to Go map
+				config := make(map[string]interface{})
+				for k, v := range configMap.Items {
+					config[k] = v
+				}
+				
+				result := webMod.TestAuthorization(endpoint, config)
+				
+				// Convert to VM map
+				resultMap := &Map{Items: make(map[string]Value)}
+				for k, v := range result {
+					resultMap.Items[k] = convertToVMValue(v)
+				}
+				return resultMap, nil
+			},
+		},
+		"scan_openapi": {
+			Name:  "scan_openapi",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				specURL := ToString(args[0])
+				baseURL := ToString(args[1])
+				
+				result := webMod.ScanOpenAPI(specURL, baseURL)
+				
+				// Convert to VM map
+				resultMap := &Map{Items: make(map[string]Value)}
+				for k, v := range result {
+					resultMap.Items[k] = convertToVMValue(v)
+				}
+				return resultMap, nil
+			},
+		},
+		"test_jwt": {
+			Name:  "test_jwt",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				endpoint := ToString(args[0])
+				token := ToString(args[1])
+				
+				result := webMod.TestJWT(endpoint, token)
+				
+				// Convert to VM map
+				resultMap := &Map{Items: make(map[string]Value)}
+				for k, v := range result {
+					resultMap.Items[k] = convertToVMValue(v)
+				}
+				return resultMap, nil
+			},
+		},
+	}
+	
+	// Add API security functions to main builtins
+	for name, fn := range apiSecBuiltins {
 		builtins[name] = fn
 	}
 	
@@ -3609,4 +4320,64 @@ func (vm *EnhancedVM) checkTypes(a, b Value, operation string) error {
 	}
 	
 	return vm.runtimeError(fmt.Sprintf("Type error: cannot perform '%s' on %s and %s", operation, aType, bType))
+}
+
+// Helper functions for ML module integration
+
+func vmValueToInterface(value Value) interface{} {
+	switch v := value.(type) {
+	case bool:
+		return v
+	case float64:
+		return v
+	case string:
+		return v
+	case *Array:
+		result := make([]interface{}, len(v.Elements))
+		for i, element := range v.Elements {
+			result[i] = vmValueToInterface(element)
+		}
+		return result
+	case *Map:
+		result := make(map[string]interface{})
+		for k, val := range v.Items {
+			result[k] = vmValueToInterface(val)
+		}
+		return result
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+func interfaceToVMValue(value interface{}) Value {
+	switch v := value.(type) {
+	case bool:
+		return v
+	case float64:
+		return v
+	case int:
+		return float64(v)
+	case string:
+		return v
+	case []interface{}:
+		result := NewArray(len(v))
+		for _, element := range v {
+			result.Elements = append(result.Elements, interfaceToVMValue(element))
+		}
+		return result
+	case map[string]interface{}:
+		result := NewMap()
+		for k, val := range v {
+			result.Items[k] = interfaceToVMValue(val)
+		}
+		return result
+	case []string:
+		result := NewArray(len(v))
+		for _, str := range v {
+			result.Elements = append(result.Elements, str)
+		}
+		return result
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }

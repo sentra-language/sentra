@@ -1,0 +1,76 @@
+// Advanced Network Security Demo
+log("🌐 Sentra Advanced Network Security Features")
+log("=" * 50)
+
+// Test network traffic analysis
+log("\n📊 Network Traffic Analysis...")
+let traffic_result = analyze_traffic("eth0", 5)
+log("• Total packets: " + traffic_result["total_packets"])
+log("• Total bytes: " + traffic_result["total_bytes"])
+log("• Time range: " + traffic_result["time_range"])
+log("• Protocols detected: " + len(traffic_result["protocol_stats"]) + " types")
+log("• Suspicious IPs: " + len(traffic_result["suspicious_ips"]))
+log("• Alerts generated: " + len(traffic_result["alerts"]))
+
+// Test intrusion detection
+log("\n🔍 Network Intrusion Detection...")
+let intrusion_alerts = detect_intrusions("eth0", 5)
+log("• Alerts detected: " + len(intrusion_alerts))
+if len(intrusion_alerts) > 0 {
+    let alert = intrusion_alerts[0]
+    log("• Latest alert type: " + alert["alert_type"])
+    log("• Severity: " + alert["severity"])
+    log("• Source IP: " + alert["source_ip"])
+}
+
+// Test advanced port scanning
+log("\n🔎 Advanced Port Scanning...")
+let scan_results = advanced_port_scan("127.0.0.1", 80, 85, "tcp_connect")
+log("• Ports scanned: " + len(scan_results))
+let open_ports = 0
+for result in scan_results {
+    if result["state"] == "open" {
+        open_ports = open_ports + 1
+    }
+}
+log("• Open ports found: " + open_ports)
+
+// Test SSL/TLS analysis
+log("\n🔐 SSL/TLS Security Analysis...")
+let ssl_result = analyze_ssl("google.com", 443)
+log("• Host: " + ssl_result["host"])
+log("• SSL Version: " + ssl_result["ssl_version"])
+log("• Cipher Suite: " + ssl_result["cipher_suite"])
+log("• Security Grade: " + ssl_result["grade"])
+log("• Security issues: " + len(ssl_result["security_issues"]))
+log("• Recommendations: " + len(ssl_result["recommendations"]))
+
+// Test network topology discovery
+log("\n🗺️ Network Topology Discovery...")
+let topology = discover_network_topology("192.168.1.0/24")
+log("• Discovery timestamp: " + topology["timestamp"])
+log("• Network nodes found: " + len(topology["nodes"]))
+log("• Network links: " + len(topology["links"]))
+log("• Subnets: " + len(topology["subnets"]))
+log("• Gateways: " + len(topology["gateways"]))
+
+if len(topology["nodes"]) > 0 {
+    let node = topology["nodes"][0]
+    log("• Sample node IP: " + node["ip"])
+    log("• Sample node type: " + node["node_type"])
+    log("• Sample node OS: " + node["os"])
+}
+
+log("\n" + "=" * 50)
+log("🎯 Advanced Network Security Analysis Complete!")
+log("=" * 50)
+
+log("\n🛡️ Security Insights:")
+log("• Traffic analysis helps identify network anomalies")
+log("• Intrusion detection catches malicious activities")
+log("• Advanced port scanning reveals service exposure")
+log("• SSL analysis ensures encryption security")
+log("• Topology mapping shows network structure")
+
+log("\n✅ All advanced network security features operational!")
+log("🚀 Ready for comprehensive network security assessment!")

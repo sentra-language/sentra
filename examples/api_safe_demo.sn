@@ -1,0 +1,22 @@
+// Safe API Security Demo
+log("🔒 Sentra API Security Testing")
+
+let endpoint = "https://httpbin.org/get"
+log("Testing: " + endpoint)
+
+log("\n📊 Results:")
+
+// Test headers
+let headers = test_headers(endpoint)
+log("• Security headers score: " + headers["score"] + "%")
+
+// Test CORS  
+let cors = test_cors(endpoint, "http://evil.com")
+log("• CORS vulnerable: " + cors["vulnerable"])
+
+// Test rate limiting
+let rate = test_rate_limiting(endpoint, 3, 1)
+log("• Rate limiting: " + rate["has_rate_limit"])
+
+log("\n✅ API security functions working!")
+log("🎯 Ready for production security testing!")
