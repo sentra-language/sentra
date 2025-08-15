@@ -1,0 +1,170 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Sentra",
+  "patterns": [
+    {"include": "#comments"},
+    {"include": "#shebang"},
+    {"include": "#keywords"},
+    {"include": "#strings"},
+    {"include": "#numbers"},
+    {"include": "#constants"},
+    {"include": "#functions"},
+    {"include": "#variables"},
+    {"include": "#operators"},
+    {"include": "#security-functions"}
+  ],
+  "repository": {
+    "shebang": {
+      "name": "comment.line.shebang.sentra",
+      "match": "^#!.*$"
+    },
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.sentra",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.line.hash.sentra",
+          "match": "#(?!!).*$"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.sentra",
+          "match": "\\b(if|else|while|for|return|spawn|match|in|as)\\b"
+        },
+        {
+          "name": "keyword.declaration.sentra",
+          "match": "\\b(let|var|const|fn)\\b"
+        },
+        {
+          "name": "keyword.import.sentra",
+          "match": "\\b(import|channel)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.sentra",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.sentra",
+          "match": "\\b(null)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.sentra",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.sentra",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.sentra",
+          "match": "\\b\\d+\\.\\d+\\b"
+        },
+        {
+          "name": "constant.numeric.integer.sentra",
+          "match": "\\b\\d+\\b"
+        },
+        {
+          "name": "constant.numeric.hex.sentra",
+          "match": "\\b0x[0-9a-fA-F]+\\b"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "entity.name.function.sentra",
+          "match": "\\b(log|print|len|str|type)\\b"
+        },
+        {
+          "name": "support.function.builtin.sentra",
+          "match": "\\b([a-z_][a-z0-9_]*)\\s*(?=\\()"
+        }
+      ]
+    },
+    "security-functions": {
+      "patterns": [
+        {
+          "name": "support.function.security.hash.sentra",
+          "match": "\\b(sha256|sha1|md5|bcrypt_hash|bcrypt_verify|hmac)\\b"
+        },
+        {
+          "name": "support.function.security.network.sentra",
+          "match": "\\b(port_scan|dns_lookup|socket_create|socket_send|socket_recv|socket_close|packet_capture|tls_connect)\\b"
+        },
+        {
+          "name": "support.function.security.filesystem.sentra",
+          "match": "\\b(fs_scan|fs_hash|fs_monitor|fs_create_baseline|fs_compare_baseline|fs_check_permissions|fs_find_sensitive|fs_check_integrity)\\b"
+        },
+        {
+          "name": "support.function.security.web.sentra",
+          "match": "\\b(web_create_client|web_get|web_post|web_scan_xss|web_scan_sqli|web_scan_headers|web_fuzz|web_spider)\\b"
+        },
+        {
+          "name": "support.function.security.database.sentra",
+          "match": "\\b(db_connect|db_query|db_scan_injection|db_check_permissions|db_audit_users|db_find_sensitive|db_test_auth)\\b"
+        },
+        {
+          "name": "support.function.security.crypto.sentra",
+          "match": "\\b(crypto_analyze_tls|crypto_check_cert|crypto_generate_key|crypto_sign|crypto_verify|crypto_encrypt_aes|crypto_decrypt_aes)\\b"
+        },
+        {
+          "name": "support.function.security.os.sentra",
+          "match": "\\b(os_info|os_users|os_processes|os_ports|os_privileges|os_execute|os_firewall_rules|os_registry_read)\\b"
+        },
+        {
+          "name": "support.function.security.report.sentra",
+          "match": "\\b(report_create|report_add_finding|report_add_evidence|report_export|report_get_summary|report_list|report_stream)\\b"
+        },
+        {
+          "name": "support.function.security.concurrency.sentra",
+          "match": "\\b(conc_create_worker_pool|conc_start_worker_pool|conc_submit_job|conc_get_job_result|conc_create_rate_limiter|conc_acquire_token|conc_get_metrics)\\b"
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "name": "variable.other.sentra",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.sentra",
+          "match": "(==|!=|<=|>=|<|>)"
+        },
+        {
+          "name": "keyword.operator.logical.sentra",
+          "match": "(&&|\\|\\||!)"
+        },
+        {
+          "name": "keyword.operator.arithmetic.sentra",
+          "match": "(\\+|-|\\*|/|%)"
+        },
+        {
+          "name": "keyword.operator.assignment.sentra",
+          "match": "(=|\\+=|-=|\\*=|/=)"
+        }
+      ]
+    }
+  },
+  "scopeName": "source.sentra"
+}
