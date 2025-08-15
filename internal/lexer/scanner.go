@@ -96,6 +96,11 @@ func NewScanner(source string) *Scanner {
 }
 
 func (s *Scanner) ScanTokens() []Token {
+	// Handle shebang at the beginning of the file
+	if s.current == 0 && len(s.source) >= 2 && s.source[0] == '#' && s.source[1] == '!' {
+		s.skipShebang()
+	}
+	
 	for !s.isAtEnd() {
 		s.sanitize()
 		s.start = s.current
@@ -328,4 +333,17 @@ func isAlphaNumeric(c byte) bool {
 
 func isDigit(c byte) bool {
 	return '0' <= c && c <= '9'
+}
+
+// skipShebang skips over shebang line at the beginning of the file
+func (s *Scanner) skipShebang() {
+	// Skip until end of line
+	for !s.isAtEnd() && s.peek() != '\n' {
+		s.advance()
+	}
+	// Skip the newline
+	if !s.isAtEnd() && s.peek() == '\n' {
+		s.line++
+		s.advance()
+	}
 }

@@ -1,0 +1,9 @@
+log("Test 1")
+if (conc_create_worker_pool("scanner", 4, 50)) {
+    log("Success")
+}
+
+log("Test 2")
+let metrics = conc_get_metrics()
+let active = metrics["worker_pools_active"]
+log("Worker pools active: " + str(active))

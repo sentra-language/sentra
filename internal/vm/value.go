@@ -179,6 +179,11 @@ func ToNumber(val Value) float64 {
 	}
 }
 
+// ToBool converts a value to boolean
+func ToBool(val Value) bool {
+	return IsTruthy(val)
+}
+
 // ToString converts a value to a string representation
 func ToString(val Value) string {
 	switch v := val.(type) {

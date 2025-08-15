@@ -1,0 +1,14 @@
+log("Starting concurrency test...")
+
+if (conc_create_worker_pool("test", 2, 10)) {
+    log("✓ Worker pool created")
+}
+
+let metrics = conc_get_metrics()
+if (metrics) {
+    log("✓ Metrics retrieved")
+} else {
+    log("✗ Failed to get metrics")
+}
+
+log("Test complete!")

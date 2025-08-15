@@ -13,6 +13,12 @@ import (
 	"sentra/internal/security"
 	"sentra/internal/network"
 	"sentra/internal/ossec"
+	"sentra/internal/filesystem"
+	"sentra/internal/webclient"
+	"sentra/internal/database"
+	"sentra/internal/cryptoanalysis"
+	"sentra/internal/reporting"
+	"sentra/internal/concurrency"
 	"sync"
 	"sync/atomic"
 )
@@ -911,6 +917,12 @@ func (vm *EnhancedVM) registerBuiltins() {
 	secMod := security.NewSecurityModule()
 	netMod := network.NewNetworkModule()
 	osMod := ossec.NewOSSecurityModule()
+	fsMod := filesystem.NewFileSystemModule()
+	webMod := webclient.NewWebClientModule()
+	dbMod := database.NewDatabaseModule()
+	cryptoMod := cryptoanalysis.NewCryptoAnalysisModule()
+	reportMod := reporting.NewReportingModule()
+	concMod := concurrency.NewConcurrencyModule()
 	rand.Seed(time.Now().UnixNano())
 	
 	// Register basic built-in functions
@@ -923,6 +935,35 @@ func (vm *EnhancedVM) registerBuiltins() {
 					PrintValue(args[0])
 				}
 				return nil, nil
+			},
+		},
+		"str": {
+			Name:  "str",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("str expects 1 argument")
+				}
+				return ToString(args[0]), nil
+			},
+		},
+		"len": {
+			Name:  "len",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("len expects 1 argument")
+				}
+				switch v := args[0].(type) {
+				case *Array:
+					return float64(len(v.Elements)), nil
+				case *Map:
+					return float64(len(v.Items)), nil
+				case string:
+					return float64(len(v)), nil
+				default:
+					return nil, fmt.Errorf("len() not supported for type %T", v)
+				}
 			},
 		},
 		// Security functions
@@ -1707,6 +1748,498 @@ func (vm *EnhancedVM) registerBuiltins() {
 			Arity: 0,
 			Function: func(args []Value) (Value, error) {
 				return osMod.CheckPrivileges(), nil
+			},
+		},
+
+		// Filesystem Security Functions
+		"fs_create_baseline": {
+			Name:  "fs_create_baseline",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("fs_create_baseline expects 2 arguments")
+				}
+				path := ToString(args[0])
+				recursive := ToBool(args[1])
+				err := fsMod.CreateBaseline(path, recursive)
+				return err == nil, err
+			},
+		},
+		"fs_verify_integrity": {
+			Name:  "fs_verify_integrity",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("fs_verify_integrity expects 1 argument")
+				}
+				path := ToString(args[0])
+				result, err := fsMod.VerifyIntegrity(path)
+				if err != nil {
+					return nil, err
+				}
+				
+				resultMap := NewMap()
+				resultMap.Items["path"] = result.Path
+				resultMap.Items["type"] = result.Type
+				resultMap.Items["severity"] = result.Severity
+				resultMap.Items["description"] = result.Description
+				resultMap.Items["evidence"] = result.Evidence
+				return resultMap, nil
+			},
+		},
+		"fs_calculate_hash": {
+			Name:  "fs_calculate_hash",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("fs_calculate_hash expects 2 arguments")
+				}
+				path := ToString(args[0])
+				hashType := ToString(args[1])
+				
+				var ht filesystem.HashType
+				switch hashType {
+				case "md5":
+					ht = filesystem.MD5Hash
+				case "sha1":
+					ht = filesystem.SHA1Hash
+				case "sha256":
+					ht = filesystem.SHA256Hash
+				default:
+					return nil, fmt.Errorf("unsupported hash type: %s", hashType)
+				}
+				
+				hash, err := fsMod.CalculateFileHash(path, ht)
+				return hash, err
+			},
+		},
+		"fs_scan_directory": {
+			Name:  "fs_scan_directory",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("fs_scan_directory expects 2 arguments")
+				}
+				path := ToString(args[0])
+				recursive := ToBool(args[1])
+				
+				results, err := fsMod.ScanDirectory(path, recursive)
+				if err != nil {
+					return nil, err
+				}
+				
+				resultArray := NewArray(len(results))
+				for _, result := range results {
+					resultMap := NewMap()
+					resultMap.Items["path"] = result.Path
+					resultMap.Items["type"] = result.Type
+					resultMap.Items["severity"] = result.Severity
+					resultMap.Items["description"] = result.Description
+					resultMap.Items["evidence"] = result.Evidence
+					resultArray.Elements = append(resultArray.Elements, resultMap)
+				}
+				return resultArray, nil
+			},
+		},
+
+		// Web Client Functions
+		"web_create_client": {
+			Name:  "web_create_client",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("web_create_client expects 2 arguments")
+				}
+				clientID := ToString(args[0])
+				configMap := args[1].(*Map)
+				
+				config := make(map[string]interface{})
+				for k, v := range configMap.Items {
+					config[k] = v
+				}
+				
+				_, err := webMod.CreateClient(clientID, config)
+				return err == nil, err
+			},
+		},
+		"web_request": {
+			Name:  "web_request",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 3 {
+					return nil, fmt.Errorf("web_request expects 3 arguments")
+				}
+				clientID := ToString(args[0])
+				method := ToString(args[1])
+				url := ToString(args[2])
+				
+				req := &webclient.HTTPRequest{
+					Method: method,
+					URL:    url,
+					Headers: make(map[string]string),
+					Cookies: make(map[string]string),
+				}
+				
+				resp, err := webMod.Request(clientID, req)
+				if err != nil {
+					return nil, err
+				}
+				
+				result := NewMap()
+				result.Items["status_code"] = float64(resp.StatusCode)
+				result.Items["status"] = resp.Status
+				result.Items["body"] = resp.Body
+				result.Items["content_type"] = resp.ContentType
+				result.Items["response_time"] = resp.ResponseTime.Milliseconds()
+				return result, nil
+			},
+		},
+		"web_scan_vulnerabilities": {
+			Name:  "web_scan_vulnerabilities",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("web_scan_vulnerabilities expects 2 arguments")
+				}
+				clientID := ToString(args[0])
+				targetURL := ToString(args[1])
+				
+				scan, err := webMod.ScanWebVulnerabilities(clientID, targetURL)
+				if err != nil {
+					return nil, err
+				}
+				
+				result := NewMap()
+				result.Items["url"] = scan.URL
+				result.Items["scan_time"] = scan.ScanTime.Format(time.RFC3339)
+				result.Items["duration"] = scan.Duration.Milliseconds()
+				
+				vulnArray := NewArray(len(scan.Vulnerabilities))
+				for _, vuln := range scan.Vulnerabilities {
+					vulnMap := NewMap()
+					vulnMap.Items["type"] = vuln.Type
+					vulnMap.Items["severity"] = vuln.Severity
+					vulnMap.Items["url"] = vuln.URL
+					vulnMap.Items["parameter"] = vuln.Parameter
+					vulnMap.Items["payload"] = vuln.Payload
+					vulnMap.Items["evidence"] = vuln.Evidence
+					vulnMap.Items["description"] = vuln.Description
+					vulnMap.Items["solution"] = vuln.Solution
+					vulnArray.Elements = append(vulnArray.Elements, vulnMap)
+				}
+				result.Items["vulnerabilities"] = vulnArray
+				return result, nil
+			},
+		},
+
+		// Database Security Functions
+		"db_scan_services": {
+			Name:  "db_scan_services",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("db_scan_services expects 1 argument")
+				}
+				host := ToString(args[0])
+				
+				services, err := dbMod.ScanDatabaseService(host)
+				if err != nil {
+					return nil, err
+				}
+				
+				resultArray := NewArray(len(services))
+				for _, service := range services {
+					serviceMap := NewMap()
+					for k, v := range service {
+						serviceMap.Items[k] = v
+					}
+					resultArray.Elements = append(resultArray.Elements, serviceMap)
+				}
+				return resultArray, nil
+			},
+		},
+		"db_connect": {
+			Name:  "db_connect",
+			Arity: 6,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 6 {
+					return nil, fmt.Errorf("db_connect expects 6 arguments")
+				}
+				id := ToString(args[0])
+				dbType := ToString(args[1])
+				host := ToString(args[2])
+				port := int(ToNumber(args[3]))
+				database := ToString(args[4])
+				username := ToString(args[5])
+				
+				err := dbMod.Connect(id, dbType, host, port, database, username, "")
+				return err == nil, err
+			},
+		},
+		"db_test_credentials": {
+			Name:  "db_test_credentials",
+			Arity: 4,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 4 {
+					return nil, fmt.Errorf("db_test_credentials expects 4 arguments")
+				}
+				host := ToString(args[0])
+				port := int(ToNumber(args[1]))
+				dbType := ToString(args[2])
+				database := ToString(args[3])
+				
+				results, err := dbMod.TestCredentials(host, port, dbType, database)
+				if err != nil {
+					return nil, err
+				}
+				
+				resultArray := NewArray(len(results))
+				for _, result := range results {
+					resultMap := NewMap()
+					for k, v := range result {
+						resultMap.Items[k] = v
+					}
+					resultArray.Elements = append(resultArray.Elements, resultMap)
+				}
+				return resultArray, nil
+			},
+		},
+
+		// Cryptographic Analysis Functions
+		"crypto_analyze_certificate": {
+			Name:  "crypto_analyze_certificate",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("crypto_analyze_certificate expects 1 argument")
+				}
+				certData := ToString(args[0])
+				
+				analysis, err := cryptoMod.AnalyzeCertificate(certData)
+				if err != nil {
+					return nil, err
+				}
+				
+				result := NewMap()
+				result.Items["subject"] = analysis.Subject
+				result.Items["issuer"] = analysis.Issuer
+				result.Items["serial_number"] = analysis.SerialNumber
+				result.Items["not_before"] = analysis.NotBefore.Format(time.RFC3339)
+				result.Items["not_after"] = analysis.NotAfter.Format(time.RFC3339)
+				result.Items["key_algorithm"] = analysis.KeyAlgorithm
+				result.Items["key_size"] = float64(analysis.KeySize)
+				result.Items["signature_algorithm"] = analysis.SignatureAlgorithm
+				result.Items["is_ca"] = analysis.IsCA
+				result.Items["is_self_signed"] = analysis.IsSelfSigned
+				result.Items["is_expired"] = analysis.IsExpired
+				result.Items["days_until_expiry"] = float64(analysis.DaysUntilExpiry)
+				result.Items["trust_level"] = analysis.TrustLevel
+				return result, nil
+			},
+		},
+		"crypto_analyze_tls": {
+			Name:  "crypto_analyze_tls",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("crypto_analyze_tls expects 2 arguments")
+				}
+				host := ToString(args[0])
+				port := int(ToNumber(args[1]))
+				
+				analysis, err := cryptoMod.AnalyzeTLSConfiguration(host, port)
+				if err != nil {
+					return nil, err
+				}
+				
+				result := NewMap()
+				result.Items["host"] = analysis.Host
+				result.Items["port"] = float64(analysis.Port)
+				result.Items["security_level"] = analysis.SecurityLevel
+				
+				versionsArray := NewArray(len(analysis.SupportedVersions))
+				for _, version := range analysis.SupportedVersions {
+					versionsArray.Elements = append(versionsArray.Elements, version)
+				}
+				result.Items["supported_versions"] = versionsArray
+				
+				ciphersArray := NewArray(len(analysis.SupportedCiphers))
+				for _, cipher := range analysis.SupportedCiphers {
+					ciphersArray.Elements = append(ciphersArray.Elements, cipher)
+				}
+				result.Items["supported_ciphers"] = ciphersArray
+				
+				return result, nil
+			},
+		},
+
+		// Reporting Functions
+		"report_create": {
+			Name:  "report_create",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 3 {
+					return nil, fmt.Errorf("report_create expects 3 arguments")
+				}
+				id := ToString(args[0])
+				title := ToString(args[1])
+				description := ToString(args[2])
+				
+				target := reporting.TargetInfo{
+					Type: "general",
+					Name: "Sentra Security Scan",
+				}
+				
+				report := reportMod.CreateReport(id, title, description, target)
+				return report != nil, nil
+			},
+		},
+		"report_add_finding": {
+			Name:  "report_add_finding",
+			Arity: 6,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 6 {
+					return nil, fmt.Errorf("report_add_finding expects 6 arguments")
+				}
+				reportID := ToString(args[0])
+				title := ToString(args[1])
+				description := ToString(args[2])
+				severity := ToString(args[3])
+				category := ToString(args[4])
+				solution := ToString(args[5])
+				
+				finding := reporting.SecurityFinding{
+					Title:       title,
+					Description: description,
+					Severity:    severity,
+					Category:    category,
+					Solution:    solution,
+					Status:      "OPEN",
+					FirstFound:  time.Now(),
+					LastSeen:    time.Now(),
+				}
+				
+				err := reportMod.AddFinding(reportID, finding)
+				return err == nil, err
+			},
+		},
+		"report_export": {
+			Name:  "report_export",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 3 {
+					return nil, fmt.Errorf("report_export expects 3 arguments")
+				}
+				reportID := ToString(args[0])
+				format := ToString(args[1])
+				filename := ToString(args[2])
+				
+				err := reportMod.ExportReport(reportID, format, filename)
+				return err == nil, err
+			},
+		},
+
+		// Concurrency Functions
+		"conc_create_worker_pool": {
+			Name:  "conc_create_worker_pool",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 3 {
+					return nil, fmt.Errorf("conc_create_worker_pool expects 3 arguments")
+				}
+				poolID := ToString(args[0])
+				size := int(ToNumber(args[1]))
+				bufferSize := int(ToNumber(args[2]))
+				
+				_, err := concMod.CreateWorkerPool(poolID, size, bufferSize)
+				return err == nil, err
+			},
+		},
+		"conc_start_worker_pool": {
+			Name:  "conc_start_worker_pool",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("conc_start_worker_pool expects 1 argument")
+				}
+				poolID := ToString(args[0])
+				
+				err := concMod.StartWorkerPool(poolID)
+				return err == nil, err
+			},
+		},
+		"conc_submit_job": {
+			Name:  "conc_submit_job",
+			Arity: 4,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 4 {
+					return nil, fmt.Errorf("conc_submit_job expects 4 arguments")
+				}
+				poolID := ToString(args[0])
+				jobID := ToString(args[1])
+				jobType := ToString(args[2])
+				data := args[3]
+				
+				job := concurrency.Job{
+					ID:       jobID,
+					Type:     jobType,
+					Data:     data,
+					Priority: 1,
+					Created:  time.Now(),
+				}
+				
+				err := concMod.SubmitJob(poolID, job)
+				return err == nil, err
+			},
+		},
+		"conc_create_rate_limiter": {
+			Name:  "conc_create_rate_limiter",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 3 {
+					return nil, fmt.Errorf("conc_create_rate_limiter expects 3 arguments")
+				}
+				limiterID := ToString(args[0])
+				rate := int(ToNumber(args[1]))
+				burst := int(ToNumber(args[2]))
+				
+				_, err := concMod.CreateRateLimiter(limiterID, rate, burst)
+				return err == nil, err
+			},
+		},
+		"conc_acquire_token": {
+			Name:  "conc_acquire_token",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("conc_acquire_token expects 2 arguments")
+				}
+				limiterID := ToString(args[0])
+				timeoutMs := int(ToNumber(args[1]))
+				
+				timeout := time.Duration(timeoutMs) * time.Millisecond
+				err := concMod.Acquire(limiterID, timeout)
+				return err == nil, err
+			},
+		},
+		"conc_get_metrics": {
+			Name:  "conc_get_metrics",
+			Arity: 0,
+			Function: func(args []Value) (Value, error) {
+				metrics := concMod.GetMetrics()
+				
+				result := NewMap()
+				result.Items["worker_pools_active"] = float64(metrics.WorkerPoolsActive)
+				result.Items["workers_total"] = float64(metrics.WorkersTotal)
+				result.Items["tasks_queued"] = float64(metrics.TasksQueued)
+				result.Items["tasks_processing"] = float64(metrics.TasksProcessing)
+				result.Items["tasks_completed"] = float64(metrics.TasksCompleted)
+				result.Items["tasks_failed"] = float64(metrics.TasksFailed)
+				result.Items["throughput_per_second"] = metrics.ThroughputPerSecond
+				result.Items["resource_utilization"] = metrics.ResourceUtilization
+				result.Items["goroutine_count"] = float64(metrics.GoroutineCount)
+				result.Items["memory_usage"] = float64(metrics.MemoryUsage)
+				return result, nil
 			},
 		},
 	}

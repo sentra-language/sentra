@@ -1,0 +1,44 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go test:*)",
+      "Bash(/c/Program Files/Go/bin/go.exe test ./internal/vm -v)",
+      "Bash(/c/Program Files/Go/bin/go.exe test ./internal/vm -v -run TestArithmetic)",
+      "Bash(/c/Program Files/Go/bin/go.exe test ./internal/vm -bench=. -benchmem)",
+      "Bash(/c/Program Files/Go/bin/go.exe test ./internal/vm -v -run TestControlFlow)",
+      "Bash(/c/Program Files/Go/bin/go.exe run test_vm.go)",
+      "Bash(rm:*)",
+      "Bash(/c/Program Files/Go/bin/go.exe test ./internal/vm -bench=BenchmarkArithmetic -benchmem -run=^$)",
+      "Bash(/c/Program Files/Go/bin/go.exe test ./internal/vm -bench=. -benchmem -run=^$)",
+      "Bash(make:*)",
+      "Bash(/c/Program Files/Go/bin/go.exe build -o sentra.exe ./cmd/sentra)",
+      "Bash(./sentra.exe run:*)",
+      "Bash(go build:*)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" build -o sentra.exe ./cmd/sentra)",
+      "Bash(time:*)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" test ./internal/vm -bench=. -benchmem)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" test ./internal/vm -bench=. -benchmem -run=^$)",
+      "Bash(mkdir:*)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/security_hash.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/threat_detection.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/stdlib_demo.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/stdlib_simple.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/network_scanner.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/network_simple.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/os_simple.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/sentra_showcase.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" get github.com/go-sql-driver/mysql github.com/lib/pq github.com/mattn/go-sqlite3 github.com/denisenkom/go-mssqldb)",
+      "Bash(find:*)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/concurrency_test.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/debug_test.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/concurrency_test_new.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/concurrency_simple.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/concurrency_minimal.sn)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" run cmd/sentra/main.go run examples/concurrency_debug.sn)"
+    ],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "C:\\c"
+    ]
+  }
+}

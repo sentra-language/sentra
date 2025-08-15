@@ -1,0 +1,72 @@
+# Simple Concurrency Demo
+# Basic demonstration of concurrency features
+
+log("=== Sentra Concurrency Demo ===")
+
+# 1. Create worker pool
+log("Creating worker pool...")
+if (conc_create_worker_pool("scanner", 4, 50)) {
+    log("✓ Worker pool created with 4 workers")
+}
+
+# 2. Start the worker pool
+if (conc_start_worker_pool("scanner")) {
+    log("✓ Worker pool started")
+}
+
+# 3. Create rate limiter
+if (conc_create_rate_limiter("limiter", 10, 5)) {
+    log("✓ Rate limiter created (10 req/sec, burst 5)")
+}
+
+# 4. Submit some jobs
+log("Submitting jobs...")
+var job_count = 0
+
+if (conc_submit_job("scanner", "job1", "port_scan", "127.0.0.1:80")) {
+    log("→ Submitted job 1")
+    job_count = job_count + 1
+}
+
+if (conc_submit_job("scanner", "job2", "port_scan", "127.0.0.1:443")) {
+    log("→ Submitted job 2") 
+    job_count = job_count + 1
+}
+
+if (conc_submit_job("scanner", "job3", "hash_calculate", "/etc/passwd")) {
+    log("→ Submitted job 3")
+    job_count = job_count + 1
+}
+
+# 5. Test rate limiting
+log("Testing rate limiter...")
+if (conc_acquire_token("limiter", 1000)) {
+    log("✓ Acquired rate limit token")
+}
+
+# 6. Check metrics
+log("Getting concurrency metrics...")
+let metrics = conc_get_metrics()
+
+log("--- Concurrency Metrics ---")
+let worker_pools_active = metrics["worker_pools_active"]
+let workers_total = metrics["workers_total"] 
+let tasks_queued = metrics["tasks_queued"]
+let tasks_processing = metrics["tasks_processing"]
+let tasks_completed = metrics["tasks_completed"]
+let tasks_failed = metrics["tasks_failed"]
+let resource_utilization = metrics["resource_utilization"]
+let goroutine_count = metrics["goroutine_count"]
+
+log("Worker pools active: " + str(worker_pools_active))
+log("Total workers: " + str(workers_total))
+log("Tasks queued: " + str(tasks_queued))
+log("Tasks processing: " + str(tasks_processing))
+log("Tasks completed: " + str(tasks_completed))
+log("Tasks failed: " + str(tasks_failed))
+log("Resource utilization: " + str(resource_utilization) + "%")
+log("Goroutine count: " + str(goroutine_count))
+
+log("✅ Concurrency demo completed successfully!")
+log("   " + str(job_count) + " jobs submitted to worker pool")
+log("   Rate limiting and metrics working properly")

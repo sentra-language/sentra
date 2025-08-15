@@ -1,0 +1,7 @@
+log("Hello World")
+let metrics = conc_get_metrics()
+if (metrics) {
+    let active = metrics["worker_pools_active"]
+    log("Metrics obtained with bracket access")
+}
+log("Test complete")
