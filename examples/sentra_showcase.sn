@@ -1,0 +1,139 @@
+// Sentra Language Showcase
+// A comprehensive demonstration of Sentra's capabilities for security automation
+
+log("==============================================")
+log("   SENTRA - Security Automation Language")
+log("==============================================")
+log("")
+
+// 1. Security Operations
+log("🔒 Security Operations Demo")
+log("---------------------------")
+
+// Password security assessment
+let passwords = ["password123", "P@ssw0rd!", "MyS3cur3P@ss!2024"]
+let i = 0
+while i < 3 {
+    let score = check_password(passwords[i])
+    if score < 4 {
+        log("⚠️  Weak password detected: score " + score + "/6")
+    } else {
+        log("✅ Strong password: score " + score + "/6")
+    }
+    i = i + 1
+}
+
+// Generate secure credentials
+log("")
+log("🔑 Generating secure credentials...")
+let api_key = generate_api_key("sentra", 32)
+log("API Key: " + api_key)
+let secure_pass = generate_password(16)
+log("Password: " + secure_pass)
+
+// 2. Cryptographic Operations
+log("")
+log("🔐 Cryptographic Operations")
+log("---------------------------")
+
+let data = "sensitive_data_2024"
+let hash = sha256(data)
+log("SHA256: " + hash)
+
+let encoded = base64_encode(data)
+log("Base64: " + encoded)
+
+// 3. Threat Detection
+log("")
+log("🛡️ Threat Detection System")
+log("--------------------------")
+
+let payloads = [
+    "SELECT * FROM users",
+    "'; DROP TABLE users; --",
+    "<script>alert(1)</script>"
+]
+
+let j = 0
+while j < 3 {
+    let result = check_threat(payloads[j])
+    if result["is_threat"] {
+        log("🚨 THREAT: " + result["type"])
+    } else {
+        log("✓ Clean payload")
+    }
+    j = j + 1
+}
+
+// 4. Network Security
+log("")
+log("🌐 Network Security")
+log("-------------------")
+
+// Configure firewall rules
+firewall_add("BLOCK", "TCP", 23, "0.0.0.0/0")    // Block Telnet
+firewall_add("BLOCK", "TCP", 135, "0.0.0.0/0")   // Block RPC
+firewall_add("ALLOW", "TCP", 443, "0.0.0.0/0")   // Allow HTTPS
+
+// Check connections
+let ports = [23, 443, 135]
+let k = 0
+while k < 3 {
+    let action = firewall_check("192.168.1.100", ports[k])
+    log("Port " + ports[k] + ": " + action)
+    k = k + 1
+}
+
+// 5. Data Processing
+log("")
+log("📊 Data Processing")
+log("------------------")
+
+// Array operations
+let scores = [85, 92, 78, 95, 88]
+sort(scores)
+log("Sorted scores: " + scores)
+
+// Calculate average
+let sum = 0
+let m = 0
+while m < 5 {
+    sum = sum + scores[m]
+    m = m + 1
+}
+let avg = sum / 5
+log("Average score: " + avg)
+
+// 6. String Manipulation
+log("")
+log("📝 String Operations")
+log("--------------------")
+
+let report = "security audit complete"
+log("Original: " + report)
+log("Upper: " + upper(report))
+log("Capitalized: " + upper("s") + "ecurity " + upper("a") + "udit " + upper("c") + "omplete")
+
+// 7. System Information
+log("")
+log("🖥️ System Information")
+log("---------------------")
+log("Date: " + date())
+log("Time: " + datetime())
+log("Timestamp: " + time())
+
+// 8. Math Operations
+log("")
+log("🔢 Math Operations")
+log("------------------")
+log("Power: 2^8 = " + pow(2, 8))
+log("Square root of 256 = " + sqrt(256))
+log("Random number: " + randint(1, 100))
+
+// 9. Summary
+log("")
+log("==============================================")
+log("✨ Sentra Demo Complete!")
+log("   Fast • Secure • Purpose-Built")
+log("   The Future of Security Automation")
+log("==============================================")

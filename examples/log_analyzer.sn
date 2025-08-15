@@ -1,0 +1,81 @@
+// Log Analyzer for Security Events
+// Demonstrates Sentra for system monitoring and threat detection
+
+fn analyze_log_entry(entry) {
+    // Pattern matching for security events
+    let severity = "INFO"
+    let is_threat = false
+    
+    // Check for authentication failures
+    if contains(entry, "authentication failed") {
+        severity = "WARNING"
+        is_threat = true
+    }
+    
+    // Check for SQL injection attempts
+    if contains(entry, "DROP TABLE") {
+        severity = "CRITICAL"
+        is_threat = true
+    }
+    
+    if contains(entry, "UNION SELECT") {
+        severity = "CRITICAL"
+        is_threat = true
+    }
+    
+    // Check for path traversal
+    if contains(entry, "../..") {
+        severity = "HIGH"
+        is_threat = true
+    }
+    
+    return {
+        "threat": is_threat,
+        "severity": severity,
+        "entry": entry
+    }
+}
+
+fn contains(str, substr) {
+    // Simplified contains check - would use native string functions
+    return true  // Placeholder
+}
+
+fn process_logs(logs) {
+    log("Security Log Analysis")
+    log("====================")
+    
+    let threats = []
+    let threat_count = 0
+    
+    let i = 0
+    while i < 5 {  // Process first 5 logs for demo
+        let result = analyze_log_entry(logs[i])
+        
+        if result["threat"] {
+            threat_count = threat_count + 1
+            log("[" + result["severity"] + "] " + result["entry"])
+        }
+        i = i + 1
+    }
+    
+    log("\nSummary:")
+    log("--------")
+    log("Total threats detected: " + threat_count)
+    
+    if threat_count > 3 {
+        log("⚠️  HIGH ALERT: Multiple security events detected!")
+        log("Action: Enable enhanced monitoring")
+    }
+}
+
+// Sample log entries
+let system_logs = [
+    "2024-01-14 10:23:45 authentication failed for user admin",
+    "2024-01-14 10:24:01 GET /api/users HTTP/1.1 200",
+    "2024-01-14 10:24:15 SQL query: SELECT * FROM users UNION SELECT password",
+    "2024-01-14 10:24:30 File access: ../../../../etc/passwd",
+    "2024-01-14 10:24:45 Connection established from 192.168.1.100"
+]
+
+process_logs(system_logs)

@@ -1,0 +1,211 @@
+// OS Security Scanner Demo
+// System-level security analysis and monitoring
+
+log("==============================================")
+log("   SENTRA OS SECURITY SCANNER")
+log("==============================================")
+log("")
+
+// 1. System Information
+log("📊 System Information")
+log("---------------------")
+
+let sys = os_info()
+log("Platform: " + sys["platform"])
+log("Architecture: " + sys["arch"])
+log("Hostname: " + sys["hostname"])
+log("CPUs: " + sys["cpus"])
+
+// Check privileges
+let is_admin = os_privileges()
+if is_admin {
+    log("⚠️  Running with ELEVATED privileges")
+} else {
+    log("✓ Running with standard privileges")
+}
+
+// 2. Process Analysis
+log("")
+log("🔍 Process Analysis")
+log("-------------------")
+
+let processes = os_processes()
+log("Total processes: " + processes.length)
+
+// Find suspicious processes
+log("")
+log("Checking for suspicious processes...")
+let suspicious_count = 0
+let i = 0
+while i < processes.length && i < 100 {
+    let proc = processes[i]
+    let name = proc["name"]
+    
+    // Check for suspicious patterns
+    if contains(lower(name), "miner") ||
+       contains(lower(name), "cryptor") ||
+       contains(lower(name), "backdoor") {
+        log("⚠️  Suspicious: " + name + " (PID: " + proc["pid"] + ")")
+        suspicious_count = suspicious_count + 1
+    }
+    
+    // Check for high memory usage (> 500MB)
+    if proc["memory"] > 524288000 {
+        log("📈 High Memory: " + name + " using " + (proc["memory"] / 1048576) + " MB")
+    }
+    
+    i = i + 1
+}
+
+if suspicious_count == 0 {
+    log("✅ No obviously suspicious processes found")
+}
+
+// 3. Network Connections
+log("")
+log("🌐 Open Network Ports")
+log("---------------------")
+
+let ports = os_ports()
+log("Total open connections: " + ports.length)
+
+// Check for risky ports
+let risky_ports = [23, 135, 139, 445, 3389, 5900]
+let j = 0
+while j < ports.length && j < 20 {
+    let port = ports[j]
+    let local = port["local"]
+    
+    // Check if it's a listening port
+    if port["state"] == "LISTENING" || port["state"] == "LISTEN" {
+        // Extract port number from address
+        let k = 0
+        while k < 6 {
+            let risk_port = risky_ports[k]
+            if contains(local, ":" + risk_port) {
+                log("⚠️  RISKY PORT OPEN: " + local + " (" + port["protocol"] + ")")
+            }
+            k = k + 1
+        }
+    }
+    j = j + 1
+}
+
+// 4. User Accounts
+log("")
+log("👥 User Accounts")
+log("----------------")
+
+let users = os_users()
+log("Total user accounts: " + users.length)
+
+let m = 0
+while m < users.length && m < 10 {
+    let user = users[m]
+    let username = user["username"]
+    
+    // Check for default/suspicious accounts
+    if username == "guest" || username == "temp" || username == "test" {
+        log("⚠️  Potentially insecure account: " + username)
+    } else if username == "root" || username == "Administrator" {
+        log("👑 Admin account: " + username)
+    } else {
+        log("👤 User: " + username)
+    }
+    m = m + 1
+}
+
+// 5. Services/Daemons
+log("")
+log("⚙️ System Services")
+log("------------------")
+
+let services = os_services()
+log("Total services: " + services.length)
+
+// Check critical services
+let critical = ["ssh", "rdp", "telnet", "ftp", "vnc"]
+let n = 0
+while n < services.length && n < 50 {
+    let service = services[n]
+    let svc_name = lower(service["name"])
+    
+    let p = 0
+    while p < 5 {
+        if contains(svc_name, critical[p]) {
+            let status = service["status"]
+            if contains(lower(status), "run") || contains(lower(status), "active") {
+                log("🔴 Critical service RUNNING: " + service["name"])
+            }
+        }
+        p = p + 1
+    }
+    n = n + 1
+}
+
+// 6. Security Recommendations
+log("")
+log("🛡️ Security Recommendations")
+log("---------------------------")
+
+// Check for security issues
+let issues = 0
+
+if is_admin {
+    log("⚠️  Avoid running with admin privileges for daily tasks")
+    issues = issues + 1
+}
+
+// Check for risky services
+let q = 0
+while q < ports.length && q < 100 {
+    let port = ports[q]
+    if contains(port["local"], ":23") || contains(port["local"], ":21") {
+        log("⚠️  Disable insecure services (Telnet/FTP)")
+        issues = issues + 1
+        break
+    }
+    q = q + 1
+}
+
+// Check for guest accounts
+let r = 0
+while r < users.length {
+    if users[r]["username"] == "guest" {
+        log("⚠️  Disable or remove guest accounts")
+        issues = issues + 1
+        break
+    }
+    r = r + 1
+}
+
+if issues == 0 {
+    log("✅ No critical security issues detected")
+} else {
+    log("")
+    log("Found " + issues + " security recommendations")
+}
+
+// 7. Command Execution Example
+log("")
+log("💻 System Commands")
+log("------------------")
+
+// Execute safe commands
+log("Getting system uptime...")
+let uptime_output = ""
+if sys["platform"] == "windows" {
+    uptime_output = os_exec("net", ["stats", "srv"])
+} else {
+    uptime_output = os_exec("uptime", [])
+}
+
+if uptime_output != "" {
+    log("System has been running")
+}
+
+log("")
+log("==============================================")
+log("✨ OS Security Scan Complete!")
+log("   Stay Secure, Stay Protected")
+log("==============================================")

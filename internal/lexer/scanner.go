@@ -41,10 +41,13 @@ const (
 	TokenRParen      TokenType = ")"
 	TokenLBrace      TokenType = "{"
 	TokenRBrace      TokenType = "}"
+	TokenLBracket    TokenType = "["
+	TokenRBracket    TokenType = "]"
 	TokenPlus        TokenType = "+"
 	TokenMinus       TokenType = "-"
 	TokenStar        TokenType = "*"
 	TokenSlash       TokenType = "/"
+	TokenPercent     TokenType = "%"
 	TokenEqual       TokenType = "="
 	TokenArrow       TokenType = "=>"
 	TokenColon       TokenType = ":"
@@ -56,7 +59,14 @@ const (
 	TokenGT          TokenType = ">"
 	TokenLE          TokenType = "<="
 	TokenGE          TokenType = ">="
+	TokenAnd         TokenType = "&&"
+	TokenOr          TokenType = "||"
+	TokenNot         TokenType = "!"
 	TokenComma       TokenType = ","
+	TokenDot         TokenType = "."
+	TokenSemicolon   TokenType = ";"
+	TokenAs          TokenType = "AS"
+	TokenIn          TokenType = "IN"
 	TokenEOF         TokenType = "EOF"
 )
 
@@ -109,6 +119,10 @@ func (s *Scanner) scanToken() {
 		s.addToken(TokenLBrace)
 	case '}':
 		s.addToken(TokenRBrace)
+	case '[':
+		s.addToken(TokenLBracket)
+	case ']':
+		s.addToken(TokenRBracket)
 	case '+':
 		s.addToken(TokenPlus)
 	case '-':
@@ -120,14 +134,16 @@ func (s *Scanner) scanToken() {
 	case '*':
 		s.addToken(TokenStar)
 	case '/':
-    if s.match('/') {
-        // Skip to end of line (ignore comments)
-        for s.peek() != '\n' && !s.isAtEnd() {
-            s.advance()
-        }
-    } else {
-        s.addToken(TokenSlash)
-    }
+		if s.match('/') {
+			// Skip to end of line (ignore comments)
+			for s.peek() != '\n' && !s.isAtEnd() {
+				s.advance()
+			}
+		} else {
+			s.addToken(TokenSlash)
+		}
+	case '%':
+		s.addToken(TokenPercent)
 	case '=':
 		if s.match('=') {
 			s.addToken(TokenDoubleEqual)
@@ -137,6 +153,8 @@ func (s *Scanner) scanToken() {
 	case '!':
 		if s.match('=') {
 			s.addToken(TokenNotEqual)
+		} else {
+			s.addToken(TokenNot)
 		}
 	case '<':
 		if s.match('=') {
@@ -160,6 +178,18 @@ func (s *Scanner) scanToken() {
 		s.string()
 	case ',':
 		s.addToken(TokenComma)
+	case '.':
+		s.addToken(TokenDot)
+	case ';':
+		s.addToken(TokenSemicolon)
+	case '&':
+		if s.match('&') {
+			s.addToken(TokenAnd)
+		}
+	case '|':
+		if s.match('|') {
+			s.addToken(TokenOr)
+		}
 	case '\n':
 		s.line++
 	case ' ', '\r', '\t':
@@ -205,8 +235,6 @@ func (s *Scanner) identifier() {
 		s.addToken(TokenWhile)
 	case "for":
 		s.addToken(TokenFor)
-	case "match":
-		s.addToken(TokenMatch)
 	case "spawn":
 		s.addToken(TokenSpawn)
 	case "import":
@@ -229,6 +257,10 @@ func (s *Scanner) identifier() {
 		s.addToken(TokenBool)
 	case "string":
 		s.addToken(TokenStringT)
+	case "as":
+		s.addToken(TokenAs)
+	case "in":
+		s.addToken(TokenIn)
 	default:
 		s.addToken(TokenIdent)
 	}

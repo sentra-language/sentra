@@ -1,0 +1,55 @@
+// Network Port Scanner Example
+// Demonstrates Sentra for network security automation
+
+fn scan_port(host, port) {
+    // In a real implementation, this would use native networking
+    // For now, simulating with logic
+    let common_ports = [22, 80, 443, 3306, 5432, 6379, 8080]
+    let is_common = false
+    
+    let i = 0
+    while i < 7 {
+        if common_ports[i] == port {
+            is_common = true
+        }
+        i = i + 1
+    }
+    
+    if is_common {
+        log("Port " + port + " on " + host + ": OPEN (common service)")
+        return true
+    }
+    return false
+}
+
+fn security_audit(target) {
+    log("Starting security scan on: " + target)
+    log("=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=")
+    
+    let critical_ports = [22, 3389, 445, 1433]  // SSH, RDP, SMB, MSSQL
+    let found_issues = 0
+    
+    let i = 0
+    while i < 4 {
+        let port = critical_ports[i]
+        if scan_port(target, port) {
+            found_issues = found_issues + 1
+            log("⚠️  Critical port " + port + " is exposed!")
+        }
+        i = i + 1
+    }
+    
+    if found_issues > 0 {
+        log("\nSecurity Issues Found: " + found_issues)
+        log("Recommendation: Review firewall rules immediately")
+    } else {
+        log("\n✓ No critical ports exposed")
+    }
+}
+
+// Run security audit
+security_audit("192.168.1.1")
+
+// Scan specific ports
+scan_port("10.0.0.1", 22)
+scan_port("10.0.0.1", 80)

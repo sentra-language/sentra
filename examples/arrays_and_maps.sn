@@ -1,0 +1,58 @@
+// Arrays and Maps example in Sentra
+
+// Create an array
+let numbers = [1, 2, 3, 4, 5]
+log("Array: " + numbers)
+
+// Access array elements
+let first = numbers[0]
+log("First element: " + first)
+
+// Modify array
+numbers[2] = 10
+log("Modified array: " + numbers)
+
+// Array operations
+let doubled = []
+for i in numbers {
+    doubled.push(i * 2)
+}
+log("Doubled: " + doubled)
+
+// Create a map
+let person = {
+    "name": "Alice",
+    "age": 30,
+    "city": "New York"
+}
+log("Person: " + person)
+
+// Access map values
+log("Name: " + person["name"])
+log("Age: " + person["age"])
+
+// Modify map
+person["age"] = 31
+person["country"] = "USA"
+log("Updated person: " + person)
+
+// Nested structures
+let users = [
+    {"id": 1, "name": "Alice"},
+    {"id": 2, "name": "Bob"},
+    {"id": 3, "name": "Charlie"}
+]
+
+// Iterate over array of maps
+for user in users {
+    log("User " + user["id"] + ": " + user["name"])
+}
+
+// Create a map of arrays
+let data = {
+    "numbers": [1, 2, 3],
+    "names": ["Alice", "Bob"],
+    "flags": [true, false, true]
+}
+
+log("Data structure: " + data)

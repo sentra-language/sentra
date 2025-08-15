@@ -1,0 +1,100 @@
+// Standard Library Demo
+// Shows Sentra's rich standard library
+
+log("=== Sentra Standard Library Demo ===")
+log("")
+
+// String manipulation
+log("String Functions:")
+log("----------------")
+let text = "  Hello, Sentra!  "
+log("Original: '" + text + "'")
+log("Upper: " + upper(text))
+log("Lower: " + lower(text))
+log("Trimmed: '" + trim(text) + "'")
+
+let sentence = "Sentra is fast and secure"
+if contains(sentence, "secure") {
+    log("✓ Found 'secure' in sentence")
+}
+
+if startswith(sentence, "Sentra") {
+    log("✓ Sentence starts with 'Sentra'")
+}
+
+// Math functions
+log("")
+log("Math Functions:")
+log("---------------")
+log("abs(-5): " + abs(-5))
+log("sqrt(16): " + sqrt(16))
+log("pow(2, 8): " + pow(2, 8))
+log("round(3.7): " + round(3.7))
+log("floor(3.7): " + floor(3.7))
+log("ceil(3.2): " + ceil(3.2))
+
+// Array operations
+log("")
+log("Array Operations:")
+log("-----------------")
+let nums = [5, 2, 8, 1, 9]
+log("Original array: " + nums)
+
+// Sort the array
+sort(nums)
+log("Sorted: " + nums)
+
+// Reverse it
+reverse(nums)
+log("Reversed: " + nums)
+
+// Array manipulation
+let arr = [1, 2, 3]
+push(arr, 4)
+log("After push(4): " + arr)
+
+let last = pop(arr)
+log("Popped value: " + last)
+log("Array after pop: " + arr)
+
+// Type conversions
+log("")
+log("Type Conversions:")
+log("-----------------")
+let num_str = "42"
+let parsed = parse_int(num_str)
+log("parse_int('42'): " + parsed)
+log("Type: " + type(parsed))
+
+let float_str = "3.14159"
+let pi = parse_float(float_str)
+log("parse_float('3.14159'): " + pi)
+
+// Date and time
+log("")
+log("Date & Time:")
+log("------------")
+log("Current date: " + date())
+log("Current datetime: " + datetime())
+log("Unix timestamp: " + time())
+
+// JSON handling
+log("")
+log("JSON Operations:")
+log("----------------")
+let data = {
+    "name": "Sentra",
+    "version": "1.0",
+    "features": ["fast", "secure", "simple"]
+}
+
+let json_str = json_encode(data)
+log("Encoded JSON: " + json_str)
+
+// Random numbers
+log("")
+log("Random Numbers:")
+log("---------------")
+log("Random float [0,1): " + random())
+log("Random int [1,10]: " + randint(1, 10))
+log("Random int [1,100]: " + randint(1, 100))

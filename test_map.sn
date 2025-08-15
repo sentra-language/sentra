@@ -1,0 +1,10 @@
+// Simple map test
+
+let person = {
+    "name": "Alice",
+    "age": 30
+}
+
+log(person)
+log(person["name"])
+log(person["age"])

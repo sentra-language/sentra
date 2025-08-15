@@ -1,0 +1,115 @@
+// Simple Network Security Demo
+// Basic network operations
+
+log("==============================================")
+log("   SENTRA NETWORK SECURITY")
+log("==============================================")
+log("")
+
+// 1. Port Scanning
+log("🔍 Port Scanner")
+log("---------------")
+
+log("Scanning localhost ports 80-85...")
+let scan_results = port_scan("127.0.0.1", 80, 85, "TCP")
+
+// Process first few results manually
+if scan_results[0] {
+    let result = scan_results[0]
+    let port = result["port"]
+    let state = result["state"]
+    log("Port " + port + ": " + state)
+}
+
+if scan_results[1] {
+    let result = scan_results[1]
+    let port = result["port"]
+    let state = result["state"]
+    log("Port " + port + ": " + state)
+}
+
+// 2. DNS Resolution
+log("")
+log("🌐 DNS Resolution")
+log("-----------------")
+
+let ips = dns_lookup("google.com", "A")
+if ips[0] {
+    log("google.com IP: " + ips[0])
+}
+
+// 3. Socket Operations
+log("")
+log("🔌 Socket Test")
+log("--------------")
+
+// Try to create a socket
+log("Creating TCP socket to google.com:80...")
+let sock = socket_create("TCP", "google.com", 80)
+if sock {
+    log("✅ Socket created: " + sock)
+    
+    // Send simple HTTP request
+    let bytes_sent = socket_send(sock, "GET / HTTP/1.0\r\n\r\n")
+    log("Sent " + bytes_sent + " bytes")
+    
+    // Close socket
+    socket_close(sock)
+    log("Socket closed")
+}
+
+// 4. Packet Capture (Simulated)
+log("")
+log("📡 Packet Capture")
+log("-----------------")
+
+let packets = packet_capture("", "tcp", 3)
+if packets[0] {
+    let pkt = packets[0]
+    log("Packet: " + pkt["src_ip"] + ":" + pkt["src_port"] + 
+        " → " + pkt["dst_ip"] + ":" + pkt["dst_port"])
+}
+
+// 5. OS Information
+log("")
+log("💻 System Info")
+log("--------------")
+
+let sys = os_info()
+log("Platform: " + sys["platform"])
+log("Hostname: " + sys["hostname"])
+log("CPUs: " + sys["cpus"])
+
+// Check if running as admin
+if os_privileges() {
+    log("⚠️  Running with elevated privileges")
+} else {
+    log("✓ Running with standard privileges")
+}
+
+// 6. Process List
+log("")
+log("🔍 Process Check")
+log("----------------")
+
+let processes = os_processes()
+if processes[0] {
+    let proc = processes[0]
+    log("First process: " + proc["name"] + " (PID: " + proc["pid"] + ")")
+}
+
+// 7. Open Ports
+log("")
+log("🌐 Open Ports")
+log("-------------")
+
+let ports = os_ports()
+if ports[0] {
+    let port = ports[0]
+    log("First port: " + port["local"] + " - " + port["state"])
+}
+
+log("")
+log("==============================================")
+log("✨ Network Security Demo Complete!")
+log("==============================================")

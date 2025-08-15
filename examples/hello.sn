@@ -1,7 +1,2 @@
-let name = "Sentra"
-
-fn greet() {
-  log("Hello, " + name)
-}
-
-greet()
+// Simple Hello World test
+log("Hello, Sentra VM!")

@@ -1,0 +1,187 @@
+// Simple OS Security Scanner
+// System security analysis
+
+log("==============================================")
+log("   SENTRA OS SECURITY SCANNER")
+log("==============================================")
+log("")
+
+// 1. System Information
+log("📊 System Information")
+log("---------------------")
+
+let sys = os_info()
+log("Platform: " + sys["platform"])
+log("Architecture: " + sys["arch"])
+log("Hostname: " + sys["hostname"])
+log("CPUs: " + sys["cpus"])
+
+// Check privileges
+if os_privileges() {
+    log("⚠️  Running with ELEVATED privileges")
+} else {
+    log("✓ Running with standard privileges")
+}
+
+// 2. Process Analysis
+log("")
+log("🔍 Process Analysis")
+log("-------------------")
+
+let processes = os_processes()
+log("Checking processes...")
+
+// Check first few processes
+let i = 0
+while i < 5 {
+    if processes[i] {
+        let proc = processes[i]
+        let name = proc["name"]
+        let pid = proc["pid"]
+        let mem = proc["memory"]
+        
+        // Check for high memory usage (> 100MB)
+        if mem > 104857600 {
+            log("📈 High Memory: " + name + " (PID: " + pid + ")")
+        }
+    }
+    i = i + 1
+}
+
+// 3. Network Connections
+log("")
+log("🌐 Open Network Ports")
+log("---------------------")
+
+let ports = os_ports()
+log("Checking open ports...")
+
+// Check for risky ports
+let risky_found = false
+let j = 0
+while j < 10 {
+    if ports[j] {
+        let port = ports[j]
+        let local = port["local"]
+        let state = port["state"]
+        
+        // Check for common risky ports
+        if contains(local, ":23") {
+            log("⚠️  RISKY: Telnet port open at " + local)
+            risky_found = true
+        }
+        if contains(local, ":21") {
+            log("⚠️  RISKY: FTP port open at " + local)
+            risky_found = true
+        }
+        if contains(local, ":445") {
+            log("⚠️  RISKY: SMB port open at " + local)
+            risky_found = true
+        }
+    }
+    j = j + 1
+}
+
+if !risky_found {
+    log("✅ No obviously risky ports detected in first 10 connections")
+}
+
+// 4. User Accounts
+log("")
+log("👥 User Accounts")
+log("----------------")
+
+let users = os_users()
+log("System users found...")
+
+// Check first few users
+let k = 0
+while k < 3 {
+    if users[k] {
+        let user = users[k]
+        let username = user["username"]
+        
+        // Check for suspicious accounts
+        if username == "guest" {
+            log("⚠️  Guest account found: " + username)
+        } else {
+            log("👤 User: " + username)
+        }
+    }
+    k = k + 1
+}
+
+// 5. Services Check
+log("")
+log("⚙️ System Services")
+log("------------------")
+
+let services = os_services()
+log("Checking services...")
+
+// Look for critical services in first few
+let m = 0
+while m < 5 {
+    if services[m] {
+        let service = services[m]
+        let name = service["name"]
+        let status = service["status"]
+        
+        // Just show first few services
+        if name {
+            log("Service: " + name)
+        }
+    }
+    m = m + 1
+}
+
+// 6. Security Assessment
+log("")
+log("🛡️ Security Assessment")
+log("----------------------")
+
+let issues = 0
+
+// Check various security aspects
+if os_privileges() {
+    log("⚠️  Avoid running with admin privileges")
+    issues = issues + 1
+}
+
+// Check for guest account
+if users[0] {
+    let n = 0
+    while n < 5 {
+        if users[n] {
+            if users[n]["username"] == "guest" {
+                log("⚠️  Guest account should be disabled")
+                issues = issues + 1
+                break
+            }
+        }
+        n = n + 1
+    }
+}
+
+if issues == 0 {
+    log("✅ No critical issues found in basic scan")
+} else {
+    log("Found " + issues + " potential security issues")
+}
+
+// 7. Command Execution
+log("")
+log("💻 System Commands")
+log("------------------")
+
+// Execute a safe command
+log("Getting system information...")
+let cmd_output = os_exec("hostname", [])
+if cmd_output {
+    log("Hostname command output: " + cmd_output)
+}
+
+log("")
+log("==============================================")
+log("✨ OS Security Scan Complete!")
+log("==============================================")

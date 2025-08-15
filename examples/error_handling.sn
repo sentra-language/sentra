@@ -1,0 +1,116 @@
+// Error handling in Sentra
+
+// Try-catch blocks
+try {
+    let result = 10 / 0  // Division by zero
+    log("Result: " + result)
+} catch error {
+    log("Error caught: " + error)
+}
+
+// Custom error throwing
+fn validateAge(age) {
+    if age < 0 {
+        throw "Age cannot be negative"
+    }
+    if age > 150 {
+        throw "Age seems unrealistic"
+    }
+    return true
+}
+
+try {
+    validateAge(-5)
+} catch e {
+    log("Validation error: " + e)
+}
+
+// Try-catch with finally
+fn readFile(path) {
+    let file = null
+    try {
+        file = io.open(path)
+        let content = file.read()
+        return content
+    } catch error {
+        log("Failed to read file: " + error)
+        return null
+    } finally {
+        if file != null {
+            file.close()
+            log("File closed")
+        }
+    }
+}
+
+// Error propagation
+fn processData(data) {
+    if data == null {
+        throw "Data cannot be null"
+    }
+    
+    if !data["valid"] {
+        throw "Invalid data format"
+    }
+    
+    return data["value"] * 2
+}
+
+fn main() {
+    let testData = [
+        {"valid": true, "value": 10},
+        {"valid": false, "value": 20},
+        null
+    ]
+    
+    for data in testData {
+        try {
+            let result = processData(data)
+            log("Processed: " + result)
+        } catch error {
+            log("Processing failed: " + error)
+        }
+    }
+}
+
+main()
+
+// Assertion helper
+fn assert(condition, message) {
+    if !condition {
+        throw "Assertion failed: " + message
+    }
+}
+
+// Test with assertions
+fn testMath() {
+    assert(2 + 2 == 4, "Basic addition failed")
+    assert(10 / 2 == 5, "Division failed")
+    assert(3 * 3 == 9, "Multiplication failed")
+    log("All math tests passed!")
+}
+
+try {
+    testMath()
+} catch error {
+    log("Test failed: " + error)
+}
+
+// Safe division function
+fn safeDivide(a, b) {
+    if b == 0 {
+        throw "Division by zero"
+    }
+    return a / b
+}
+
+// Using safe division
+let numbers = [10, 5, 0, 2]
+for num in numbers {
+    try {
+        let result = safeDivide(100, num)
+        log("100 / " + num + " = " + result)
+    } catch error {
+        log("Cannot divide by " + num + ": " + error)
+    }
+}

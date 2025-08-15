@@ -1,0 +1,178 @@
+// Classic algorithms implemented in Sentra
+
+// Bubble Sort
+fn bubbleSort(arr) {
+    let n = len(arr)
+    for (let i = 0; i < n - 1; i = i + 1) {
+        for (let j = 0; j < n - i - 1; j = j + 1) {
+            if arr[j] > arr[j + 1] {
+                // Swap elements
+                let temp = arr[j]
+                arr[j] = arr[j + 1]
+                arr[j + 1] = temp
+            }
+        }
+    }
+    return arr
+}
+
+// Quick Sort
+fn quickSort(arr) {
+    if len(arr) <= 1 {
+        return arr
+    }
+    
+    let pivot = arr[len(arr) / 2]
+    let left = []
+    let right = []
+    let equal = []
+    
+    for item in arr {
+        if item < pivot {
+            left.push(item)
+        } else if item > pivot {
+            right.push(item)
+        } else {
+            equal.push(item)
+        }
+    }
+    
+    return quickSort(left) + equal + quickSort(right)
+}
+
+// Binary Search
+fn binarySearch(arr, target) {
+    let left = 0
+    let right = len(arr) - 1
+    
+    while left <= right {
+        let mid = (left + right) / 2
+        
+        if arr[mid] == target {
+            return mid
+        } else if arr[mid] < target {
+            left = mid + 1
+        } else {
+            right = mid - 1
+        }
+    }
+    
+    return -1  // Not found
+}
+
+// Fibonacci with memoization
+fn fibonacci(n, memo) {
+    if memo == null {
+        memo = {}
+    }
+    
+    if n <= 1 {
+        return n
+    }
+    
+    if memo[n] != null {
+        return memo[n]
+    }
+    
+    memo[n] = fibonacci(n - 1, memo) + fibonacci(n - 2, memo)
+    return memo[n]
+}
+
+// Prime number checker
+fn isPrime(n) {
+    if n <= 1 {
+        return false
+    }
+    if n <= 3 {
+        return true
+    }
+    if n % 2 == 0 || n % 3 == 0 {
+        return false
+    }
+    
+    let i = 5
+    while i * i <= n {
+        if n % i == 0 || n % (i + 2) == 0 {
+            return false
+        }
+        i = i + 6
+    }
+    
+    return true
+}
+
+// Find all primes up to n (Sieve of Eratosthenes)
+fn sieveOfEratosthenes(n) {
+    let primes = []
+    let isPrime = []
+    
+    // Initialize all as prime
+    for (let i = 0; i <= n; i = i + 1) {
+        isPrime.push(true)
+    }
+    
+    isPrime[0] = false
+    isPrime[1] = false
+    
+    for (let i = 2; i * i <= n; i = i + 1) {
+        if isPrime[i] {
+            for (let j = i * i; j <= n; j = j + i) {
+                isPrime[j] = false
+            }
+        }
+    }
+    
+    for (let i = 2; i <= n; i = i + 1) {
+        if isPrime[i] {
+            primes.push(i)
+        }
+    }
+    
+    return primes
+}
+
+// Factorial (iterative)
+fn factorial(n) {
+    let result = 1
+    for (let i = 2; i <= n; i = i + 1) {
+        result = result * i
+    }
+    return result
+}
+
+// GCD (Euclidean algorithm)
+fn gcd(a, b) {
+    while b != 0 {
+        let temp = b
+        b = a % b
+        a = temp
+    }
+    return a
+}
+
+// LCM
+fn lcm(a, b) {
+    return (a * b) / gcd(a, b)
+}
+
+// Test the algorithms
+log("=== Sorting ===")
+let unsorted = [64, 34, 25, 12, 22, 11, 90]
+log("Original: " + unsorted)
+log("Bubble sorted: " + bubbleSort([64, 34, 25, 12, 22, 11, 90]))
+log("Quick sorted: " + quickSort([64, 34, 25, 12, 22, 11, 90]))
+
+log("\n=== Binary Search ===")
+let sorted = [11, 12, 22, 25, 34, 64, 90]
+log("Array: " + sorted)
+log("Search for 25: index " + binarySearch(sorted, 25))
+log("Search for 100: index " + binarySearch(sorted, 100))
+
+log("\n=== Number Theory ===")
+log("Fibonacci(10): " + fibonacci(10, {}))
+log("Is 17 prime? " + isPrime(17))
+log("Is 18 prime? " + isPrime(18))
+log("Primes up to 30: " + sieveOfEratosthenes(30))
+log("Factorial(5): " + factorial(5))
+log("GCD(48, 18): " + gcd(48, 18))
+log("LCM(12, 15): " + lcm(12, 15))

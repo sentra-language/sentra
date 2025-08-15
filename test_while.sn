@@ -1,0 +1,8 @@
+// Simple while loop test
+
+let count = 0
+while count < 3 {
+    log(count)
+    count = count + 1
+}
+log("Done!")

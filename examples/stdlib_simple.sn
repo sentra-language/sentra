@@ -1,0 +1,30 @@
+// Simple Standard Library Test
+log("=== Sentra Standard Library Test ===")
+log("")
+
+// Test string functions
+let text = "Hello World"
+log("Original: " + text)
+log("Upper: " + upper(text))
+log("Lower: " + lower(text))
+
+// Test math functions
+log("")
+log("Math functions:")
+log("abs(-5) = " + abs(-5))
+log("sqrt(16) = " + sqrt(16))
+log("pow(2, 3) = " + pow(2, 3))
+
+// Test array functions
+log("")
+log("Array functions:")
+let nums = [3, 1, 4, 1, 5]
+log("Original array: " + nums)
+sort(nums)
+log("Sorted array: " + nums)
+
+// Test date functions
+log("")
+log("Date functions:")
+log("Current date: " + date())
+log("Unix time: " + time())

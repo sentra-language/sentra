@@ -1,0 +1,256 @@
+// Intrusion Detection System (IDS) Application
+// Real-time network monitoring and threat detection
+
+// IDS Configuration
+let ids_config = {
+    "mode": "active",  // active|passive
+    "sensitivity": "high",
+    "interfaces": ["eth0", "eth1"],
+    "alert_methods": ["log", "email", "webhook"]
+}
+
+// Detection rules engine
+let rules = {
+    "network": [],
+    "application": [],
+    "behavioral": []
+}
+
+fn init_ids() {
+    log("🛡️ Sentra IDS - Intrusion Detection System")
+    log("==========================================")
+    log("Mode: " + ids_config["mode"])
+    log("Sensitivity: " + ids_config["sensitivity"])
+    
+    // Load detection rules
+    load_network_rules()
+    load_application_rules()
+    load_behavioral_rules()
+    
+    log("✓ Loaded " + 50 + " detection rules")
+    log("✓ Monitoring started on interfaces: eth0, eth1")
+    log("")
+}
+
+fn load_network_rules() {
+    // Network layer attack patterns
+    rules["network"] = [
+        {"name": "SYN Flood", "pattern": "syn_flood", "severity": "high"},
+        {"name": "Port Scan", "pattern": "port_scan", "severity": "medium"},
+        {"name": "ICMP Flood", "pattern": "icmp_flood", "severity": "high"},
+        {"name": "ARP Spoofing", "pattern": "arp_spoof", "severity": "critical"}
+    ]
+}
+
+fn load_application_rules() {
+    // Application layer attack patterns
+    rules["application"] = [
+        {"name": "SQL Injection", "pattern": "sqli", "severity": "critical"},
+        {"name": "XSS Attack", "pattern": "xss", "severity": "high"},
+        {"name": "Buffer Overflow", "pattern": "overflow", "severity": "critical"},
+        {"name": "Directory Traversal", "pattern": "traversal", "severity": "high"}
+    ]
+}
+
+fn load_behavioral_rules() {
+    // Behavioral anomaly patterns
+    rules["behavioral"] = [
+        {"name": "Unusual Hours", "pattern": "time_anomaly", "severity": "low"},
+        {"name": "Data Exfiltration", "pattern": "large_upload", "severity": "critical"},
+        {"name": "Privilege Escalation", "pattern": "priv_esc", "severity": "critical"},
+        {"name": "Lateral Movement", "pattern": "lateral", "severity": "high"}
+    ]
+}
+
+fn detect_threat(packet_data) {
+    let threats = []
+    let max_severity = "none"
+    
+    // Check network rules
+    if packet_data["syn_count"] > 1000 {
+        threats = ["SYN Flood detected"]
+        max_severity = "high"
+    }
+    
+    // Check for port scanning
+    if packet_data["unique_ports"] > 100 {
+        threats = ["Port scan in progress"]
+        max_severity = "medium"
+    }
+    
+    // Check application layer
+    if packet_data["contains_sql"] {
+        threats = ["SQL injection attempt"]
+        max_severity = "critical"
+    }
+    
+    return {
+        "threats": threats,
+        "severity": max_severity,
+        "source": packet_data["source_ip"],
+        "destination": packet_data["dest_ip"],
+        "timestamp": packet_data["timestamp"]
+    }
+}
+
+fn analyze_traffic_behavior(flow_data) {
+    // Behavioral analysis using statistical models
+    let anomaly_score = 0
+    
+    // Check for data exfiltration
+    if flow_data["outbound_bytes"] > 1000000 {
+        if flow_data["time_hour"] < 6 {
+            anomaly_score = anomaly_score + 50
+            log("⚠️  Suspicious: Large data transfer during off-hours")
+        }
+    }
+    
+    // Check for beaconing behavior
+    if flow_data["connection_interval"] == 60 {
+        anomaly_score = anomaly_score + 30
+        log("⚠️  Possible C2 beaconing detected")
+    }
+    
+    return anomaly_score
+}
+
+fn correlate_events(events) {
+    // Event correlation engine
+    log("\n🔗 Event Correlation Analysis")
+    log("-----------------------------")
+    
+    // Look for attack chains
+    let attack_chain = false
+    let chain_components = []
+    
+    // Example: Recon → Exploit → Persistence
+    if has_event(events, "port_scan") {
+        chain_components = ["Reconnaissance"]
+        
+        if has_event(events, "exploit_attempt") {
+            chain_components = ["Reconnaissance", "Exploitation"]
+            
+            if has_event(events, "file_created") {
+                chain_components = ["Reconnaissance", "Exploitation", "Persistence"]
+                attack_chain = true
+            }
+        }
+    }
+    
+    if attack_chain {
+        log("🚨 CRITICAL: Complete attack chain detected!")
+        log("   Chain: " + "Recon → Exploit → Persistence")
+        log("   Action: Isolate affected systems immediately")
+        return "critical"
+    }
+    
+    return "normal"
+}
+
+fn has_event(events, event_type) {
+    // Check if event type exists in events list
+    return true  // Simplified
+}
+
+fn generate_alert(detection) {
+    let severity = detection["severity"]
+    
+    if severity == "critical" {
+        log("\n🚨 CRITICAL ALERT 🚨")
+        log("====================")
+    } else if severity == "high" {
+        log("\n⚠️  HIGH PRIORITY ALERT")
+        log("----------------------")
+    } else {
+        log("\n📊 Security Event")
+        log("----------------")
+    }
+    
+    log("Time: " + detection["timestamp"])
+    log("Source: " + detection["source"])
+    log("Target: " + detection["destination"])
+    log("Threats: " + detection["threats"][0])
+    log("Severity: " + severity)
+    
+    // Take automated response
+    if ids_config["mode"] == "active" {
+        if severity == "critical" {
+            log("\n🤖 Automated Response:")
+            log("   → Blocking source IP")
+            log("   → Isolating target system")
+            log("   → Capturing forensic data")
+            log("   → Notifying security team")
+        }
+    }
+}
+
+fn ids_dashboard() {
+    log("\n📊 IDS Dashboard - Last 24 Hours")
+    log("=================================")
+    log("Total Packets Analyzed: 1,245,892")
+    log("Threats Detected: 47")
+    log("Critical Alerts: 3")
+    log("Blocked IPs: 12")
+    log("False Positive Rate: 2.1%")
+    log("")
+    log("Top Threats:")
+    log("  1. Port Scanning (18 incidents)")
+    log("  2. SQL Injection (12 incidents)")
+    log("  3. Brute Force (9 incidents)")
+    log("")
+    log("Network Health: 🟢 SECURE")
+}
+
+// Main IDS Application
+init_ids()
+
+// Simulate packet analysis
+log("🔍 Analyzing network traffic...\n")
+
+// Simulate various attack scenarios
+let packet1 = {
+    "source_ip": "10.0.0.100",
+    "dest_ip": "192.168.1.10",
+    "syn_count": 5000,
+    "unique_ports": 10,
+    "contains_sql": false,
+    "timestamp": "14:23:45"
+}
+
+let detection1 = detect_threat(packet1)
+if detection1["severity"] != "none" {
+    generate_alert(detection1)
+}
+
+let packet2 = {
+    "source_ip": "185.220.101.45",
+    "dest_ip": "192.168.1.20",
+    "syn_count": 10,
+    "unique_ports": 200,
+    "contains_sql": true,
+    "timestamp": "14:24:12"
+}
+
+let detection2 = detect_threat(packet2)
+if detection2["severity"] != "none" {
+    generate_alert(detection2)
+}
+
+// Behavioral analysis
+let flow = {
+    "outbound_bytes": 5000000,
+    "time_hour": 3,
+    "connection_interval": 60
+}
+
+let anomaly = analyze_traffic_behavior(flow)
+if anomaly > 50 {
+    log("\n⚠️  Behavioral Anomaly Score: " + anomaly)
+}
+
+// Event correlation
+let recent_events = ["port_scan", "exploit_attempt", "file_created"]
+correlate_events(recent_events)
+
+// Show dashboard
+ids_dashboard()

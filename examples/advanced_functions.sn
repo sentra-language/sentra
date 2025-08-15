@@ -1,0 +1,79 @@
+// Advanced functions and closures in Sentra
+
+// Higher-order function
+fn map(arr, f) {
+    let result = []
+    for item in arr {
+        result.push(f(item))
+    }
+    return result
+}
+
+// Lambda/arrow function
+let square = fn(x) => x * x
+let numbers = [1, 2, 3, 4, 5]
+let squared = map(numbers, square)
+log("Squared: " + squared)
+
+// Closure example
+fn makeCounter() {
+    let count = 0
+    return fn() {
+        count = count + 1
+        return count
+    }
+}
+
+let counter1 = makeCounter()
+let counter2 = makeCounter()
+
+log("Counter1: " + counter1()) // 1
+log("Counter1: " + counter1()) // 2
+log("Counter2: " + counter2()) // 1
+log("Counter1: " + counter1()) // 3
+
+// Function composition
+fn compose(f, g) {
+    return fn(x) => f(g(x))
+}
+
+let addOne = fn(x) => x + 1
+let double = fn(x) => x * 2
+let addOneThenDouble = compose(double, addOne)
+
+log("5 + 1 then * 2 = " + addOneThenDouble(5)) // 12
+
+// Recursive function with memoization
+fn memoize(f) {
+    let cache = {}
+    return fn(n) {
+        if cache[n] != null {
+            return cache[n]
+        }
+        let result = f(n)
+        cache[n] = result
+        return result
+    }
+}
+
+fn fib(n) {
+    if n <= 1 {
+        return n
+    }
+    return fib(n - 1) + fib(n - 2)
+}
+
+let fastFib = memoize(fib)
+log("Fibonacci(10): " + fastFib(10))
+
+// Partial application
+fn partial(f, a) {
+    return fn(b) => f(a, b)
+}
+
+fn add(a, b) {
+    return a + b
+}
+
+let add5 = partial(add, 5)
+log("5 + 10 = " + add5(10)) // 15

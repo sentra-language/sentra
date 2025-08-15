@@ -25,14 +25,8 @@ func main() {
 			log.Fatalf("Could not read file: %v", err)
 		}
 
-		// Optionally load prelude first
-		var fullSource []byte
-		// prelude, err := os.ReadFile("prelude.sn")
-		// if err == nil {
-		// 	fullSource = append(prelude, '\n')
-		// }
-		// fullSource = append(fullSource, source...)
-		fullSource = source
+		// No prelude - standard library is implemented natively for performance
+		fullSource := source
 
 		// --- Add these lines here ---
 		// fmt.Println("===== FULL SOURCE CODE =====")
@@ -53,7 +47,14 @@ func main() {
 		compiler := compiler.NewStmtCompiler()
 		chunk := compiler.Compile(stmts)
 
-		vm.NewVM(chunk).Run()		
+		// Use the enhanced VM for better performance and features
+		enhancedVM := vm.NewEnhancedVM(chunk)
+		result, err := enhancedVM.Run()
+		if err != nil {
+			log.Fatalf("Runtime error: %v", err)
+		}
+		// Don't print the result unless it's meaningful
+		_ = result		
 		return
 	}
 

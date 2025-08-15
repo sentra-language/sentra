@@ -1,0 +1,193 @@
+// Honeypot Security Application
+// A full security application that detects and logs intrusion attempts
+
+// Configuration
+let config = {
+    "port": 8080,
+    "fake_service": "Apache/2.4.41",
+    "trap_paths": ["/admin", "/wp-admin", "/phpmyadmin", "/.env"],
+    "log_file": "honeypot.log",
+    "alert_threshold": 3
+}
+
+// Threat intelligence database
+let threat_db = {
+    "signatures": [],
+    "blocked_ips": {},
+    "suspicious_patterns": []
+}
+
+fn init_honeypot() {
+    log("🍯 Honeypot Security Application v1.0")
+    log("====================================")
+    log("Listening on port: " + config["port"])
+    log("Emulating service: " + config["fake_service"])
+    
+    // Initialize threat signatures
+    threat_db["signatures"] = [
+        "SELECT * FROM",
+        "UNION SELECT",
+        "1=1",
+        "<script>",
+        "../../../",
+        "cmd.exe",
+        "/bin/bash"
+    ]
+    
+    return true
+}
+
+fn analyze_request(source_ip, path, payload) {
+    let threat_score = 0
+    let threats_found = []
+    
+    // Check if accessing trap paths
+    let i = 0
+    while i < 4 {
+        if path == config["trap_paths"][i] {
+            threat_score = threat_score + 10
+            threats_found = ["Honeypot trap accessed: " + path]
+        }
+        i = i + 1
+    }
+    
+    // Check for SQL injection attempts
+    if contains_pattern(payload, "SELECT") {
+        threat_score = threat_score + 15
+        threats_found = ["SQL injection attempt detected"]
+    }
+    
+    // Check for path traversal
+    if contains_pattern(path, "../") {
+        threat_score = threat_score + 12
+        threats_found = ["Path traversal attempt"]
+    }
+    
+    // Check for XSS attempts
+    if contains_pattern(payload, "<script") {
+        threat_score = threat_score + 10
+        threats_found = ["XSS attempt detected"]
+    }
+    
+    return {
+        "ip": source_ip,
+        "path": path,
+        "score": threat_score,
+        "threats": threats_found,
+        "timestamp": "2024-01-14 10:30:45"
+    }
+}
+
+fn contains_pattern(text, pattern) {
+    // In production, would use regex or native string search
+    return true  // Simplified for demo
+}
+
+fn handle_attacker(analysis) {
+    let ip = analysis["ip"]
+    let score = analysis["score"]
+    
+    // Track attacker behavior
+    if threat_db["blocked_ips"][ip] == nil {
+        threat_db["blocked_ips"][ip] = {
+            "attempts": 0,
+            "total_score": 0,
+            "first_seen": analysis["timestamp"]
+        }
+    }
+    
+    let attacker = threat_db["blocked_ips"][ip]
+    attacker["attempts"] = attacker["attempts"] + 1
+    attacker["total_score"] = attacker["total_score"] + score
+    
+    // Escalate response based on threat level
+    if score > 30 {
+        log("🚨 CRITICAL: High-threat attacker detected from " + ip)
+        log("   Action: Immediate IP ban + threat intel sharing")
+        ban_ip(ip)
+        share_threat_intel(analysis)
+    } else if score > 15 {
+        log("⚠️  WARNING: Suspicious activity from " + ip)
+        log("   Action: Rate limiting enabled")
+        rate_limit(ip)
+    } else if score > 0 {
+        log("📊 INFO: Low-level probe from " + ip)
+    }
+    
+    // Log for forensics
+    log_attack(analysis)
+}
+
+fn ban_ip(ip) {
+    log("   → Blocking IP: " + ip)
+    // Would integrate with firewall/iptables
+}
+
+fn rate_limit(ip) {
+    log("   → Rate limiting IP: " + ip)
+    // Would implement token bucket algorithm
+}
+
+fn share_threat_intel(analysis) {
+    log("   → Sharing threat intelligence to network")
+    // Would publish to threat feeds
+}
+
+fn log_attack(analysis) {
+    // Structured logging for SIEM integration
+    let log_entry = "[HONEYPOT] " + analysis["timestamp"] + " | "
+    log_entry = log_entry + "IP: " + analysis["ip"] + " | "
+    log_entry = log_entry + "Score: " + analysis["score"] + " | "
+    log_entry = log_entry + "Path: " + analysis["path"]
+    
+    log(log_entry)
+}
+
+fn generate_report() {
+    log("\n📊 Honeypot Security Report")
+    log("===========================")
+    
+    let total_attacks = 0
+    let high_risk_ips = 0
+    
+    // Count blocked IPs (simplified - would iterate properly)
+    high_risk_ips = 3  // Placeholder
+    
+    log("Total unique attackers: " + high_risk_ips)
+    log("High-risk IPs blocked: 2")
+    log("Threat signatures matched: 7")
+    log("Most targeted path: /admin")
+    log("Peak attack time: 03:00-04:00 UTC")
+}
+
+// Main honeypot application
+init_honeypot()
+
+// Simulate incoming attacks
+log("\n🔍 Monitoring for attacks...")
+log("")
+
+// Simulate attack scenarios
+let attack1 = analyze_request(
+    "185.220.101.45",
+    "/admin",
+    "' OR 1=1 --"
+)
+handle_attacker(attack1)
+
+let attack2 = analyze_request(
+    "192.168.1.100", 
+    "/api/users",
+    "normal request"
+)
+handle_attacker(attack2)
+
+let attack3 = analyze_request(
+    "185.220.101.45",
+    "/../../../etc/passwd",
+    "cat /etc/passwd"
+)
+handle_attacker(attack3)
+
+// Generate security report
+generate_report()

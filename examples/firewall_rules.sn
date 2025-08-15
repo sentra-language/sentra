@@ -1,0 +1,99 @@
+// Firewall Rule Engine
+// Demonstrates Sentra for network security policy automation
+
+fn create_rule(action, protocol, port, source, description) {
+    return {
+        "action": action,
+        "protocol": protocol,
+        "port": port,
+        "source": source,
+        "description": description,
+        "enabled": true
+    }
+}
+
+fn evaluate_packet(packet, rules) {
+    let i = 0
+    while i < 5 {  // Check against first 5 rules
+        let rule = rules[i]
+        
+        if rule["enabled"] {
+            if packet["port"] == rule["port"] {
+                if rule["action"] == "BLOCK" {
+                    log("🛑 BLOCKED: " + packet["source"] + ":" + packet["port"] + " - " + rule["description"])
+                    return false
+                }
+                if rule["action"] == "ALLOW" {
+                    log("✓ ALLOWED: " + packet["source"] + ":" + packet["port"])
+                    return true
+                }
+            }
+        }
+        i = i + 1
+    }
+    
+    // Default deny
+    log("⚠️  No rule matched - DEFAULT DENY: " + packet["source"] + ":" + packet["port"])
+    return false
+}
+
+fn analyze_traffic_pattern(packets) {
+    log("\nTraffic Pattern Analysis")
+    log("========================")
+    
+    let blocked_count = 0
+    let suspicious_ports = [23, 135, 139, 445, 3389]  // Telnet, RPC, NetBIOS, SMB, RDP
+    let suspicious_attempts = 0
+    
+    let i = 0
+    while i < 5 {
+        let packet = packets[i]
+        
+        // Check for suspicious ports
+        let j = 0
+        while j < 5 {
+            if packet["port"] == suspicious_ports[j] {
+                suspicious_attempts = suspicious_attempts + 1
+                log("⚠️  Suspicious activity on port " + packet["port"] + " from " + packet["source"])
+            }
+            j = j + 1
+        }
+        i = i + 1
+    }
+    
+    if suspicious_attempts > 2 {
+        log("\n🚨 ALERT: Possible port scanning detected!")
+        log("Recommendation: Enable rate limiting and enhanced logging")
+    }
+}
+
+// Define firewall rules
+let firewall_rules = [
+    create_rule("ALLOW", "TCP", 80, "0.0.0.0/0", "Allow HTTP"),
+    create_rule("ALLOW", "TCP", 443, "0.0.0.0/0", "Allow HTTPS"),
+    create_rule("BLOCK", "TCP", 23, "0.0.0.0/0", "Block Telnet"),
+    create_rule("BLOCK", "TCP", 3389, "0.0.0.0/0", "Block RDP from external"),
+    create_rule("ALLOW", "TCP", 22, "192.168.1.0/24", "Allow SSH from internal only")
+]
+
+// Simulate incoming packets
+let incoming_packets = [
+    {"source": "192.168.1.10", "port": 80, "protocol": "TCP"},
+    {"source": "203.0.113.5", "port": 23, "protocol": "TCP"},
+    {"source": "198.51.100.20", "port": 3389, "protocol": "TCP"},
+    {"source": "192.168.1.50", "port": 22, "protocol": "TCP"},
+    {"source": "203.0.113.5", "port": 445, "protocol": "TCP"}
+]
+
+log("Firewall Rule Evaluation")
+log("========================\n")
+
+// Process each packet
+let i = 0
+while i < 5 {
+    evaluate_packet(incoming_packets[i], firewall_rules)
+    i = i + 1
+}
+
+// Analyze traffic patterns
+analyze_traffic_pattern(incoming_packets)

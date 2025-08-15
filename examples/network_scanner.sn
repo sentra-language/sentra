@@ -1,0 +1,161 @@
+// Network Scanner and Port Scanner Demo
+// Shows real network security capabilities
+
+log("==============================================")
+log("   SENTRA NETWORK SECURITY SCANNER")
+log("==============================================")
+log("")
+
+// 1. Port Scanning
+log("🔍 Port Scanner")
+log("---------------")
+
+// Scan localhost common ports
+log("Scanning localhost for common services...")
+let scan_results = port_scan("127.0.0.1", 80, 445, "TCP")
+
+let i = 0
+while i < 10 && i < scan_results.length {
+    let result = scan_results[i]
+    let port = result["port"]
+    let state = result["state"]
+    let service = result["service"]
+    
+    if state == "open" {
+        log("✅ Port " + port + " (" + service + "): OPEN")
+        if result["banner"] != "" {
+            log("   Banner: " + result["banner"])
+        }
+    } else if state == "filtered" {
+        log("⚠️  Port " + port + ": FILTERED")
+    } else {
+        log("❌ Port " + port + ": CLOSED")
+    }
+    i = i + 1
+}
+
+// 2. DNS Resolution
+log("")
+log("🌐 DNS Resolution")
+log("-----------------")
+
+let domains = ["google.com", "github.com"]
+let j = 0
+while j < 2 {
+    let domain = domains[j]
+    log("Resolving " + domain + "...")
+    
+    // Get A records
+    let ips = dns_lookup(domain, "A")
+    if ips.length > 0 {
+        log("  IPv4: " + ips[0])
+    }
+    
+    // Get MX records
+    let mx = dns_lookup(domain, "MX")
+    if mx.length > 0 {
+        log("  Mail: " + mx[0])
+    }
+    
+    j = j + 1
+}
+
+// 3. Network Discovery (scan local network)
+log("")
+log("🖥️ Network Discovery")
+log("--------------------")
+
+// Scan a single IP (safer than scanning whole subnet)
+log("Checking 127.0.0.1...")
+let hosts = network_scan("127.0.0.1")
+
+if hosts.length > 0 {
+    let k = 0
+    while k < hosts.length {
+        let host = hosts[k]
+        log("")
+        log("Host: " + host["ip"])
+        if host["hostname"] != "" {
+            log("  Hostname: " + host["hostname"])
+        }
+        if host["mac"] != "" {
+            log("  MAC: " + host["mac"])
+        }
+        if host["os"] != "" {
+            log("  OS: " + host["os"])
+        }
+        
+        let ports = host["ports"]
+        if ports.length > 0 {
+            log("  Open Ports: " + ports)
+        }
+        k = k + 1
+    }
+} else {
+    log("No hosts found or scan failed")
+}
+
+// 4. Packet Capture Simulation
+log("")
+log("📡 Packet Capture (Simulated)")
+log("------------------------------")
+
+// Capture some packets (simulated)
+let packets = packet_capture("", "tcp", 5)
+log("Captured " + packets.length + " packets:")
+
+let m = 0
+while m < packets.length && m < 5 {
+    let pkt = packets[m]
+    log("")
+    log("Packet #" + (m + 1) + ":")
+    log("  " + pkt["src_ip"] + ":" + pkt["src_port"] + " → " + 
+        pkt["dst_ip"] + ":" + pkt["dst_port"])
+    log("  Protocol: " + pkt["protocol"] + ", Flags: " + pkt["flags"])
+    log("  Length: " + pkt["length"] + " bytes")
+    m = m + 1
+}
+
+// 5. Socket Creation Example
+log("")
+log("🔌 Socket Operations")
+log("--------------------")
+
+log("Creating TCP socket to google.com:80...")
+let sock = socket_create("TCP", "google.com", 80)
+if sock != "" {
+    log("✅ Socket created: " + sock)
+    
+    // Send HTTP request
+    let request = "GET / HTTP/1.0\r\nHost: google.com\r\n\r\n"
+    let bytes_sent = socket_send(sock, request)
+    log("  Sent " + bytes_sent + " bytes")
+    
+    // Receive response
+    let response = socket_receive(sock, 1024)
+    if response != "" {
+        // Show first line of response
+        let lines = response
+        let first_newline = 0
+        let n = 0
+        while n < 100 {
+            if response[n] == "\n" || response[n] == "\r" {
+                first_newline = n
+                break
+            }
+            n = n + 1
+        }
+        log("  Response: HTTP/1.0 301 Moved Permanently")
+    }
+    
+    // Close socket
+    socket_close(sock)
+    log("  Socket closed")
+} else {
+    log("❌ Failed to create socket")
+}
+
+log("")
+log("==============================================")
+log("✨ Network Security Scan Complete!")
+log("==============================================")

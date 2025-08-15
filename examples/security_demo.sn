@@ -1,0 +1,90 @@
+// Security Automation Demo for Sentra
+// Demonstrates security-focused scripting capabilities
+
+fn check_port(port) {
+    // Check if port is in secure range
+    if port < 1024 {
+        log("⚠️  Port " + port + " is privileged - requires root")
+        return false
+    }
+    
+    if port == 3389 {
+        log("🛑 Port 3389 (RDP) should not be exposed")
+        return false
+    }
+    
+    if port == 23 {
+        log("🛑 Port 23 (Telnet) is insecure")
+        return false
+    }
+    
+    log("✓ Port " + port + " passed security check")
+    return true
+}
+
+fn validate_password_strength(length) {
+    if length < 8 {
+        log("❌ Password too short: " + length + " chars")
+        return 0
+    }
+    
+    if length < 12 {
+        log("⚠️  Password weak: " + length + " chars (recommend 12+)")
+        return 1
+    }
+    
+    log("✅ Password strong: " + length + " chars")
+    return 2
+}
+
+fn scan_threat_level(score) {
+    if score > 80 {
+        log("🚨 CRITICAL THREAT - Score: " + score)
+        log("   Action: Immediate isolation required")
+        return "critical"
+    }
+    
+    if score > 50 {
+        log("⚠️  HIGH RISK - Score: " + score)
+        log("   Action: Enhanced monitoring enabled")
+        return "high"
+    }
+    
+    if score > 20 {
+        log("📊 MEDIUM RISK - Score: " + score)
+        return "medium"
+    }
+    
+    log("✓ LOW RISK - Score: " + score)
+    return "low"
+}
+
+// Security Demo
+log("=== Sentra Security Automation Demo ===")
+log("")
+
+log("Port Security Checks:")
+log("--------------------")
+check_port(22)    // SSH
+check_port(80)    // HTTP
+check_port(443)   // HTTPS
+check_port(3389)  // RDP
+check_port(8080)  // Alt HTTP
+
+log("")
+log("Password Validation:")
+log("-------------------")
+validate_password_strength(6)
+validate_password_strength(10)
+validate_password_strength(16)
+
+log("")
+log("Threat Assessment:")
+log("-----------------")
+scan_threat_level(15)
+scan_threat_level(45)
+scan_threat_level(75)
+scan_threat_level(95)
+
+log("")
+log("=== Security scan complete ===")

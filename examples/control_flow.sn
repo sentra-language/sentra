@@ -1,0 +1,86 @@
+// Control flow examples in Sentra
+
+// If-else statements
+let age = 18
+if age >= 18 {
+    log("You are an adult")
+} else {
+    log("You are a minor")
+}
+
+// Nested if-else
+let score = 85
+if score >= 90 {
+    log("Grade: A")
+} else if score >= 80 {
+    log("Grade: B")
+} else if score >= 70 {
+    log("Grade: C")
+} else {
+    log("Grade: F")
+}
+
+// While loop
+let count = 0
+while count < 5 {
+    log("Count: " + count)
+    count = count + 1
+}
+
+// For loop with initialization, condition, and update
+for (let i = 0; i < 5; i = i + 1) {
+    log("For loop i: " + i)
+}
+
+// For-in loop over array
+let fruits = ["apple", "banana", "orange"]
+for fruit in fruits {
+    log("Fruit: " + fruit)
+}
+
+// For-in loop over map
+let prices = {
+    "apple": 1.50,
+    "banana": 0.75,
+    "orange": 2.00
+}
+
+for item in prices {
+    log(item + " costs $" + prices[item])
+}
+
+// Break and continue
+for (let i = 0; i < 10; i = i + 1) {
+    if i == 3 {
+        continue // Skip 3
+    }
+    if i == 7 {
+        break // Stop at 7
+    }
+    log("Value: " + i)
+}
+
+// Pattern matching (when implemented)
+let day = "Monday"
+match day {
+    "Monday" => log("Start of the work week"),
+    "Friday" => log("TGIF!"),
+    "Saturday" | "Sunday" => log("Weekend!"),
+    _ => log("Regular day")
+}
+
+// Logical operators
+let x = 10
+let y = 20
+
+if x > 5 && y < 30 {
+    log("Both conditions are true")
+}
+
+if x > 15 || y > 15 {
+    log("At least one condition is true")
+}
+
+if !(x == y) {
+    log("x and y are not equal")
+}

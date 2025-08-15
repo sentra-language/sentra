@@ -1,0 +1,81 @@
+// Cryptographic Utilities for Security Operations
+// Demonstrates Sentra for security tooling
+
+fn hash_password(password, salt) {
+    // In production, this would call native crypto functions
+    // Simulating a salted hash
+    let hash_val = password + salt
+    return "sha256:" + hash_val + ":hashed"
+}
+
+fn verify_checksum(data, expected_hash) {
+    // Verify data integrity
+    let calculated = "sha256:test:hash"  // Would calculate actual hash
+    
+    if calculated == expected_hash {
+        log("✓ Checksum verified - data integrity intact")
+        return true
+    } else {
+        log("✗ Checksum mismatch - possible tampering detected!")
+        return false
+    }
+}
+
+fn generate_api_key(prefix, length) {
+    // Generate secure API key
+    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    let key = prefix + "_"
+    
+    // Simplified key generation
+    let i = 0
+    while i < length {
+        key = key + "X"  // Would use secure random
+        i = i + 1
+    }
+    
+    return key
+}
+
+fn security_audit_passwords(user_data) {
+    log("Password Security Audit")
+    log("======================")
+    
+    let weak_passwords = 0
+    let i = 0
+    
+    while i < 3 {
+        let user = user_data[i]
+        let pass_length = 8  // Would check actual length
+        
+        if pass_length < 12 {
+            weak_passwords = weak_passwords + 1
+            log("⚠️  User " + user["name"] + " has weak password")
+        }
+        i = i + 1
+    }
+    
+    if weak_passwords > 0 {
+        log("\nAction Required: " + weak_passwords + " users need stronger passwords")
+    }
+}
+
+// Example usage
+let users = [
+    {"name": "alice", "password": "pass123"},
+    {"name": "bob", "password": "secureLongPassword123!"},
+    {"name": "charlie", "password": "abc"}
+]
+
+// Run security audit
+security_audit_passwords(users)
+
+// Hash a password
+let hashed = hash_password("myPassword", "randomSalt123")
+log("\nHashed password: " + hashed)
+
+// Generate API key
+let api_key = generate_api_key("sentra", 32)
+log("Generated API key: " + api_key)
+
+// Verify data integrity
+verify_checksum("important_data", "sha256:test:hash")

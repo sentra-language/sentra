@@ -1,0 +1,9 @@
+// String concatenation test
+
+let name = "Alice"
+let greeting = "Hello, " + name + "!"
+log(greeting)
+
+let x = 5
+let message = "The value is " + x
+log(message)
