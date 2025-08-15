@@ -148,10 +148,7 @@ func (p *Parser) importStatement() Stmt {
 		// import "path/to/module"
 		pathTok := p.advance()
 		path = pathTok.Lexeme
-		// Remove quotes
-		if len(path) > 2 {
-			path = path[1 : len(path)-1]
-		}
+		// Scanner already removes quotes, so we use it as-is
 	} else {
 		// import module_name
 		nameTok := p.consume(lexer.TokenIdent, "Expect module name")
@@ -348,12 +345,8 @@ func (p *Parser) primary() Expr {
 	// fmt.Printf("DEBUG primary: token=%s lexeme=%s\n", tok.Type, tok.Lexeme)
 	switch tok.Type {
 	case lexer.TokenString:
-		// Remove quotes from string literal
-		str := tok.Lexeme
-		if len(str) >= 2 && str[0] == '"' && str[len(str)-1] == '"' {
-			str = str[1 : len(str)-1]
-		}
-		return &Literal{Value: str}
+		// Scanner already removes quotes and processes escape sequences
+		return &Literal{Value: tok.Lexeme}
 	case lexer.TokenNumber:
 		var val float64
 		fmt.Sscanf(tok.Lexeme, "%f", &val)

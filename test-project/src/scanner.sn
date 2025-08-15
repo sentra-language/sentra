@@ -1,0 +1,51 @@
+// src/scanner.sn - Network scanner module
+
+import "sentra/network"
+import "./config.sn"
+
+// Export function for port scanning
+fn ScanPorts(host, startPort, endPort) {
+    let config = GetDefaultConfig()
+    let timeout = config["timeout"]
+    
+    log("Scanning " + host + " from port " + str(startPort) + " to " + str(endPort))
+    
+    let openPorts = []
+    for port in [startPort, endPort] {
+        if port_scan(host, port, timeout) {
+            push(openPorts, port)
+            log("  [+] Port " + str(port) + " is open")
+        }
+    }
+    
+    return openPorts
+}
+
+// Export function for scanning common ports
+fn ScanCommonPorts(host) {
+    let ports = GetPortRange("common")
+    let openPorts = []
+    
+    for port in ports {
+        if port_scan(host, port, 1000) {
+            push(openPorts, port)
+        }
+    }
+    
+    return openPorts
+}
+
+// Export function for service detection
+fn DetectService(host, port) {
+    let banner = grab_banner(host, port, 2000)
+    if banner != "" {
+        log("Service on port " + str(port) + ": " + banner)
+        return banner
+    }
+    return "Unknown"
+}
+
+// Local helper function (not exported)
+fn formatResult(host, port, service) {
+    return host + ":" + str(port) + " - " + service
+}

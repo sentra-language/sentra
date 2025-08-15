@@ -674,6 +674,37 @@ func (vm *EnhancedVM) performSub(a, b Value) Value {
 }
 
 func (vm *EnhancedVM) performMul(a, b Value) Value {
+	// Check for string multiplication (string * number or number * string)
+	aStr, aIsStr := a.(string)
+	bStr, bIsStr := b.(string)
+	
+	// String * Number
+	if aIsStr {
+		times := int(vm.toNumber(b))
+		if times < 0 {
+			times = 0
+		}
+		result := ""
+		for i := 0; i < times; i++ {
+			result += aStr
+		}
+		return result
+	}
+	
+	// Number * String
+	if bIsStr {
+		times := int(vm.toNumber(a))
+		if times < 0 {
+			times = 0
+		}
+		result := ""
+		for i := 0; i < times; i++ {
+			result += bStr
+		}
+		return result
+	}
+	
+	// Regular numeric multiplication
 	af := vm.toNumber(a)
 	bf := vm.toNumber(b)
 	return af * bf
@@ -1106,6 +1137,30 @@ func (vm *EnhancedVM) registerBuiltins() {
 					}
 				}
 				return false, nil
+			},
+		},
+		"starts_with": {
+			Name:  "starts_with",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("starts_with expects 2 arguments")
+				}
+				text := ToString(args[0])
+				prefix := ToString(args[1])
+				return strings.HasPrefix(text, prefix), nil
+			},
+		},
+		"ends_with": {
+			Name:  "ends_with",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("ends_with expects 2 arguments")
+				}
+				text := ToString(args[0])
+				suffix := ToString(args[1])
+				return strings.HasSuffix(text, suffix), nil
 			},
 		},
 		"match": {

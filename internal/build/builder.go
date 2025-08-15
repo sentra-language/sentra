@@ -10,9 +10,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sentra/internal/compiler"
-	"sentra/internal/lexer"
-	"sentra/internal/parser"
 	"strings"
 	"time"
 )
@@ -70,27 +67,52 @@ func (b *Builder) Build() error {
 		return fmt.Errorf("failed to resolve dependencies: %w", err)
 	}
 
-	// Collect all source files
-	sourceFiles, err := b.collectSourceFiles()
+	// Create import resolver
+	resolver := NewImportResolver(b.projectRoot)
+	
+	// Resolve all imports starting from entry point
+	entryPoint := b.manifest.EntryPoint
+	if entryPoint == "" {
+		entryPoint = "main.sn"
+	}
+	
+	fmt.Printf("Resolving imports from %s...\n", entryPoint)
+	moduleGraph, err := resolver.ResolveProject(entryPoint)
 	if err != nil {
-		return fmt.Errorf("failed to collect source files: %w", err)
+		return fmt.Errorf("failed to resolve imports: %w", err)
 	}
-
-	// Compile all modules
-	compiledModules := make(map[string]*CompiledModule)
-	for _, file := range sourceFiles {
-		module, err := b.compileModule(file)
-		if err != nil {
-			return fmt.Errorf("failed to compile %s: %w", file, err)
-		}
-		compiledModules[file] = module
-	}
-
-	// Link modules
-	bundle, err := b.linkModules(compiledModules)
+	
+	fmt.Printf("Found %d modules\n", len(moduleGraph.Modules))
+	
+	// Link all modules into single bytecode
+	fmt.Println("Linking modules...")
+	bytecode, err := LinkModules(moduleGraph)
 	if err != nil {
 		return fmt.Errorf("failed to link modules: %w", err)
 	}
+	
+	// Create bundle
+	bundle := &Bundle{
+		Version:    "1.0",
+		Timestamp:  time.Now(),
+		EntryPoint: entryPoint,
+		Modules: map[string]*CompiledModule{
+			"main": {
+				Path:     entryPoint,
+				Bytecode: bytecode,
+				Metadata: map[string]interface{}{
+					"linked":      true,
+					"module_count": len(moduleGraph.Modules),
+				},
+			},
+		},
+		Dependencies: b.manifest.Dependencies,
+	}
+	
+	// Calculate checksum
+	checksum := sha256.New()
+	checksum.Write(bytecode)
+	bundle.Checksum = hex.EncodeToString(checksum.Sum(nil))
 
 	// Optimize if requested
 	if b.config.Optimize {
@@ -107,7 +129,7 @@ func (b *Builder) Build() error {
 		return fmt.Errorf("failed to write bundle: %w", err)
 	}
 
-	fmt.Printf("Build complete: %s\n", outputPath)
+	fmt.Printf("Build complete: %s (%d bytes)\n", outputPath, len(bytecode))
 	return nil
 }
 
@@ -217,69 +239,7 @@ func (b *Builder) collectSourceFiles() ([]string, error) {
 	return files, err
 }
 
-// compileModule compiles a single module
-func (b *Builder) compileModule(path string) (*CompiledModule, error) {
-	fullPath := filepath.Join(b.projectRoot, path)
-	
-	// Read source file
-	source, err := os.ReadFile(fullPath)
-	if err != nil {
-		return nil, err
-	}
 
-	// Lex and parse
-	scanner := lexer.NewScanner(string(source))
-	tokens := scanner.ScanTokens()
-	
-	p := parser.NewParser(tokens)
-	stmts := p.Parse()
-	
-	if len(p.Errors) > 0 {
-		return nil, fmt.Errorf("parse errors: %v", p.Errors)
-	}
-
-	// Compile to bytecode
-	c := compiler.NewStmtCompiler()
-	for _, stmt := range stmts {
-		stmt.Accept(c)
-	}
-	c.Chunk.WriteOp(0) // EOF marker
-
-	// Extract metadata
-	deps := extractDependencies(stmts)
-	exports := extractExports(stmts)
-
-	return &CompiledModule{
-		Path:         path,
-		Bytecode:     c.Chunk.Code,
-		Dependencies: deps,
-		Exports:      exports,
-		Metadata: map[string]interface{}{
-			"source_size": len(source),
-			"compiled_at": time.Now(),
-		},
-	}, nil
-}
-
-// linkModules links compiled modules into a bundle
-func (b *Builder) linkModules(modules map[string]*CompiledModule) (*Bundle, error) {
-	bundle := &Bundle{
-		Version:      "1.0",
-		Timestamp:    time.Now(),
-		EntryPoint:   b.manifest.EntryPoint,
-		Modules:      modules,
-		Dependencies: b.manifest.Dependencies,
-	}
-
-	// Calculate checksum
-	checksum := sha256.New()
-	for _, module := range modules {
-		checksum.Write(module.Bytecode)
-	}
-	bundle.Checksum = hex.EncodeToString(checksum.Sum(nil))
-
-	return bundle, nil
-}
 
 // optimizeBundle applies optimizations to the bundle
 func (b *Builder) optimizeBundle(bundle *Bundle) *Bundle {
@@ -384,30 +344,6 @@ func loadManifest(projectRoot string) (*ProjectManifest, error) {
 	return &manifest, nil
 }
 
-// extractDependencies extracts import statements from AST
-func extractDependencies(stmts []parser.Stmt) []string {
-	var deps []string
-	for _, stmt := range stmts {
-		if imp, ok := stmt.(*parser.ImportStmt); ok {
-			deps = append(deps, imp.Path)
-		}
-	}
-	return deps
-}
-
-// extractExports extracts exported functions from AST
-func extractExports(stmts []parser.Stmt) []string {
-	var exports []string
-	for _, stmt := range stmts {
-		if fn, ok := stmt.(*parser.FunctionStmt); ok {
-			// Assume functions starting with uppercase are exported
-			if len(fn.Name) > 0 && fn.Name[0] >= 'A' && fn.Name[0] <= 'Z' {
-				exports = append(exports, fn.Name)
-			}
-		}
-	}
-	return exports
-}
 
 // Watch watches for file changes and rebuilds
 func (b *Builder) Watch() error {

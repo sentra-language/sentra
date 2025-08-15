@@ -1,0 +1,26 @@
+// src/simple_scanner.sn - Simple scanner module
+
+import "./simple_utils.sn"
+
+// Export: Check port
+fn CheckPort(host, port) {
+    log("Checking " + host + ":" + str(port))
+    // Simulated check
+    return true
+}
+
+// Export: Scan range
+fn ScanRange(host, start, end) {
+    log(FormatTitle("Port Scan"))
+    let results = []
+    
+    let port = start
+    while port <= end {
+        if CheckPort(host, port) {
+            push(results, port)
+        }
+        port = port + 1
+    }
+    
+    return results
+}
