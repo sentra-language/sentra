@@ -1,0 +1,65 @@
+// Complete test example with summary
+log("🧪 Running comprehensive test suite...")
+
+// Math tests
+log("\n📊 Math Operations:")
+assert_equal(10 + 5, 15, "Addition: 10 + 5 = 15")
+assert_equal(20 - 8, 12, "Subtraction: 20 - 8 = 12")
+assert_equal(6 * 7, 42, "Multiplication: 6 * 7 = 42")
+assert_equal(100 / 4, 25, "Division: 100 / 4 = 25")
+log("✓ Math operations tests passed")
+
+// String tests
+log("\n📝 String Operations:")
+assert_equal("Hello " + "World", "Hello World", "String concatenation")
+assert_equal("*" * 5, "*****", "String multiplication")
+assert_contains("Hello World", "World", "String contains")
+log("✓ String operations tests passed")
+
+// Array tests
+log("\n📚 Array Operations:")
+let arr = [1, 2, 3]
+push(arr, 4)
+assert_equal(len(arr), 4, "Array length after push")
+assert_equal(arr[0], 1, "Array index access")
+assert_equal(arr[3], 4, "Last element after push")
+log("✓ Array operations tests passed")
+
+// Map tests
+log("\n🗺️ Map Operations:")
+let person = {"name": "Alice", "age": 30, "city": "Boston"}
+assert_equal(person["name"], "Alice", "Map key access")
+assert_equal(person["age"], 30, "Map numeric value")
+assert_equal(person["city"], "Boston", "Map predefined key")
+log("✓ Map operations tests passed")
+
+// Boolean tests
+log("\n🔀 Boolean Logic:")
+assert_true(true, "True is true")
+assert_false(false, "False is false")
+assert_true(10 > 5, "10 > 5")
+assert_true(5 < 10, "5 < 10")
+assert_true(5 == 5, "5 == 5")
+assert_false(5 != 5, "5 != 5")
+log("✓ Boolean logic tests passed")
+
+// Logical operators
+log("\n🔧 Logical Operators:")
+assert_true(true && true, "true && true")
+assert_false(true && false, "true && false")
+assert_true(true || false, "true || false")
+assert_false(false && false, "false && false")
+log("✓ Logical operators tests passed")
+
+// Nil tests
+log("\n❓ Nil Tests:")
+let nothing = null
+assert_nil(nothing, "Variable set to null is nil")
+assert_not_nil(42, "Number is not nil")
+assert_not_nil("test", "String is not nil")
+assert_not_nil([], "Empty array is not nil")
+log("✓ Nil tests passed")
+
+// Display test summary
+log("\n" + "=" * 50)
+test_summary()

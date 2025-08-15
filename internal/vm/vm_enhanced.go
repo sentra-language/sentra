@@ -26,6 +26,7 @@ import (
 	"sentra/internal/threat_intel"
 	"sentra/internal/container"
 	"sentra/internal/cloud"
+	"sentra/internal/modules"
 	"sync"
 	"sync/atomic"
 )
@@ -1082,6 +1083,7 @@ func (vm *EnhancedVM) registerBuiltins() {
 	siemMod := siem.NewSIEMModule()
 	threatMod := threat_intel.NewThreatIntelModule()
 	containerMod := container.NewContainerScanner()
+	apiSecMod := modules.NewAPISecurityModule()
 	rand.Seed(time.Now().UnixNano())
 	
 	// Register basic built-in functions
@@ -3415,6 +3417,11 @@ func (vm *EnhancedVM) registerBuiltins() {
 		builtins[name] = fn
 	}
 	
+	// Add API security functions to main builtins
+	for name, fn := range apiSecMod.GetFunctions() {
+		builtins[name] = fn
+	}
+	
 	// Add all built-in functions to globals
 	for name, fn := range builtins {
 		idx := len(vm.globalMap)
@@ -3483,6 +3490,18 @@ func (vm *EnhancedVM) GetGlobalVariable(name string) (Value, bool) {
 		return vm.globals[idx], true
 	}
 	return nil, false
+}
+
+// AddBuiltinFunction adds a builtin function to the VM
+func (vm *EnhancedVM) AddBuiltinFunction(name string, fn *NativeFunction) {
+	idx := len(vm.globalMap)
+	vm.globalMap[name] = idx
+	if idx >= len(vm.globals) {
+		newGlobals := make([]Value, idx+1)
+		copy(newGlobals, vm.globals)
+		vm.globals = newGlobals
+	}
+	vm.globals[idx] = fn
 }
 
 // Runtime error handling with stack traces

@@ -1,0 +1,53 @@
+// Math operations test file
+// Tests basic mathematical operations in Sentra
+
+log("🧪 Running math operations tests...")
+
+// Test addition
+let sum = 10 + 20
+assert_equal(30, sum, "Addition test: 10 + 20 should equal 30")
+log("✓ Addition test passed")
+
+// Test subtraction
+let diff = 100 - 45
+assert_equal(55, diff, "Subtraction test: 100 - 45 should equal 55")
+log("✓ Subtraction test passed")
+
+// Test multiplication
+let product = 7 * 8
+assert_equal(56, product, "Multiplication test: 7 * 8 should equal 56")
+log("✓ Multiplication test passed")
+
+// Test division
+let quotient = 100 / 4
+assert_equal(25, quotient, "Division test: 100 / 4 should equal 25")
+log("✓ Division test passed")
+
+// Test string multiplication
+let repeated = "=" * 5
+assert_equal("=====", repeated, "String multiplication: '=' * 5 should equal '====='")
+log("✓ String multiplication test passed")
+
+// Test array operations
+let arr = [1, 2, 3]
+push(arr, 4)
+assert_equal(4, len(arr), "Array push test: length should be 4")
+log("✓ Array push test passed")
+
+// Test comparison operators
+assert_true(10 > 5, "Greater than: 10 > 5 should be true")
+assert_true(5 < 10, "Less than: 5 < 10 should be true")
+assert_true(10 >= 10, "Greater or equal: 10 >= 10 should be true")
+assert_true(5 <= 5, "Less or equal: 5 <= 5 should be true")
+assert_true(10 == 10, "Equality: 10 == 10 should be true")
+assert_false(10 != 10, "Inequality: 10 != 10 should be false")
+log("✓ All comparison tests passed")
+
+// Test logical operators
+assert_true(true && true, "Logical AND: true && true should be true")
+assert_false(true && false, "Logical AND: true && false should be false")
+assert_true(true || false, "Logical OR: true || false should be true")
+assert_false(false || false, "Logical OR: false || false should be false")
+log("✓ All logical operator tests passed")
+
+log("\n✅ All math tests completed successfully!")

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"sentra/cmd/sentra/commands"
 	"sentra/internal/compiler"
@@ -14,6 +15,7 @@ import (
 	"sentra/internal/parser"
 	"sentra/internal/packages"
 	"sentra/internal/repl"
+	"sentra/internal/testing"
 	"sentra/internal/vm"
 )
 
@@ -61,6 +63,11 @@ func main() {
 
 	if args[0] == "debug" && len(args) > 1 {
 		runWithDebugger(args[1:])
+		return
+	}
+
+	if args[0] == "test" {
+		runTests(args[1:])
 		return
 	}
 
@@ -215,12 +222,110 @@ func runWithDebugger(args []string) {
 	fmt.Println("\n🎯 Program execution completed")
 }
 
+func runTests(args []string) {
+	var testFiles []string
+	
+	if len(args) == 0 {
+		// Discover test files in current directory
+		matches, err := testing.DiscoverTests(".", "*_test.sn")
+		if err != nil {
+			log.Fatalf("Error discovering tests: %v", err)
+		}
+		testFiles = matches
+		
+		if len(testFiles) == 0 {
+			fmt.Println("No test files found (looking for *_test.sn)")
+			return
+		}
+	} else {
+		// Run specific test files
+		for _, pattern := range args {
+			matches, err := filepath.Glob(pattern)
+			if err != nil {
+				log.Fatalf("Error finding test files: %v", err)
+			}
+			testFiles = append(testFiles, matches...)
+		}
+	}
+	
+	fmt.Printf("🧪 Running %d test file(s)...\n", len(testFiles))
+	
+	// Create test runner (not used in simplified version)
+	// config := &testing.TestConfig{
+	// 	Verbose:      true,
+	// 	OutputFormat: "text",
+	// 	FailFast:     false,
+	// }
+	// runner := testing.NewTestRunner(config)
+	
+	// Process each test file
+	for _, testFile := range testFiles {
+		fmt.Printf("\n📄 Loading test file: %s\n", testFile)
+		
+		source, err := os.ReadFile(testFile)
+		if err != nil {
+			log.Printf("Error reading test file %s: %v", testFile, err)
+			continue
+		}
+		
+		// Parse and compile the test file
+		scanner := lexer.NewScannerWithFile(string(source), testFile)
+		tokens := scanner.ScanTokens()
+		p := parser.NewParserWithSource(tokens, string(source), testFile)
+		
+		var stmts []interface{}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if err, ok := r.(*errors.SentraError); ok {
+						fmt.Fprintf(os.Stderr, "Parse error in %s:\n%s\n", testFile, err.Error())
+					} else {
+						fmt.Fprintf(os.Stderr, "Parse error in %s: %v\n", testFile, r)
+					}
+				}
+			}()
+			parsed := p.Parse()
+			for _, s := range parsed {
+				stmts = append(stmts, s)
+			}
+		}()
+		
+		if len(stmts) == 0 {
+			continue
+		}
+		
+		// Compile with debug information
+		c := compiler.NewStmtCompilerWithDebug(testFile)
+		chunk := c.Compile(stmts)
+		
+		// Create VM with testing module
+		enhancedVM := vm.NewEnhancedVM(chunk)
+		
+		// Add testing functions to VM
+		for name, fn := range testing.GetSimpleTestFunctions() {
+			enhancedVM.AddBuiltinFunction(name, fn)
+		}
+		
+		// Run the test file
+		_, err = enhancedVM.Run()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error running tests in %s: %v\n", testFile, err)
+		}
+	}
+	
+	// Run all collected tests
+	// Note: In a full implementation, tests would be collected during VM execution
+	// and then run here. For now, we'll just show the summary.
+	fmt.Println("\n✅ Test execution completed")
+}
+
 func showUsage() {
 	fmt.Println("Sentra - Security Automation Language")
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  sentra run <file.sn>       Run a Sentra script")
 	fmt.Println("  sentra debug <file.sn>     Debug a Sentra script with breakpoints")
+	fmt.Println("  sentra test [files...]     Run test files (*_test.sn)")
 	fmt.Println("  sentra repl                Start interactive REPL")
 	fmt.Println()
 	fmt.Println("Project Management:")

@@ -1,0 +1,208 @@
+// API Security Testing Demo
+// Demonstrates comprehensive API vulnerability scanning
+
+log("🔒 API Security Testing Suite")
+log("=" * 50)
+
+// Test a sample API endpoint
+let target_api = "https://api.example.com"
+
+// Configure scan options
+let scan_options = {
+    "scan_auth": true,
+    "scan_injection": true,
+    "scan_rate_limit": true,
+    "scan_cors": true,
+    "scan_headers": true
+}
+
+log("\n📡 Scanning API: " + target_api)
+
+// Perform comprehensive API scan
+let scan_result = api_scan(target_api, scan_options)
+
+log("\n📊 Scan Results:")
+log("Vulnerabilities found: " + scan_result["vulnerability_count"])
+
+if len(scan_result["vulnerabilities"]) > 0 {
+    log("\n⚠️ Security Issues Detected:")
+    for vuln in scan_result["vulnerabilities"] {
+        log("  - Type: " + vuln["type"])
+        log("    Severity: " + vuln["severity"])
+    }
+}
+
+// Test authentication vulnerabilities
+log("\n🔐 Testing Authentication...")
+let auth_config = {
+    "test_weak_tokens": true,
+    "test_missing_auth": true
+}
+
+let auth_result = test_authentication(target_api + "/api/users", auth_config)
+if auth_result["vulnerable"] {
+    log("❌ Authentication vulnerabilities found!")
+    for issue in auth_result["issues"] {
+        log("  - " + issue["description"])
+    }
+} else {
+    log("✅ No authentication issues detected")
+}
+
+// Test for SQL injection
+log("\n💉 Testing for Injection Vulnerabilities...")
+let injection_params = {
+    "id": "1",
+    "name": "test",
+    "query": "search"
+}
+
+let sql_result = test_injection(target_api + "/api/search", "sql", injection_params)
+if sql_result["vulnerable"] {
+    log("❌ SQL injection vulnerability detected!")
+    for vuln in sql_result["vulnerabilities"] {
+        log("  - Parameter: " + vuln["parameter"])
+        log("    Payload: " + vuln["payload"])
+    }
+} else {
+    log("✅ No SQL injection vulnerabilities found")
+}
+
+// Test rate limiting
+log("\n⏱️ Testing Rate Limiting...")
+let rate_result = test_rate_limiting(target_api + "/api/data", 100, 10)
+if !rate_result["has_rate_limit"] {
+    log("⚠️ No rate limiting detected!")
+    log("  Requests per second: " + rate_result["requests_per_second"])
+} else {
+    log("✅ Rate limiting is active")
+}
+
+// Test CORS configuration
+log("\n🌐 Testing CORS Configuration...")
+let cors_result = test_cors(target_api, "http://evil.com")
+if cors_result["vulnerable"] {
+    log("❌ CORS misconfiguration detected!")
+    for issue in cors_result["issues"] {
+        log("  - " + issue)
+    }
+} else {
+    log("✅ CORS properly configured")
+}
+
+// Test security headers
+log("\n🛡️ Testing Security Headers...")
+let headers_result = test_headers(target_api)
+log("Security header score: " + headers_result["score"] + "%")
+
+if len(headers_result["missing"]) > 0 {
+    log("⚠️ Missing security headers:")
+    for header in headers_result["missing"] {
+        log("  - " + header)
+    }
+}
+
+// API Fuzzing
+log("\n🔨 Performing API Fuzzing...")
+let fuzz_config = {
+    "timeout": 5000,
+    "max_errors": 10
+}
+
+let fuzz_result = fuzz_api(target_api + "/api/process", fuzz_config)
+log("Fuzzing errors found: " + fuzz_result["error_count"])
+
+if fuzz_result["error_count"] > 0 {
+    log("⚠️ API stability issues detected during fuzzing")
+}
+
+// Test authorization
+log("\n👤 Testing Authorization...")
+let auth_config = {
+    "user1_token": "user1_jwt_token_here",
+    "user2_token": "user2_jwt_token_here",
+    "admin_token": "admin_jwt_token_here"
+}
+
+let authz_result = test_authorization(target_api + "/api/user/profile", auth_config)
+if authz_result["vulnerable"] {
+    log("❌ Authorization vulnerabilities found!")
+    for issue in authz_result["issues"] {
+        log("  - Type: " + issue["type"])
+        log("    " + issue["description"])
+    }
+} else {
+    log("✅ Authorization properly implemented")
+}
+
+// Test JWT vulnerabilities
+log("\n🔑 Testing JWT Security...")
+let sample_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+let jwt_result = test_jwt(target_api + "/api/protected", sample_jwt)
+if jwt_result["vulnerable"] {
+    log("❌ JWT vulnerabilities detected!")
+    for vuln in jwt_result["vulnerabilities"] {
+        log("  - " + vuln["description"])
+    }
+} else {
+    log("✅ JWT implementation appears secure")
+}
+
+// Scan OpenAPI specification
+log("\n📄 Scanning OpenAPI Specification...")
+let openapi_result = scan_openapi(
+    target_api + "/api-docs/swagger.json",
+    target_api
+)
+
+log("Discovered endpoints: " + openapi_result["endpoint_count"])
+if len(openapi_result["vulnerabilities"]) > 0 {
+    log("⚠️ Issues found in API endpoints:")
+    for vuln in openapi_result["vulnerabilities"] {
+        log("  - " + vuln["endpoint"] + ": " + vuln["issue"])
+    }
+}
+
+// Generate security report
+log("\n" + "=" * 50)
+log("📈 API Security Assessment Complete")
+log("=" * 50)
+
+// Calculate overall security score
+let total_tests = 10
+let passed_tests = 0
+
+if !auth_result["vulnerable"] { passed_tests = passed_tests + 1 }
+if !sql_result["vulnerable"] { passed_tests = passed_tests + 1 }
+if rate_result["has_rate_limit"] { passed_tests = passed_tests + 1 }
+if !cors_result["vulnerable"] { passed_tests = passed_tests + 1 }
+if headers_result["score"] > 80 { passed_tests = passed_tests + 1 }
+if fuzz_result["error_count"] == 0 { passed_tests = passed_tests + 1 }
+if !authz_result["vulnerable"] { passed_tests = passed_tests + 1 }
+if !jwt_result["vulnerable"] { passed_tests = passed_tests + 1 }
+
+let security_score = (passed_tests / total_tests) * 100
+
+log("\n🎯 Overall Security Score: " + security_score + "%")
+
+if security_score >= 80 {
+    log("✅ API security is GOOD")
+} else if security_score >= 60 {
+    log("⚠️ API security needs IMPROVEMENT")
+} else {
+    log("❌ API security is POOR - immediate action required")
+}
+
+// Recommendations
+log("\n💡 Security Recommendations:")
+log("1. Implement strong authentication on all endpoints")
+log("2. Use parameterized queries to prevent injection")
+log("3. Implement rate limiting to prevent abuse")
+log("4. Configure CORS properly for your domain")
+log("5. Add all recommended security headers")
+log("6. Implement proper authorization checks")
+log("7. Use strong JWT secrets and avoid 'none' algorithm")
+log("8. Regularly update and patch API dependencies")
+log("9. Implement input validation and sanitization")
+log("10. Use HTTPS for all API communications")

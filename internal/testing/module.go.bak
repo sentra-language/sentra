@@ -1,0 +1,367 @@
+// internal/testing/module.go
+package testing
+
+import (
+	"fmt"
+	"strings"
+	"sentra/internal/vm"
+)
+
+// TestModule provides testing capabilities to Sentra scripts
+type TestModule struct {
+	runner   *TestRunner
+	suites   map[string]*TestSuite
+	current  *TestSuite
+}
+
+// NewTestModule creates a new test module
+func NewTestModule() *TestModule {
+	config := &TestConfig{
+		Verbose:      true,
+		OutputFormat: "text",
+	}
+	
+	return &TestModule{
+		runner:  NewTestRunner(config),
+		suites:  make(map[string]*TestSuite),
+		current: nil,
+	}
+}
+
+// GetBuiltinFunctions returns test module functions for the VM
+func (m *TestModule) GetBuiltinFunctions() map[string]*vm.NativeFunction {
+	return map[string]*vm.NativeFunction{
+		"test_suite": {
+			Name:  "test_suite",
+			Arity: 2,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				name := vm.ToString(args[0])
+				callback := args[1]
+				
+				suite := &TestSuite{
+					Name:    name,
+					Tests:   make([]TestCase, 0),
+					Results: make([]TestResult, 0),
+				}
+				
+				m.suites[name] = suite
+				m.current = suite
+				m.runner.AddSuite(suite)
+				
+				// Execute the suite definition callback
+				if fn, ok := callback.(*vm.Function); ok {
+					_, err := fn.Call([]vm.Value{})
+					if err != nil {
+						return nil, err
+					}
+				}
+				
+				return nil, nil
+			},
+		},
+		
+		"test": {
+			Name:  "test",
+			Arity: 2,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				if m.current == nil {
+					return nil, fmt.Errorf("test must be called within a test_suite")
+				}
+				
+				name := vm.ToString(args[0])
+				callback := args[1]
+				
+				test := TestCase{
+					Name: name,
+					Function: func(ctx *TestContext) error {
+						// Execute the test callback
+						if fn, ok := callback.(*vm.Function); ok {
+							result, err := fn.Call([]vm.Value{})
+							if err != nil {
+								return err
+							}
+							// Check if test returned false (failed)
+							if b, ok := result.(bool); ok && !b {
+								return fmt.Errorf("test returned false")
+							}
+						}
+						return nil
+					},
+				}
+				
+				m.current.Tests = append(m.current.Tests, test)
+				return nil, nil
+			},
+		},
+		
+		"assert": {
+			Name:  "assert",
+			Arity: 2,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				condition := vm.ToBool(args[0])
+				message := vm.ToString(args[1])
+				
+				if !condition {
+					return false, fmt.Errorf("assertion failed: %s", message)
+				}
+				return true, nil
+			},
+		},
+		
+		"assert_equal": {
+			Name:  "assert_equal",
+			Arity: 3,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				expected := args[0]
+				actual := args[1]
+				message := vm.ToString(args[2])
+				
+				if !vm.ValuesEqual(expected, actual) {
+					return false, fmt.Errorf("assert_equal failed: %s\nExpected: %v\nActual: %v", 
+						message, expected, actual)
+				}
+				return true, nil
+			},
+		},
+		
+		"assert_not_equal": {
+			Name:  "assert_not_equal",
+			Arity: 3,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				expected := args[0]
+				actual := args[1]
+				message := vm.ToString(args[2])
+				
+				if vm.ValuesEqual(expected, actual) {
+					return false, fmt.Errorf("assert_not_equal failed: %s\nValues are equal: %v", 
+						message, expected)
+				}
+				return true, nil
+			},
+		},
+		
+		"assert_true": {
+			Name:  "assert_true",
+			Arity: 2,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				condition := vm.ToBool(args[0])
+				message := vm.ToString(args[1])
+				
+				if !condition {
+					return false, fmt.Errorf("assert_true failed: %s", message)
+				}
+				return true, nil
+			},
+		},
+		
+		"assert_false": {
+			Name:  "assert_false",
+			Arity: 2,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				condition := vm.ToBool(args[0])
+				message := vm.ToString(args[1])
+				
+				if condition {
+					return false, fmt.Errorf("assert_false failed: %s", message)
+				}
+				return true, nil
+			},
+		},
+		
+		"assert_nil": {
+			Name:  "assert_nil",
+			Arity: 2,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				value := args[0]
+				message := vm.ToString(args[1])
+				
+				if value != nil {
+					return false, fmt.Errorf("assert_nil failed: %s\nValue is not nil: %v", 
+						message, value)
+				}
+				return true, nil
+			},
+		},
+		
+		"assert_not_nil": {
+			Name:  "assert_not_nil",
+			Arity: 2,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				value := args[0]
+				message := vm.ToString(args[1])
+				
+				if value == nil {
+					return false, fmt.Errorf("assert_not_nil failed: %s\nValue is nil", message)
+				}
+				return true, nil
+			},
+		},
+		
+		"assert_contains": {
+			Name:  "assert_contains",
+			Arity: 3,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				container := args[0]
+				item := args[1]
+				message := vm.ToString(args[2])
+				
+				// Check if container is array
+				if arr, ok := container.(*vm.Array); ok {
+					for _, elem := range arr.Elements {
+						if vm.ValuesEqual(elem, item) {
+							return true, nil
+						}
+					}
+					return false, fmt.Errorf("assert_contains failed: %s\nArray does not contain: %v", 
+						message, item)
+				}
+				
+				// Check if container is string
+				if str, ok := container.(string); ok {
+					itemStr := vm.ToString(item)
+					if !strings.Contains(str, itemStr) {
+						return false, fmt.Errorf("assert_contains failed: %s\nString '%s' does not contain: '%s'", 
+							message, str, itemStr)
+					}
+					return true, nil
+				}
+				
+				return false, fmt.Errorf("assert_contains: unsupported container type")
+			},
+		},
+		
+		"assert_throws": {
+			Name:  "assert_throws",
+			Arity: 2,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				callback := args[0]
+				message := vm.ToString(args[1])
+				
+				// Execute the callback and expect an error
+				if fn, ok := callback.(*vm.Function); ok {
+					_, err := fn.Call([]vm.Value{})
+					if err == nil {
+						return false, fmt.Errorf("assert_throws failed: %s\nExpected error but none was thrown", 
+							message)
+					}
+					return true, nil
+				}
+				
+				return false, fmt.Errorf("assert_throws: first argument must be a function")
+			},
+		},
+		
+		"skip_test": {
+			Name:  "skip_test",
+			Arity: 1,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				reason := vm.ToString(args[0])
+				// In a real implementation, this would mark the current test as skipped
+				fmt.Printf("Test skipped: %s\n", reason)
+				return nil, nil
+			},
+		},
+		
+		"run_tests": {
+			Name:  "run_tests",
+			Arity: 0,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				stats := m.runner.Run()
+				
+				// Return test results as a map
+				result := vm.NewMap()
+				result.Items["total"] = float64(stats.TotalTests)
+				result.Items["passed"] = float64(stats.PassedTests)
+				result.Items["failed"] = float64(stats.FailedTests)
+				result.Items["skipped"] = float64(stats.SkippedTests)
+				result.Items["success"] = stats.FailedTests == 0
+				
+				return result, nil
+			},
+		},
+		
+		"before_all": {
+			Name:  "before_all",
+			Arity: 1,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				if m.current == nil {
+					return nil, fmt.Errorf("before_all must be called within a test_suite")
+				}
+				
+				callback := args[0]
+				m.current.BeforeAll = func() error {
+					if fn, ok := callback.(*vm.Function); ok {
+						_, err := fn.Call([]vm.Value{})
+						return err
+					}
+					return nil
+				}
+				
+				return nil, nil
+			},
+		},
+		
+		"after_all": {
+			Name:  "after_all",
+			Arity: 1,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				if m.current == nil {
+					return nil, fmt.Errorf("after_all must be called within a test_suite")
+				}
+				
+				callback := args[0]
+				m.current.AfterAll = func() error {
+					if fn, ok := callback.(*vm.Function); ok {
+						_, err := fn.Call([]vm.Value{})
+						return err
+					}
+					return nil
+				}
+				
+				return nil, nil
+			},
+		},
+		
+		"before_each": {
+			Name:  "before_each",
+			Arity: 1,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				if m.current == nil {
+					return nil, fmt.Errorf("before_each must be called within a test_suite")
+				}
+				
+				callback := args[0]
+				m.current.BeforeEach = func() error {
+					if fn, ok := callback.(*vm.Function); ok {
+						_, err := fn.Call([]vm.Value{})
+						return err
+					}
+					return nil
+				}
+				
+				return nil, nil
+			},
+		},
+		
+		"after_each": {
+			Name:  "after_each",
+			Arity: 1,
+			Function: func(args []vm.Value) (vm.Value, error) {
+				if m.current == nil {
+					return nil, fmt.Errorf("after_each must be called within a test_suite")
+				}
+				
+				callback := args[0]
+				m.current.AfterEach = func() error {
+					if fn, ok := callback.(*vm.Function); ok {
+						_, err := fn.Call([]vm.Value{})
+						return err
+					}
+					return nil
+				}
+				
+				return nil, nil
+			},
+		},
+	}
+}

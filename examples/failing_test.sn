@@ -1,0 +1,15 @@
+// Example of failing tests to show error reporting
+
+log("🧪 Running tests with some failures...")
+
+// This test should pass
+assert_equal(5, 5, "Simple equality test")
+log("✓ First test passed")
+
+// This test will fail
+assert_equal(10, 20, "This test should fail: 10 != 20")
+log("This line won't be reached due to error")
+
+// More tests that won't run due to earlier failure
+assert_true(false, "This would also fail")
+assert_contains([1, 2, 3], 5, "Array doesn't contain 5")

@@ -184,6 +184,70 @@ func ToBool(val Value) bool {
 	return IsTruthy(val)
 }
 
+// ValuesEqual checks if two values are equal
+func ValuesEqual(a, b Value) bool {
+	// Handle nil cases
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	
+	// Type check and comparison
+	switch av := a.(type) {
+	case bool:
+		if bv, ok := b.(bool); ok {
+			return av == bv
+		}
+	case int:
+		if bv, ok := b.(int); ok {
+			return av == bv
+		}
+		if bv, ok := b.(float64); ok {
+			return float64(av) == bv
+		}
+	case float64:
+		if bv, ok := b.(float64); ok {
+			return av == bv
+		}
+		if bv, ok := b.(int); ok {
+			return av == float64(bv)
+		}
+	case string:
+		if bv, ok := b.(string); ok {
+			return av == bv
+		}
+	case *Array:
+		if bv, ok := b.(*Array); ok {
+			if len(av.Elements) != len(bv.Elements) {
+				return false
+			}
+			for i := range av.Elements {
+				if !ValuesEqual(av.Elements[i], bv.Elements[i]) {
+					return false
+				}
+			}
+			return true
+		}
+	case *Map:
+		if bv, ok := b.(*Map); ok {
+			if len(av.Items) != len(bv.Items) {
+				return false
+			}
+			for k, v := range av.Items {
+				if bVal, exists := bv.Items[k]; !exists || !ValuesEqual(v, bVal) {
+					return false
+				}
+			}
+			return true
+		}
+	}
+	
+	// Default comparison
+	return a == b
+}
+
 // ToString converts a value to a string representation
 func ToString(val Value) string {
 	switch v := val.(type) {
