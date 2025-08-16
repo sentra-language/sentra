@@ -35,6 +35,17 @@ func (a *AssignmentStmt) Accept(visitor StmtVisitor) interface{} {
 	return visitor.VisitAssignmentStmt(a)
 }
 
+// IndexAssignmentStmt represents an index assignment: array[index] = expr
+type IndexAssignmentStmt struct {
+	Object Expr
+	Index  Expr
+	Value  Expr
+}
+
+func (i *IndexAssignmentStmt) Accept(visitor StmtVisitor) interface{} {
+	return visitor.VisitIndexAssignmentStmt(i)
+}
+
 // ExpressionStmt wraps a raw expression as a statement.
 type ExpressionStmt struct {
 	Expr Expr
@@ -186,6 +197,7 @@ type StmtVisitor interface {
 	VisitPrintStmt(stmt *PrintStmt) interface{}
 	VisitLetStmt(stmt *LetStmt) interface{}
 	VisitAssignmentStmt(stmt *AssignmentStmt) interface{}
+	VisitIndexAssignmentStmt(stmt *IndexAssignmentStmt) interface{}
 	VisitExpressionStmt(stmt *ExpressionStmt) interface{}
 	VisitFunctionStmt(stmt *FunctionStmt) interface{}
 	VisitReturnStmt(stmt *ReturnStmt) interface{}

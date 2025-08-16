@@ -1,0 +1,14 @@
+fn test() {
+    let i = 0
+    while i < 2 {
+        log("i=" + i)
+        if i > 0 {
+            let idx1 = i
+            let idx2 = i + 1
+            log("  idx1=" + idx1 + ", idx2=" + idx2)
+        }
+        i = i + 1
+    }
+}
+
+test()

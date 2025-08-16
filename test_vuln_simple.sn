@@ -1,0 +1,25 @@
+// Simple test for vulnerability scanner
+let ports = [22, 80]
+log("Ports: " + ports)
+log("Port 0: " + ports[0])
+log("Port 1: " + ports[1])
+
+// Try the format_ports function
+fn format_ports(ports) {
+    let formatted = ""
+    let i = 0
+    let max = 3
+    if len(ports) < max {
+        max = len(ports)
+    }
+    while i < max {
+        formatted = formatted + ports[i]
+        if i < max - 1 {
+            formatted = formatted + ", "
+        }
+        i = i + 1
+    }
+    return formatted
+}
+
+log("Formatted: " + format_ports(ports))

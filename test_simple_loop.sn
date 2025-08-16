@@ -1,0 +1,6 @@
+log("Testing simpler loop")
+let arr = [10, 20, 30]
+for x in arr {
+    log("x = " + x)
+}
+log("Loop done")

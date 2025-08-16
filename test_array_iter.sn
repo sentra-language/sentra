@@ -1,0 +1,8 @@
+log("Test 1: Simple array iteration")
+let nums = [1, 2, 3]
+let count = 0
+for n in nums {
+    count = count + 1
+    log("Item " + count + ": " + n)
+}
+log("Total items: " + count)

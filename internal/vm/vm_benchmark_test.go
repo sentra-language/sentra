@@ -9,10 +9,21 @@ import (
 )
 
 func compileSource(source string) *bytecode.Chunk {
-	tokens := lexer.NewScanner(source).ScanTokens()
-	stmts := parser.NewParser(tokens).Parse()
-	comp := compiler.NewStmtCompiler()
-	return comp.Compile(stmts)
+	// Use the same compilation process as main.go
+	scanner := lexer.NewScannerWithFile(source, "benchmark_test")
+	tokens := scanner.ScanTokens()
+	
+	p := parser.NewParserWithSource(tokens, source, "benchmark_test")
+	parsed := p.Parse()
+	
+	// Convert to []interface{} as main.go does
+	var stmts []interface{}
+	for _, s := range parsed {
+		stmts = append(stmts, s)
+	}
+	
+	compiler := compiler.NewStmtCompilerWithDebug("benchmark_test")
+	return compiler.Compile(stmts)
 }
 
 func BenchmarkVMArithmetic(b *testing.B) {

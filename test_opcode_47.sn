@@ -1,0 +1,5 @@
+// Simple test to reproduce opcode 47 error
+log("Starting opcode 47 test")
+let test_map = {"key1": "value1"}
+log("Map created")
+log("Done")

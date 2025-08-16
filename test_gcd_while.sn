@@ -1,0 +1,20 @@
+// Test while loop GCD
+fn gcd(a, b) {
+    log("Starting GCD with a=" + a + ", b=" + b)
+    let count = 0
+    while b != 0 {
+        log("  Loop iteration " + count + ": a=" + a + ", b=" + b)
+        let temp = b
+        b = a % b
+        a = temp
+        count = count + 1
+        if count > 10 {
+            log("  Breaking to prevent infinite loop")
+            break
+        }
+    }
+    log("GCD result: " + a)
+    return a
+}
+
+log("GCD(48, 18): " + gcd(48, 18))

@@ -1,0 +1,22 @@
+let arr = [64, 34, 25]
+log("Initial: " + arr)
+
+// First swap: index 0 and 1
+log("Swapping index 0 and 1")
+let val0 = arr[0]
+let val1 = arr[1]
+log("  Before: arr[0]=" + val0 + ", arr[1]=" + val1)
+arr[0] = val1
+arr[1] = val0
+log("  After: " + arr)
+log("  Now: arr[0]=" + arr[0] + ", arr[1]=" + arr[1] + ", arr[2]=" + arr[2])
+
+// Second swap: index 1 and 2
+log("Swapping index 1 and 2")
+val1 = arr[1]
+let val2 = arr[2]
+log("  Before: arr[1]=" + val1 + ", arr[2]=" + val2)
+arr[1] = val2
+arr[2] = val1
+log("  After: " + arr)
+log("  Now: arr[0]=" + arr[0] + ", arr[1]=" + arr[1] + ", arr[2]=" + arr[2])

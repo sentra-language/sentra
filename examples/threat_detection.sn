@@ -39,7 +39,7 @@ log("---------------------")
 let text = "Error connecting to database at 192.168.1.100:3306"
 let ip_pattern = "\\d+\\.\\d+\\.\\d+\\.\\d+"
 
-if match(text, ip_pattern) {
+if regex_match(text, ip_pattern) {
     log("IP address found in text")
 }
 

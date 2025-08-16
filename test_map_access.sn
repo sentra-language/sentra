@@ -1,0 +1,7 @@
+log("Testing map access pattern")
+let test_map = {"id": "test123", "title": "test title", "status": "open"}
+log("ID: " + test_map["id"])
+log("Title: " + test_map["title"])
+log("Status: " + test_map["status"])
+log("Length: " + len(test_map))
+log("Done")

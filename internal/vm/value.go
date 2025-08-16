@@ -44,6 +44,12 @@ type Map struct {
 	mu    sync.RWMutex // Thread-safe access
 }
 
+// BoundMethod represents a method bound to an object
+type BoundMethod struct {
+	Object Value
+	Method string
+}
+
 // String represents an immutable string
 type String struct {
 	Value  string

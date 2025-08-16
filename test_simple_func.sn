@@ -1,0 +1,7 @@
+fn test() {
+    log("In function")
+    let x = 42
+    log("x=" + x)
+}
+
+test()

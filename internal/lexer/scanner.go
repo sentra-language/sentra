@@ -23,6 +23,12 @@ const (
 	TokenImport  TokenType = "IMPORT"
 	TokenChannel TokenType = "CHANNEL"
 	TokenLog     TokenType = "LOG"
+	TokenTry     TokenType = "TRY"
+	TokenCatch    TokenType = "CATCH"
+	TokenFinally  TokenType = "FINALLY"
+	TokenThrow    TokenType = "THROW"
+	TokenBreak    TokenType = "BREAK"
+	TokenContinue TokenType = "CONTINUE"
 
 	// Literals & Types
 	TokenTrue     TokenType = "TRUE"
@@ -67,6 +73,8 @@ const (
 	TokenSemicolon   TokenType = ";"
 	TokenAs          TokenType = "AS"
 	TokenIn          TokenType = "IN"
+	TokenPipe        TokenType = "|"
+	TokenUnderscore  TokenType = "_"
 	TokenEOF         TokenType = "EOF"
 )
 
@@ -163,11 +171,18 @@ func (s *Scanner) scanToken() {
 		} else {
 			s.addToken(TokenSlash)
 		}
+	case '#':
+		// Skip to end of line (ignore # comments)
+		for s.peek() != '\n' && !s.isAtEnd() {
+			s.advance()
+		}
 	case '%':
 		s.addToken(TokenPercent)
 	case '=':
 		if s.match('=') {
 			s.addToken(TokenDoubleEqual)
+		} else if s.match('>') {
+			s.addToken(TokenArrow)
 		} else {
 			s.addToken(TokenEqual)
 		}
@@ -210,6 +225,8 @@ func (s *Scanner) scanToken() {
 	case '|':
 		if s.match('|') {
 			s.addToken(TokenOr)
+		} else {
+			s.addToken(TokenPipe)
 		}
 	case '\n':
 		// Line and column already handled in advance()
@@ -237,6 +254,11 @@ func (s *Scanner) identifier() {
 		s.advance()
 	}
 	text := s.source[s.start:s.current]
+	// Handle underscore as a special wildcard token in match expressions
+	if text == "_" {
+		s.addToken(TokenUnderscore)
+		return
+	}
 	switch text {
 	case "fn":
 		s.addToken(TokenFn)
@@ -256,6 +278,8 @@ func (s *Scanner) identifier() {
 		s.addToken(TokenWhile)
 	case "for":
 		s.addToken(TokenFor)
+	case "match":
+		s.addToken(TokenMatch)
 	case "spawn":
 		s.addToken(TokenSpawn)
 	case "import":
@@ -270,18 +294,32 @@ func (s *Scanner) identifier() {
 		s.addToken(TokenFalse)
 	case "null":
 		s.addToken(TokenNull)
+	case "nil":
+		s.addToken(TokenNull)  // nil is an alias for null
 	case "int":
 		s.addToken(TokenInt)
 	case "float":
 		s.addToken(TokenFloat)
 	case "bool":
 		s.addToken(TokenBool)
-	case "string":
-		s.addToken(TokenStringT)
+	// case "string":
+	//	s.addToken(TokenStringT)
 	case "as":
 		s.addToken(TokenAs)
 	case "in":
 		s.addToken(TokenIn)
+	case "try":
+		s.addToken(TokenTry)
+	case "catch":
+		s.addToken(TokenCatch)
+	case "finally":
+		s.addToken(TokenFinally)
+	case "throw":
+		s.addToken(TokenThrow)
+	case "break":
+		s.addToken(TokenBreak)
+	case "continue":
+		s.addToken(TokenContinue)
 	default:
 		s.addToken(TokenIdent)
 	}
@@ -291,6 +329,18 @@ func (s *Scanner) number() {
 	for isDigit(s.peek()) {
 		s.advance()
 	}
+	
+	// Look for decimal part
+	if s.peek() == '.' && isDigit(s.peekNext()) {
+		// Consume the '.'
+		s.advance()
+		
+		// Consume decimal digits
+		for isDigit(s.peek()) {
+			s.advance()
+		}
+	}
+	
 	s.tokens = append(s.tokens, Token{
 		Type:   TokenNumber,
 		Lexeme: s.source[s.start:s.current],
@@ -376,6 +426,13 @@ func (s *Scanner) peek() byte {
 		return '\000'
 	}
 	return s.source[s.current]
+}
+
+func (s *Scanner) peekNext() byte {
+	if s.current+1 >= len(s.source) {
+		return '\000'
+	}
+	return s.source[s.current+1]
 }
 
 func (s *Scanner) isAtEnd() bool {

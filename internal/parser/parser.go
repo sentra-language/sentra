@@ -97,7 +97,7 @@ func (p *Parser) statement() Stmt {
 	}
 	
 	// Variable declaration
-	if p.match(lexer.TokenLet) {
+	if p.match(lexer.TokenLet) || p.match(lexer.TokenVar) {
 		nameTok := p.consume(lexer.TokenIdent, "Expect variable name")
 		p.consume(lexer.TokenEqual, "Expect '=' after variable name")
 		expr := p.expression()
@@ -113,22 +113,62 @@ func (p *Parser) statement() Stmt {
 		return &ReturnStmt{Value: value}
 	}
 	
-	// Check for assignment statement (variable = expr)
-	if p.check(lexer.TokenIdent) {
-		// Look ahead to see if this is an assignment
-		saved := p.current
-		name := p.advance().Lexeme
-		if p.match(lexer.TokenEqual) {
-			// This is an assignment
-			value := p.expression()
-			return &AssignmentStmt{Name: name, Value: value}
-		}
-		// Not an assignment, rewind and parse as expression
-		p.current = saved
+	// Try-catch-finally statement
+	if p.match(lexer.TokenTry) {
+		return p.tryStatement()
 	}
 	
-	// Expression statement
+	// Throw statement  
+	if p.match(lexer.TokenThrow) {
+		value := p.expression()
+		return &ThrowStmt{Value: value}
+	}
+	
+	// Match statement
+	if p.match(lexer.TokenMatch) {
+		return p.matchStatement()
+	}
+	
+	// Break statement
+	if p.match(lexer.TokenBreak) {
+		return &BreakStmt{}
+	}
+	
+	// Continue statement
+	if p.match(lexer.TokenContinue) {
+		return &ContinueStmt{}
+	}
+	
+	// Try to parse as assignment or expression
+	// Parse the left-hand side expression first
 	expr := p.expression()
+	
+	// Check if this is followed by '=' for assignment
+	if p.match(lexer.TokenEqual) {
+		// This is an assignment
+		value := p.expression()
+		
+		// Determine the type of assignment based on the left-hand expression
+		switch lhs := expr.(type) {
+		case *Variable:
+			// Simple variable assignment: x = value
+			return &AssignmentStmt{Name: lhs.Name, Value: value}
+		case *IndexExpr:
+			// Index assignment: array[index] = value or map["key"] = value
+			// This also handles nested indexing: obj[a][b] = value
+			return &IndexAssignmentStmt{
+				Object: lhs.Object,
+				Index:  lhs.Index,
+				Value:  value,
+			}
+		default:
+			// Invalid left-hand side for assignment - treat the whole thing as expression
+			// This shouldn't normally happen
+			return &ExpressionStmt{Expr: expr}
+		}
+	}
+	
+	// No assignment, just an expression statement
 	return &ExpressionStmt{Expr: expr}
 }
 
@@ -163,10 +203,12 @@ func (p *Parser) importStatement() Stmt {
 		pathTok := p.advance()
 		path = pathTok.Lexeme
 		// Scanner already removes quotes, so we use it as-is
-	} else {
-		// import module_name
-		nameTok := p.consume(lexer.TokenIdent, "Expect module name")
+	} else if p.check(lexer.TokenIdent) {
+		// import module_name (for built-in modules like math, string, etc.)
+		nameTok := p.advance()
 		path = nameTok.Lexeme
+	} else {
+		panic(p.error("Expect module name or path after 'import'"))
 	}
 	
 	// Check for alias
@@ -207,11 +249,24 @@ func (p *Parser) forStatement() Stmt {
 	
 	// Initialization
 	if !p.check(lexer.TokenSemicolon) {
-		if p.match(lexer.TokenLet) {
+		if p.match(lexer.TokenLet) || p.match(lexer.TokenVar) {
 			nameTok := p.consume(lexer.TokenIdent, "Expect variable name")
 			p.consume(lexer.TokenEqual, "Expect '='")
 			expr := p.expression()
 			init = &LetStmt{Name: nameTok.Lexeme, Expr: expr}
+		} else if p.check(lexer.TokenIdent) {
+			// Check if this is an assignment (i = 0)
+			saved := p.current
+			name := p.advance().Lexeme
+			if p.match(lexer.TokenEqual) {
+				// This is an assignment
+				value := p.expression()
+				init = &AssignmentStmt{Name: name, Value: value}
+			} else {
+				// Not an assignment, rewind and parse as expression
+				p.current = saved
+				init = &ExpressionStmt{Expr: p.expression()}
+			}
 		} else {
 			init = &ExpressionStmt{Expr: p.expression()}
 		}
@@ -226,7 +281,22 @@ func (p *Parser) forStatement() Stmt {
 	
 	// Update
 	if !p.check(lexer.TokenRParen) {
-		update = p.expression()
+		// Check if this is an assignment (i = i + 1) 
+		if p.check(lexer.TokenIdent) {
+			saved := p.current
+			name := p.advance()
+			if p.match(lexer.TokenEqual) {
+				// Parse as assignment expression
+				value := p.expression()
+				update = &AssignmentExpr{Name: name.Lexeme, Value: value}
+			} else {
+				// Not an assignment, rewind and parse as expression
+				p.current = saved
+				update = p.expression()
+			}
+		} else {
+			update = p.expression()
+		}
 	}
 	p.consume(lexer.TokenRParen, "Expect ')' after for clauses")
 	
@@ -332,6 +402,10 @@ func (p *Parser) parseCall() Expr {
 			index := p.expression()
 			p.consume(lexer.TokenRBracket, "Expect ']' after index")
 			expr = &IndexExpr{Object: expr, Index: index}
+		} else if p.match(lexer.TokenDot) {
+			// Property access
+			name := p.consume(lexer.TokenIdent, "Expect property name after '.'")
+			expr = &PropertyExpr{Object: expr, Property: name.Lexeme}
 		} else {
 			break
 		}
@@ -373,6 +447,9 @@ func (p *Parser) primary() Expr {
 		return &Literal{Value: true}
 	case lexer.TokenFalse:
 		return &Literal{Value: false}
+	case lexer.TokenFn:
+		// Anonymous function: fn(params) { body } or fn(params) => expr
+		return p.parseAnonymousFunction()
 	case lexer.TokenLBracket:
 		// Array literal: [1, 2, 3]
 		return p.parseArrayLiteral()
@@ -428,6 +505,45 @@ func (p *Parser) primary() Expr {
 			err = err.WithSource(p.sourceLines[tok.Line-1])
 		}
 		panic(err)
+	}
+}
+
+func (p *Parser) parseAnonymousFunction() Expr {
+	// fn(params) { body } or fn(params) => expr
+	p.consume(lexer.TokenLParen, "Expect '(' after 'fn'")
+	
+	// Parse parameters
+	params := []string{}
+	if !p.check(lexer.TokenRParen) {
+		for {
+			param := p.consume(lexer.TokenIdent, "Expect parameter name")
+			params = append(params, param.Lexeme)
+			if !p.match(lexer.TokenComma) {
+				break
+			}
+		}
+	}
+	p.consume(lexer.TokenRParen, "Expect ')' after parameters")
+	
+	// Check for arrow function: fn(x) => expr
+	if p.match(lexer.TokenArrow) {
+		// Single expression body
+		expr := p.expression()
+		return &LambdaExpr{
+			Params: params,
+			Body:   expr,
+		}
+	}
+	
+	// Otherwise expect block: fn(x) { statements }
+	p.consume(lexer.TokenLBrace, "Expect '{' or '=>' after function parameters")
+	body := p.blockStatements()
+	p.consume(lexer.TokenRBrace, "Expect '}' after function body")
+	
+	// Convert to lambda expression with block body
+	return &LambdaExpr{
+		Params: params,
+		Body:   &BlockExpr{Stmts: body},
 	}
 }
 
@@ -580,4 +696,125 @@ func (p *Parser) peek() lexer.Token {
 
 func (p *Parser) isAtEnd() bool {
 	return p.peek().Type == lexer.TokenEOF
+}
+
+func (p *Parser) error(msg string) error {
+	currentToken := p.peek()
+	err := errors.NewSyntaxError(
+		msg,
+		currentToken.File,
+		currentToken.Line,
+		currentToken.Column,
+	)
+	
+	// Add source line if available
+	if p.sourceLines != nil && currentToken.Line > 0 && currentToken.Line <= len(p.sourceLines) {
+		err = err.WithSource(p.sourceLines[currentToken.Line-1])
+	}
+	
+	return err
+}
+
+func (p *Parser) tryStatement() Stmt {
+	p.consume(lexer.TokenLBrace, "Expect '{' after 'try'")
+	tryBlock := p.blockStatements()
+	p.consume(lexer.TokenRBrace, "Expect '}' after try block")
+	
+	var catchVar string
+	var catchBlock []Stmt
+	if p.match(lexer.TokenCatch) {
+		if p.check(lexer.TokenIdent) {
+			catchVar = p.advance().Lexeme
+		}
+		p.consume(lexer.TokenLBrace, "Expect '{' after catch")
+		catchBlock = p.blockStatements()
+		p.consume(lexer.TokenRBrace, "Expect '}' after catch block")
+	}
+	
+	var finallyBlock []Stmt
+	if p.match(lexer.TokenFinally) {
+		p.consume(lexer.TokenLBrace, "Expect '{' after 'finally'")
+		finallyBlock = p.blockStatements()
+		p.consume(lexer.TokenRBrace, "Expect '}' after finally block")
+	}
+	
+	return &TryStmt{
+		TryBlock:     tryBlock,
+		CatchVar:     catchVar,
+		CatchBlock:   catchBlock,
+		FinallyBlock: finallyBlock,
+	}
+}
+
+func (p *Parser) matchStatement() Stmt {
+	// Parse the value to match against
+	value := p.expression()
+	p.consume(lexer.TokenLBrace, "Expect '{' after match expression")
+	
+	var cases []MatchCase
+	
+	// Parse match arms
+	for !p.check(lexer.TokenRBrace) && !p.isAtEnd() {
+		// Parse pattern(s)
+		var pattern Expr
+		
+		// Check for underscore (wildcard/default case)
+		if p.match(lexer.TokenUnderscore) {
+			pattern = &Literal{Value: "_"}
+		} else {
+			// Parse first pattern
+			pattern = p.expression()
+			
+			// Check for multiple patterns with |
+			if p.match(lexer.TokenPipe) {
+				// Create an OR pattern (we'll handle this specially in the compiler)
+				patterns := []Expr{pattern}
+				for {
+					if p.match(lexer.TokenUnderscore) {
+						patterns = append(patterns, &Literal{Value: "_"})
+					} else {
+						patterns = append(patterns, p.expression())
+					}
+					if !p.match(lexer.TokenPipe) {
+						break
+					}
+				}
+				// Wrap multiple patterns in a special expression
+				pattern = &Binary{
+					Left:     pattern,
+					Operator: "|",
+					Right:    patterns[1], // Simplified for now
+				}
+			}
+		}
+		
+		// Expect => after pattern
+		p.consume(lexer.TokenArrow, "Expect '=>' after match pattern")
+		
+		// Parse the body - can be a single expression or a block
+		var body []Stmt
+		if p.check(lexer.TokenLBrace) {
+			p.advance() // consume '{'
+			body = p.blockStatements()
+		} else {
+			// Single statement
+			stmt := p.statement()
+			body = []Stmt{stmt}
+		}
+		
+		cases = append(cases, MatchCase{
+			Pattern: pattern,
+			Body:    body,
+		})
+		
+		// Check for comma separator (optional)
+		p.match(lexer.TokenComma)
+	}
+	
+	p.consume(lexer.TokenRBrace, "Expect '}' after match cases")
+	
+	return &MatchStmt{
+		Value: value,
+		Cases: cases,
+	}
 }

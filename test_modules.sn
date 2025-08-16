@@ -1,0 +1,13 @@
+// Test modules
+import io
+import time
+
+log("Testing io module")
+io.writefile("test.txt", "hello")
+log("File exists: " + io.exists("test.txt"))
+log("Files: " + io.listdir("."))
+
+log("\nTesting time module")
+log("Time: " + time.time())
+log("Date: " + time.date())
+log("DateTime: " + time.datetime())

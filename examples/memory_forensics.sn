@@ -11,7 +11,7 @@ log("Total processes found: " + str(len(processes)))
 
 // Show first few processes
 let limit = 5
-for (let i = 0; i < len(processes) && i < limit; i++) {
+for (let i = 0; i < len(processes) && i < limit; i = i + 1) {
     let proc = processes[i]
     log("PID " + str(proc["pid"]) + ": " + proc["name"])
 }
@@ -52,7 +52,7 @@ if (tree) {
     // Show root processes
     let roots = tree["roots"]
     log("Root processes: " + str(len(roots)))
-    for (let i = 0; i < len(roots) && i < 3; i++) {
+    for (let i = 0; i < len(roots) && i < 3; i = i + 1) {
         let root = roots[i]
         log("  Root PID " + str(root["pid"]) + ": " + root["name"] + " (" + str(root["child_count"]) + " children)")
     }
@@ -66,7 +66,7 @@ let regions = mem_get_memory_regions(current_pid)
 if (regions && len(regions) > 0) {
     log("Memory regions for PID " + str(current_pid) + ":")
     let region_limit = 3
-    for (let i = 0; i < len(regions) && i < region_limit; i++) {
+    for (let i = 0; i < len(regions) && i < region_limit; i = i + 1) {
         let region = regions[i]
         log("  Region " + str(i + 1) + ":")
         log("    Base: " + region["base_address"])
@@ -89,7 +89,7 @@ if (len(explorer_procs) > 0) {
         if (hollowing["detected"]) {
             log("⚠️  Process hollowing detected in PID " + str(pid))
             let indicators = hollowing["indicators"]
-            for (let i = 0; i < len(indicators); i++) {
+            for (let i = 0; i < len(indicators); i = i + 1) {
                 log("  - " + indicators[i])
             }
         } else {
@@ -106,7 +106,7 @@ if (len(explorer_procs) > 0) {
     let injection_findings = mem_analyze_injection(pid)
     if (injection_findings && len(injection_findings) > 0) {
         log("⚠️  Code injection indicators found:")
-        for (let i = 0; i < len(injection_findings); i++) {
+        for (let i = 0; i < len(injection_findings); i = i + 1) {
             log("  - " + injection_findings[i])
         }
     } else {
@@ -122,7 +122,7 @@ if (len(explorer_procs) > 0) {
     let malware_detections = mem_scan_malware(pid)
     if (malware_detections && len(malware_detections) > 0) {
         log("🚨 MALWARE DETECTED:")
-        for (let i = 0; i < len(malware_detections); i++) {
+        for (let i = 0; i < len(malware_detections); i = i + 1) {
             log("  - " + malware_detections[i])
         }
     } else {
@@ -138,7 +138,7 @@ if (len(explorer_procs) > 0) {
     let children = mem_get_children(parent_pid)
     if (children && len(children) > 0) {
         log("Child processes of PID " + str(parent_pid) + ":")
-        for (let i = 0; i < len(children); i++) {
+        for (let i = 0; i < len(children); i = i + 1) {
             let child = children[i]
             log("  Child PID " + str(child["pid"]) + ": " + child["name"])
         }

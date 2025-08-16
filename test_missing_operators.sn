@@ -1,0 +1,32 @@
+// Test for operators not yet implemented in Sentra
+
+log("Testing operators that DON'T work yet:")
+log("")
+
+// These would be nice to have but don't work:
+// let x = 5
+// x += 3      // Compound assignment
+// x -= 2
+// x *= 2
+// x /= 4
+
+// let i = 0
+// i++         // Post-increment
+// ++i         // Pre-increment
+// i--         // Post-decrement
+// --i         // Pre-decrement
+
+log("Currently, you have to write:")
+let x = 5
+x = x + 3
+log("x = x + 3 -> " + x)
+
+let i = 0
+i = i + 1
+log("i = i + 1 -> " + i)
+
+log("")
+log("For loops work with explicit assignment:")
+for (j = 0; j < 3; j = j + 1) {
+    log("j = " + j)
+}

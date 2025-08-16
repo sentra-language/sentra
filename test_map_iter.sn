@@ -1,0 +1,6 @@
+log("Testing map iteration")
+let person = {"name": "Alice", "age": 30, "city": "NYC"}
+for value in person {
+    log("Value: " + value)
+}
+log("Done")

@@ -42,6 +42,8 @@ func (c *Compiler) VisitBinaryExpr(expr *parser.Binary) interface{} {
 		c.chunk.WriteOp(bytecode.OpMul)
 	case "/":
 		c.chunk.WriteOp(bytecode.OpDiv)
+	case "%":
+		c.chunk.WriteOp(bytecode.OpMod)
 	case "==":
 		c.chunk.WriteOp(bytecode.OpEqual)
 	case "!=":
@@ -227,6 +229,23 @@ func (c *Compiler) VisitPropertyExpr(expr *parser.PropertyExpr) interface{} {
 	return nil
 }
 
+func (c *Compiler) VisitAssignmentExpr(expr *parser.AssignmentExpr) interface{} {
+	// Compile the value
+	expr.Value.Accept(c)
+	
+	// Store in variable
+	c.chunk.WriteOp(bytecode.OpSetGlobal)
+	idx := c.chunk.AddConstant(expr.Name)
+	c.chunk.WriteByte(byte(idx))
+	
+	// Assignment expressions should leave the value on the stack
+	// (for use in for loop update, etc.)
+	c.chunk.WriteOp(bytecode.OpGetGlobal)
+	c.chunk.WriteByte(byte(idx))
+	
+	return nil
+}
+
 func (c *Compiler) VisitExpressionStmt(stmt *parser.ExpressionStmt) interface{} {
 	return stmt.Expr.Accept(c)
 }
@@ -241,6 +260,11 @@ func (c *Compiler) VisitLetStmt(stmt *parser.LetStmt) interface{} {
 }
 
 func (c *Compiler) VisitAssignmentStmt(stmt *parser.AssignmentStmt) interface{} {
+	// Not implemented for expression-level compiler
+	return nil
+}
+
+func (c *Compiler) VisitIndexAssignmentStmt(stmt *parser.IndexAssignmentStmt) interface{} {
 	// Not implemented for expression-level compiler
 	return nil
 }

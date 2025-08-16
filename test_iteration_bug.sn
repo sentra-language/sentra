@@ -1,0 +1,18 @@
+// Test for iteration bug
+let i = 0
+let max = 5
+
+log("Starting iteration test")
+while i < max {
+    log("Iteration " + i)
+    i = i + 1
+}
+log("Done")
+
+// Test infinite loop prevention
+let count = 0
+let stop = 1000
+while count < stop {
+    count = count + 1
+}
+log("Counted to " + count)

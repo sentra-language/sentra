@@ -1,0 +1,29 @@
+fn bubbleSort(arr) {
+    let result = []
+    for item in arr {
+        result.push(item)
+    }
+    
+    let n = len(result)
+    let i = 0
+    while i < n - 1 {
+        let j = 0
+        while j < n - i - 1 {
+            if result[j] > result[j + 1] {
+                // Swap
+                let temp = result[j]
+                result[j] = result[j + 1]
+                result[j + 1] = temp
+            }
+            j = j + 1
+        }
+        i = i + 1
+    }
+    
+    return result
+}
+
+let test = [64, 34, 25, 12, 22, 11, 90]
+log("Original: " + test)
+let sorted = bubbleSort(test)
+log("Sorted: " + sorted)

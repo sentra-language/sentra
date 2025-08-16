@@ -1,0 +1,30 @@
+fn bubbleSort(arr) {
+    // Create a copy
+    let result = []
+    for item in arr {
+        result.push(item)
+    }
+    
+    let n = len(result)
+    let i = 0
+    while i < n - 1 {
+        log("Pass " + i + ", n-i-1=" + (n - i - 1))
+        let j = 0
+        while j < n - i - 1 {
+            log("  j=" + j + ", result[" + j + "]=" + result[j] + ", result[" + (j+1) + "]=" + result[j+1])
+            if result[j] > result[j + 1] {
+                log("    Swapping!")
+                let temp = result[j]
+                result[j] = result[j + 1]
+                result[j + 1] = temp
+            }
+            j = j + 1
+        }
+        log("  After pass: " + result)
+        i = i + 1
+    }
+    return result
+}
+
+let test = [64, 34, 25]
+log("Sorted: " + bubbleSort(test))

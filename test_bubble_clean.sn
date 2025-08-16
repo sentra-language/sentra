@@ -1,0 +1,45 @@
+fn bubbleSort(arr) {
+    // Create a copy
+    let result = []
+    for item in arr {
+        result.push(item)
+    }
+    
+    let n = len(result)
+    
+    // First pass
+    let i = 0
+    while i < n - 1 {
+        if result[i] > result[i + 1] {
+            // Store values before swap
+            let a = result[i]
+            let b = result[i + 1]
+            // Swap
+            result[i] = b
+            result[i + 1] = a
+        }
+        i = i + 1
+    }
+    log("After pass 1: " + result)
+    
+    // Second pass
+    i = 0
+    while i < n - 2 {  // n - 2 because last element is already in place
+        if result[i] > result[i + 1] {
+            // Store values before swap
+            let a = result[i]
+            let b = result[i + 1]
+            // Swap
+            result[i] = b
+            result[i + 1] = a
+        }
+        i = i + 1
+    }
+    log("After pass 2: " + result)
+    
+    return result
+}
+
+let test = [64, 34, 25]
+log("Initial: " + test)
+log("Sorted: " + bubbleSort(test))

@@ -1,0 +1,5 @@
+// Test memory functions
+let procs = mem_list_processes()
+log("Type of procs: " + type(procs))
+log("Procs value: " + str(procs))
+log("Procs length: " + str(len(procs)))

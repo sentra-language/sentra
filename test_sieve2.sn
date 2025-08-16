@@ -1,0 +1,54 @@
+fn sieveOfEratosthenes(n) {
+    let primes = []
+    let isPrime = []
+    
+    // Initialize all as prime
+    let i = 0
+    while i <= n {
+        isPrime.push(true)
+        i = i + 1
+    }
+    
+    isPrime[0] = false
+    isPrime[1] = false
+    
+    // Check what we have
+    log("Initial state:")
+    i = 0
+    while i <= 10 && i <= n {
+        log("  isPrime[" + i + "] = " + isPrime[i])
+        i = i + 1
+    }
+    
+    i = 2
+    while i * i <= n {
+        if isPrime[i] {
+            let j = i * i
+            while j <= n {
+                isPrime[j] = false
+                j = j + i
+            }
+        }
+        i = i + 1
+    }
+    
+    // Final state
+    log("Final state:")
+    i = 0
+    while i <= 10 && i <= n {
+        log("  isPrime[" + i + "] = " + isPrime[i])
+        i = i + 1
+    }
+    
+    i = 2
+    while i <= n {
+        if isPrime[i] {
+            primes.push(i)
+        }
+        i = i + 1
+    }
+    
+    return primes
+}
+
+log("Primes up to 10: " + sieveOfEratosthenes(10))

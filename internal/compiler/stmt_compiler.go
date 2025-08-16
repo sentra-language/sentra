@@ -12,6 +12,9 @@ type StmtCompiler struct {
 	fileName        string
 	currentLine     int
 	currentColumn   int
+	locals          []string  // Track local variables in current function
+	localCount      int       // Number of locals
+	parent          *StmtCompiler // Parent compiler for closures
 }
 
 type Function struct {
@@ -87,17 +90,54 @@ func (c *StmtCompiler) VisitPrintStmt(stmt *parser.PrintStmt) interface{} {
 
 func (c *StmtCompiler) VisitLetStmt(stmt *parser.LetStmt) interface{} {
 	stmt.Expr.Accept(c)
-	idx := c.Chunk.AddConstant(stmt.Name)
-	c.emitOp(bytecode.OpDefineGlobal)
-	c.emitByte(byte(idx))
+	
+	// If we're inside a function, create a local
+	if c.currentFunction != nil && c.currentFunction.Name != "<script>" {
+		c.locals = append(c.locals, stmt.Name)
+		localSlot := c.localCount
+		c.localCount++
+		// Emit OpSetLocal to store the value in the local slot
+		c.emitOp(bytecode.OpSetLocal)
+		c.emitByte(byte(localSlot))
+	} else {
+		// Global variable
+		idx := c.Chunk.AddConstant(stmt.Name)
+		c.emitOp(bytecode.OpDefineGlobal)
+		c.emitByte(byte(idx))
+	}
 	return nil
 }
 
 func (c *StmtCompiler) VisitAssignmentStmt(stmt *parser.AssignmentStmt) interface{} {
 	stmt.Value.Accept(c)
+	
+	// Check if this is a local variable
+	if c.locals != nil {
+		for i, local := range c.locals {
+			if local == stmt.Name {
+				c.Chunk.WriteOp(bytecode.OpSetLocal)
+				c.Chunk.WriteByte(byte(i))
+				return nil
+			}
+		}
+	}
+	
+	// If not a local, treat it as a global
 	idx := c.Chunk.AddConstant(stmt.Name)
 	c.Chunk.WriteOp(bytecode.OpSetGlobal)
 	c.Chunk.WriteByte(byte(idx))
+	return nil
+}
+
+func (c *StmtCompiler) VisitIndexAssignmentStmt(stmt *parser.IndexAssignmentStmt) interface{} {
+	// Push object
+	stmt.Object.Accept(c)
+	// Push index
+	stmt.Index.Accept(c)
+	// Push value
+	stmt.Value.Accept(c)
+	// Set index
+	c.Chunk.WriteOp(bytecode.OpSetIndex)
 	return nil
 }
 
@@ -109,6 +149,10 @@ func (c *StmtCompiler) VisitExpressionStmt(stmt *parser.ExpressionStmt) interfac
 
 func (c *StmtCompiler) VisitFunctionStmt(stmt *parser.FunctionStmt) interface{} {
 	subCompiler := NewStmtCompiler()
+	
+	// Initialize locals tracking
+	subCompiler.locals = make([]string, 0, 256)
+	subCompiler.localCount = 0
 
 	function := &Function{
 		Name:   stmt.Name,
@@ -119,9 +163,12 @@ func (c *StmtCompiler) VisitFunctionStmt(stmt *parser.FunctionStmt) interface{} 
 
 	// Set the current function for the subcompiler
 	subCompiler.currentFunction = function
-
-	// Parameters are already on the stack in the right positions
-	// when the function is called, so we don't need to emit OpSetLocal
+	
+	// Add parameters as locals
+	for _, param := range stmt.Params {
+		subCompiler.locals = append(subCompiler.locals, param)
+		subCompiler.localCount++
+	}
 
 	// Compile function body
 	for _, s := range stmt.Body {
@@ -217,7 +264,7 @@ func (c *StmtCompiler) VisitWhileStmt(stmt *parser.WhileStmt) interface{} {
 	
 	// Loop back
 	c.Chunk.WriteOp(bytecode.OpLoop)
-	loopOffset := len(c.Chunk.Code) - loopStart
+	loopOffset := len(c.Chunk.Code) - loopStart + 2 // +2 for the offset bytes
 	c.Chunk.WriteByte(byte(loopOffset >> 8))
 	c.Chunk.WriteByte(byte(loopOffset & 0xff))
 	
@@ -231,6 +278,16 @@ func (c *StmtCompiler) VisitWhileStmt(stmt *parser.WhileStmt) interface{} {
 }
 
 func (c *StmtCompiler) VisitForStmt(stmt *parser.ForStmt) interface{} {
+	// Save the current local count to restore after the loop
+	// This creates a new scope for the loop
+	savedLocalCount := c.localCount
+	savedLocals := c.locals
+	if c.locals != nil {
+		// Create a copy of locals for the new scope
+		c.locals = make([]string, len(savedLocals))
+		copy(c.locals, savedLocals)
+	}
+	
 	// Compile initialization
 	if stmt.Init != nil {
 		stmt.Init.Accept(c)
@@ -267,7 +324,7 @@ func (c *StmtCompiler) VisitForStmt(stmt *parser.ForStmt) interface{} {
 	
 	// Loop back
 	c.Chunk.WriteOp(bytecode.OpLoop)
-	loopOffset := len(c.Chunk.Code) - loopStart
+	loopOffset := len(c.Chunk.Code) - loopStart + 2 // +2 for the offset bytes
 	c.Chunk.WriteByte(byte(loopOffset >> 8))
 	c.Chunk.WriteByte(byte(loopOffset & 0xff))
 	
@@ -276,6 +333,10 @@ func (c *StmtCompiler) VisitForStmt(stmt *parser.ForStmt) interface{} {
 	jumpOffset := endPos - jumpPos - 2
 	c.Chunk.Code[jumpPos] = byte(jumpOffset >> 8)
 	c.Chunk.Code[jumpPos+1] = byte(jumpOffset & 0xff)
+	
+	// Restore the local scope
+	c.localCount = savedLocalCount
+	c.locals = savedLocals
 	
 	return nil
 }
@@ -308,7 +369,7 @@ func (c *StmtCompiler) VisitForInStmt(stmt *parser.ForInStmt) interface{} {
 	
 	// Loop back
 	c.Chunk.WriteOp(bytecode.OpLoop)
-	loopOffset := len(c.Chunk.Code) - loopStart
+	loopOffset := len(c.Chunk.Code) - loopStart + 2 // +2 for the offset bytes
 	c.Chunk.WriteByte(byte(loopOffset >> 8))
 	c.Chunk.WriteByte(byte(loopOffset & 0xff))
 	
@@ -325,12 +386,22 @@ func (c *StmtCompiler) VisitForInStmt(stmt *parser.ForInStmt) interface{} {
 }
 
 func (c *StmtCompiler) VisitBreakStmt(stmt *parser.BreakStmt) interface{} {
-	// TODO: Implement break with loop context tracking
+	// For now, just emit a no-op with nil
+	// Proper implementation requires loop context tracking
+	idx := c.Chunk.AddConstant(nil)
+	c.Chunk.WriteOp(bytecode.OpConstant)
+	c.Chunk.WriteByte(byte(idx))
+	c.Chunk.WriteOp(bytecode.OpPop)
 	return nil
 }
 
 func (c *StmtCompiler) VisitContinueStmt(stmt *parser.ContinueStmt) interface{} {
-	// TODO: Implement continue with loop context tracking
+	// For now, just emit a no-op with nil
+	// Proper implementation requires loop context tracking
+	idx := c.Chunk.AddConstant(nil)
+	c.Chunk.WriteOp(bytecode.OpConstant)
+	c.Chunk.WriteByte(byte(idx))
+	c.Chunk.WriteOp(bytecode.OpPop)
 	return nil
 }
 
@@ -339,12 +410,16 @@ func (c *StmtCompiler) VisitImportStmt(stmt *parser.ImportStmt) interface{} {
 	c.Chunk.WriteOp(bytecode.OpImport)
 	c.Chunk.WriteByte(byte(idx))
 	
-	if stmt.Alias != "" {
-		// Store with alias
-		aliasIdx := c.Chunk.AddConstant(stmt.Alias)
-		c.Chunk.WriteOp(bytecode.OpDefineGlobal)
-		c.Chunk.WriteByte(byte(aliasIdx))
+	// Store the module in a global variable
+	// Use alias if provided, otherwise use the module path as the name
+	varName := stmt.Alias
+	if varName == "" {
+		varName = stmt.Path
 	}
+	
+	nameIdx := c.Chunk.AddConstant(varName)
+	c.Chunk.WriteOp(bytecode.OpDefineGlobal)
+	c.Chunk.WriteByte(byte(nameIdx))
 	
 	return nil
 }
@@ -413,7 +488,75 @@ func (c *StmtCompiler) VisitThrowStmt(stmt *parser.ThrowStmt) interface{} {
 }
 
 func (c *StmtCompiler) VisitMatchStmt(stmt *parser.MatchStmt) interface{} {
-	// TODO: Implement pattern matching compilation
+	// Evaluate the value to match
+	stmt.Value.Accept(c)
+	
+	// Keep track of jump addresses
+	var endJumps []int
+	
+	for i, matchCase := range stmt.Cases {
+		// Check if this is the default case (_)
+		isDefault := false
+		if lit, ok := matchCase.Pattern.(*parser.Literal); ok {
+			if str, ok := lit.Value.(string); ok && str == "_" {
+				isDefault = true
+			}
+		}
+		
+		var jumpToNext int
+		if !isDefault {
+			// Duplicate the value for comparison
+			c.Chunk.WriteOp(bytecode.OpDup)
+			
+			// Compile the pattern
+			matchCase.Pattern.Accept(c)
+			
+			// Compare with the value
+			c.Chunk.WriteOp(bytecode.OpEqual)
+			
+			// Jump to next case if not equal
+			c.Chunk.WriteOp(bytecode.OpJumpIfFalse)
+			jumpToNext = len(c.Chunk.Code)
+			c.Chunk.WriteByte(0) // Placeholder
+			c.Chunk.WriteByte(0)
+			
+			// Pop the comparison result
+			c.Chunk.WriteOp(bytecode.OpPop)
+		}
+		
+		// Compile the case body
+		for _, s := range matchCase.Body {
+			s.Accept(c)
+		}
+		
+		// Jump to end after executing the case
+		if i < len(stmt.Cases)-1 {
+			c.Chunk.WriteOp(bytecode.OpJump)
+			endJumpAddr := len(c.Chunk.Code)
+			c.Chunk.WriteByte(0) // Placeholder
+			c.Chunk.WriteByte(0)
+			endJumps = append(endJumps, endJumpAddr)
+		}
+		
+		// Patch the jump to next case
+		if !isDefault && jumpToNext > 0 {
+			jumpOffset := len(c.Chunk.Code) - jumpToNext - 2
+			c.Chunk.Code[jumpToNext] = byte(jumpOffset >> 8)
+			c.Chunk.Code[jumpToNext+1] = byte(jumpOffset)
+		}
+	}
+	
+	// Pop the original value at the end
+	c.Chunk.WriteOp(bytecode.OpPop)
+	
+	// Patch all end jumps
+	endAddr := len(c.Chunk.Code)
+	for _, endJump := range endJumps {
+		jumpOffset := endAddr - endJump - 2
+		c.Chunk.Code[endJump] = byte(jumpOffset >> 8)
+		c.Chunk.Code[endJump+1] = byte(jumpOffset)
+	}
+	
 	return nil
 }
 
@@ -438,6 +581,8 @@ func (c *StmtCompiler) VisitBinaryExpr(expr *parser.Binary) interface{} {
 		c.emitOp(bytecode.OpMul)
 	case "/":
 		c.emitOp(bytecode.OpDiv)
+	case "%":
+		c.emitOp(bytecode.OpMod)
 	case "==":
 		c.Chunk.WriteOp(bytecode.OpEqual)
 	case "!=":
@@ -459,10 +604,10 @@ func (c *StmtCompiler) VisitBinaryExpr(expr *parser.Binary) interface{} {
 }
 
 func (c *StmtCompiler) VisitVariableExpr(expr *parser.Variable) interface{} {
-	// Check if this is a local variable (parameter)
-	if c.currentFunction != nil && c.currentFunction.Params != nil {
-		for i, param := range c.currentFunction.Params {
-			if param == expr.Name {
+	// Check if this is a local variable
+	if c.locals != nil {
+		for i, local := range c.locals {
+			if local == expr.Name {
 				c.Chunk.WriteOp(bytecode.OpGetLocal)
 				c.Chunk.WriteByte(byte(i))
 				return nil
@@ -618,7 +763,48 @@ func (c *StmtCompiler) VisitInterpolationExpr(expr *parser.InterpolationExpr) in
 }
 
 func (c *StmtCompiler) VisitLambdaExpr(expr *parser.LambdaExpr) interface{} {
-	// TODO: Implement lambda compilation
+	// Create a new chunk for the lambda
+	subCompiler := NewStmtCompiler()
+	subCompiler.parent = c // Set parent for closure support
+	
+	// Initialize locals tracking
+	subCompiler.locals = make([]string, 0, 256)
+	subCompiler.localCount = 0
+	
+	function := &Function{
+		Name:   "<lambda>",
+		Arity:  len(expr.Params),
+		Chunk:  subCompiler.Chunk,
+		Params: expr.Params,
+	}
+	
+	// Set the current function for the subcompiler
+	subCompiler.currentFunction = function
+	
+	// Add parameters as locals
+	for _, param := range expr.Params {
+		subCompiler.locals = append(subCompiler.locals, param)
+		subCompiler.localCount++
+	}
+	
+	// Compile the body
+	if blockExpr, ok := expr.Body.(*parser.BlockExpr); ok {
+		// Block body - compile statements
+		for _, stmt := range blockExpr.Stmts {
+			stmt.Accept(subCompiler)
+		}
+		subCompiler.Chunk.WriteOp(bytecode.OpReturn)
+	} else {
+		// Expression body - compile and return
+		expr.Body.Accept(subCompiler)
+		subCompiler.Chunk.WriteOp(bytecode.OpReturn)
+	}
+	
+	// Push the function as a constant
+	idx := c.Chunk.AddConstant(function)
+	c.Chunk.WriteOp(bytecode.OpConstant)
+	c.Chunk.WriteByte(byte(idx))
+	
 	return nil
 }
 
@@ -628,5 +814,22 @@ func (c *StmtCompiler) VisitPropertyExpr(expr *parser.PropertyExpr) interface{} 
 	c.Chunk.WriteOp(bytecode.OpConstant)
 	c.Chunk.WriteByte(byte(idx))
 	c.Chunk.WriteOp(bytecode.OpIndex)
+	return nil
+}
+
+func (c *StmtCompiler) VisitAssignmentExpr(expr *parser.AssignmentExpr) interface{} {
+	// Compile the value
+	expr.Value.Accept(c)
+	
+	// Store in variable
+	c.Chunk.WriteOp(bytecode.OpSetGlobal)
+	idx := c.Chunk.AddConstant(expr.Name)
+	c.Chunk.WriteByte(byte(idx))
+	
+	// Assignment expressions should leave the value on the stack
+	// (for use in for loop update, etc.)
+	c.Chunk.WriteOp(bytecode.OpGetGlobal)
+	c.Chunk.WriteByte(byte(idx))
+	
 	return nil
 }

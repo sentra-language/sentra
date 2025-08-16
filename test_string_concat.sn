@@ -1,0 +1,7 @@
+// Test string concatenation with numbers
+let report = {
+    "network_cost": 234.56
+}
+
+log("Network cost: " + report["network_cost"])
+log("Test complete")

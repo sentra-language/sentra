@@ -163,6 +163,16 @@ func (p *PropertyExpr) Accept(visitor ExprVisitor) interface{} {
 	return visitor.VisitPropertyExpr(p)
 }
 
+// Assignment expression: name = value (used in for loop update)
+type AssignmentExpr struct {
+	Name  string
+	Value Expr
+}
+
+func (a *AssignmentExpr) Accept(visitor ExprVisitor) interface{} {
+	return visitor.VisitAssignmentExpr(a)
+}
+
 type ExprVisitor interface {
 	VisitBinaryExpr(expr *Binary) interface{}
 	VisitLiteralExpr(expr *Literal) interface{}
@@ -180,4 +190,5 @@ type ExprVisitor interface {
 	VisitInterpolationExpr(expr *InterpolationExpr) interface{}
 	VisitLambdaExpr(expr *LambdaExpr) interface{}
 	VisitPropertyExpr(expr *PropertyExpr) interface{}
+	VisitAssignmentExpr(expr *AssignmentExpr) interface{}
 }
