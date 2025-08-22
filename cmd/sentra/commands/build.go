@@ -99,23 +99,80 @@ func InitCommand(args []string) error {
 		return err
 	}
 
-	// Create main.sn
-	mainContent := `#!/usr/bin/env sentra
-// Main entry point for the project
+	// Get current user for personalized greeting
+	currentUser := os.Getenv("USER")
+	if currentUser == "" {
+		currentUser = os.Getenv("USERNAME") // Windows
+	}
+	if currentUser == "" {
+		currentUser = "friend"
+	}
+	
+	// Create main.sn with an inspiring example
+	mainContent := fmt.Sprintf(`#!/usr/bin/env sentra
+// Welcome to Sentra! Code with Confidence! 🚀
+// This example shows how easy and fun programming can be
 
-import "sentra/security"
-
+// Main function - where the magic happens!
 fn main() {
-    log("Starting security automation...")
+    // Log a beautiful welcome banner
+    log("╔════════════════════════════════════════════════╗")
+    log("║       SENTRA PROGRAMMING LANGUAGE              ║")
+    log("║        Secure • Simple • Powerful 🚀           ║")
+    log("╚════════════════════════════════════════════════╝")
+    log("")
     
-    // Your code here
+    // Greet the user personally
+    let user = "%s"
     
-    log("Done!")
+    log("Hey " + user + "! Welcome to the future of secure coding!")
+    log("Fun fact: In a parallel universe, all bugs are features!")
+    log("")
+    
+    // Show off some cool Sentra features
+    log("Let me show you what Sentra can do:")
+    log("")
+    
+    // 1. Working with arrays and loops
+    let tasks = ["🔒 Build secure apps", "🤖 Automate security", "🎯 Hack ethically", "🛡️ Protect systems", "✨ Write clean code"]
+    
+    log("Things you can do with Sentra:")
+    let i = 0
+    while i < 5 {
+        log("  " + (i+1) + ". " + tasks[i])
+        i = i + 1
+    }
+    
+    // 2. Security-focused features
+    log("")
+    log("🔐 Security Features:")
+    log("  • Built-in crypto functions")
+    log("  • Network scanning capabilities")
+    log("  • File system security checks")
+    log("  • Memory-safe operations")
+    
+    // 3. Fun with strings and numbers
+    log("")
+    let message = "sentra rocks!"
+    let msgLen = 13  // length of message
+    log("Fun fact: '" + message + "' has " + msgLen + " characters!")
+    
+    // Simple calculation
+    let x = 42
+    let y = 1337
+    let result = x + y
+    log("Security calculation: " + x + " + " + y + " = " + result)
+    
+    log("")
+    log("🎉 Happy coding! Build something amazing today!")
+    log("")
+    log("Try editing this file and run: sentra run main.sn")
+    log("Or create a new file and explore Sentra's features!")
 }
 
-// Run the main function
+// Let's go! Run the main function
 main()
-`
+`, currentUser)
 
 	mainPath := projectName + "/main.sn"
 	if err := os.WriteFile(mainPath, []byte(mainContent), 0644); err != nil {
@@ -210,18 +267,34 @@ MIT
 
 	// Create a sample test
 	testContent := `#!/usr/bin/env sentra
-// Sample test file
+// Sample test file for your Sentra project
 
-import "sentra/testing"
+log("🧪 Running example tests...")
 
-fn test_example() {
-    let result = 2 + 2
-    assert(result == 4, "Math should work")
-}
+// Test basic math operations
+let result = 2 + 2
+assert_equal(4, result, "Basic addition: 2 + 2 should equal 4")
+log("✓ Math test passed")
 
-// Run tests
-test_example()
-log("All tests passed!")
+// Test string operations
+let greeting = "Hello, " + "Sentra!"
+assert_equal("Hello, Sentra!", greeting, "String concatenation test")
+log("✓ String test passed")
+
+// Test boolean logic
+assert_true(10 > 5, "10 should be greater than 5")
+assert_false(5 > 10, "5 should not be greater than 10")
+log("✓ Boolean tests passed")
+
+// Test comparisons
+let x = 42
+let y = 42
+assert_equal(x, y, "Variables should be equal")
+assert_true(x == y, "Equality comparison should work")
+log("✓ Comparison tests passed")
+
+log("")
+log("🎉 All tests passed successfully!")
 `
 
 	testPath := testsPath + "/example_test.sn"

@@ -1,0 +1,4 @@
+#!/bin/bash
+# sen - Shorthand for sentra
+SENTRA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+exec "$SENTRA_HOME/sentra" "$@"

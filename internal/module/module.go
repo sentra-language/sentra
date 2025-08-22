@@ -10,8 +10,7 @@ import (
 	"sentra/internal/compiler"
 	"sentra/internal/lexer"
 	"sentra/internal/vm"
-	"sentra/internal/bytecode"
-	"sentra/internal/stdlib"
+	// "sentra/internal/bytecode" // Unused import
 )
 
 // ModuleLoader handles loading and caching of modules
@@ -27,7 +26,7 @@ func NewModuleLoader() *ModuleLoader {
 	return &ModuleLoader{
 		cache:      make(map[string]*vm.Module),
 		searchPath: getDefaultSearchPath(),
-		stdlib:     stdlib.RegisterStandardLibrary(),
+		stdlib:     make(map[string]*vm.NativeFunction), // Initialize empty for now
 	}
 }
 
@@ -404,9 +403,15 @@ func (ml *ModuleLoader) loadAndCompile(name, path string) (*vm.Module, error) {
 		return nil, fmt.Errorf("parse errors in module %s: %v", name, p.Errors)
 	}
 	
+	// Convert []Stmt to []interface{} for compiler
+	stmtInterfaces := make([]interface{}, len(stmts))
+	for i, stmt := range stmts {
+		stmtInterfaces[i] = stmt
+	}
+	
 	// Compile to bytecode
 	comp := compiler.NewStmtCompiler()
-	chunk := comp.Compile(stmts)
+	chunk := comp.Compile(stmtInterfaces)
 	
 	// Create module
 	mod := &vm.Module{
