@@ -292,113 +292,15 @@ Sentra uses a four-stage compilation pipeline:
 - Closure support with upvalues
 - Thread-safe operations
 
-## 🎓 Real-World Examples
+## Examples
 
-### Security Scanner
-```sentra
-// security_scanner.sn
-import network
-import security
-
-fn scan_target(host) {
-    log("🔍 Scanning " + host)
-    
-    // Port scanning
-    let ports = network.scan_ports(host, [80, 443, 22, 3306])
-    
-    // Vulnerability detection
-    for port in ports {
-        if port.open {
-            let vulns = security.check_vulnerabilities(host, port.number)
-            if len(vulns) > 0 {
-                log("⚠️ Found vulnerabilities on port " + port.number)
-            }
-        }
-    }
-}
-
-scan_target("example.com")
-```
-
-### API Server
-```sentra
-// api_server.sn
-import http
-import json
-
-let server = http.create_server(8080)
-
-server.get("/api/users", fn(req, res) {
-    let users = [
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"}
-    ]
-    res.json(users)
-})
-
-server.post("/api/users", fn(req, res) {
-    let user = json.decode(req.body)
-    // Save user
-    res.status(201).json({"message": "User created", "user": user})
-})
-
-log("🚀 Server running on http://localhost:8080")
-server.listen()
-```
-
-### Data Processing Pipeline
-```sentra
-// pipeline.sn
-import io
-import json
-import array
-
-// Read and process large dataset
-let data = io.readfile("data.json")
-let records = json.decode(data)
-
-// Transform pipeline
-let processed = records
-    |> array.filter(fn(r) => r.active)
-    |> array.map(fn(r) => {
-        r.processed_at = time.now()
-        return r
-    })
-    |> array.sort_by(fn(r) => r.priority)
-
-// Save results
-io.writefile("processed.json", json.encode(processed))
-log("✅ Processed " + len(processed) + " records")
-```
-
-### Concurrent Task Runner
-```sentra
-// concurrent.sn
-import async
-
-fn fetch_data(urls) {
-    let tasks = []
-    
-    for url in urls {
-        tasks.push(async.spawn(fn() {
-            let response = http.get(url)
-            return {"url": url, "status": response.status}
-        }))
-    }
-    
-    let results = async.await_all(tasks)
-    return results
-}
-
-let urls = [
-    "https://api1.example.com",
-    "https://api2.example.com",
-    "https://api3.example.com"
-]
-
-let results = fetch_data(urls)
-log("Fetched " + len(results) + " APIs concurrently")
-```
+See the `examples/` directory for more complex programs:
+- `arrays_and_maps.sn` - Collection operations
+- `advanced_functions.sn` - Closures and higher-order functions
+- `control_flow.sn` - Conditionals and loops
+- `modules_example.sn` - Module system usage
+- `error_handling.sn` - Exception handling
+- `algorithms.sn` - Classic algorithms
 
 ### Contributing
 
@@ -414,22 +316,22 @@ We love contributions! Here's how to get started:
 
 For Language Developers:
 
-  # 1. Check status
+  #### 1. Check status
   ./dev.sh status
 
-  # 2. Enable development mode
+  #### 2. Enable development mode
   ./dev.sh enable
 
-  # 3. Build your changes
+  #### 3. Build your changes
   ./dev.sh build
 
-  # 4. Install globally (points to your local version)
+  #### 4. Install globally (points to your local version)
   ./dev.sh install
 
-  # 5. Test everything works
+  #### 5. Test everything works
   ./dev.sh test
 
-  # When done developing, switch back:
+  #### When done developing, switch back:
   ./dev.sh disable
 
 
