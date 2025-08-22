@@ -1,2 +1,4 @@
 # Ignore CLAUDE.md
 CLAUDE.md
+.claude
+.vscode
