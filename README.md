@@ -1,6 +1,50 @@
-# Sentra Programming Language
+<div style="border-left: 4px solid #0366d6; padding: 1em; background: #f1f8ff;">
+<h1 style="margin-top: 0; color: #0366d6;">Sentra Programming Language 🚀</h1>
+<strong style="color: #005cc5; font-size: 1.2em;">Code with Confidence!</strong>
+<p style="margin: 1em 0; color: #24292e;">A blazing-fast, security-focused programming language with a powerful CLI, built from scratch in Go.</p>
+<blockquote style="border-left: 3px solid #0366d6; padding-left: 1em; margin: 1em 0; color: #586069; font-style: italic;">
+Sentra combines the simplicity of Python, the performance of Go, and security features built right into the core. Perfect for security automation, system scripting, and rapid application development.
+</blockquote>
+</div>
 
-A high-performance, modern programming language with a stack-based virtual machine, built from scratch in Go.
+## 🎯 Quick Start
+
+# 1. Clone and build Sentra
+```bash
+git clone https://github.com/sentra-language/sentra.git
+```
+
+
+```bash
+cd sentra  && ./install.sh
+```
+
+<div style="border-left: 4px solid #f39c12; padding: 0.5em; background: #fff8e1;">
+<strong>NOTE:</strong> To build new <code>sentra</code> binary run:
+<pre>go build -o sentra ./cmd/sentra</pre>
+</div>
+
+# 2. Create your first project
+```bash
+sentra init my-awesome-app
+```
+
+```bash
+cd my-awesome-app
+```
+
+# 3. Run your app
+
+```bash
+sentra run main.sn
+```
+
+# 4. Run tests
+
+```bash
+sentra test
+```
+
 
 ## Features
 
@@ -32,25 +76,17 @@ A high-performance, modern programming language with a stack-based virtual machi
 - **HTTP**: Web requests
 - **Time**: Date/time operations
 - **Regex**: Pattern matching
+- **Security**: Cryptography, hashing, threat detection
+- **Network**: Port scanning, network analysis
+- **Database**: SQL operations
+- **SIEM**: Security event management
+- **ML**: Machine learning for security
 
-## Installation
+## 🛠️ Sentra CLI - Your Development Companion
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/sentra.git
-cd sentra
+The Sentra CLI is your primary interface for developing, testing, and deploying Sentra applications. It's designed to make your development workflow smooth and enjoyable.
 
-# Build the interpreter
-make sentra
-
-# Run the REPL
-./sentra repl
-
-# Run a program
-./sentra run program.sn
-```
-
-## Quick Start
+## 📚 Language Guide
 
 ### Hello World
 ```sentra
@@ -256,42 +292,147 @@ Sentra uses a four-stage compilation pipeline:
 - Closure support with upvalues
 - Thread-safe operations
 
-## Examples
+## 🎓 Real-World Examples
 
-See the `examples/` directory for more complex programs:
-- `arrays_and_maps.sn` - Collection operations
-- `advanced_functions.sn` - Closures and higher-order functions
-- `control_flow.sn` - Conditionals and loops
-- `modules_example.sn` - Module system usage
-- `error_handling.sn` - Exception handling
-- `algorithms.sn` - Classic algorithms
+### Security Scanner
+```sentra
+// security_scanner.sn
+import network
+import security
 
-## Development
+fn scan_target(host) {
+    log("🔍 Scanning " + host)
+    
+    // Port scanning
+    let ports = network.scan_ports(host, [80, 443, 22, 3306])
+    
+    // Vulnerability detection
+    for port in ports {
+        if port.open {
+            let vulns = security.check_vulnerabilities(host, port.number)
+            if len(vulns) > 0 {
+                log("⚠️ Found vulnerabilities on port " + port.number)
+            }
+        }
+    }
+}
 
-### Building from Source
-```bash
-make sentra
+scan_target("example.com")
 ```
 
-### Running Tests
-```bash
-make test
-go test ./internal/vm -v
+### API Server
+```sentra
+// api_server.sn
+import http
+import json
+
+let server = http.create_server(8080)
+
+server.get("/api/users", fn(req, res) {
+    let users = [
+        {"id": 1, "name": "Alice"},
+        {"id": 2, "name": "Bob"}
+    ]
+    res.json(users)
+})
+
+server.post("/api/users", fn(req, res) {
+    let user = json.decode(req.body)
+    // Save user
+    res.status(201).json({"message": "User created", "user": user})
+})
+
+log("🚀 Server running on http://localhost:8080")
+server.listen()
 ```
 
-### Benchmarking
-```bash
-go test ./internal/vm -bench=. -benchmem
+### Data Processing Pipeline
+```sentra
+// pipeline.sn
+import io
+import json
+import array
+
+// Read and process large dataset
+let data = io.readfile("data.json")
+let records = json.decode(data)
+
+// Transform pipeline
+let processed = records
+    |> array.filter(fn(r) => r.active)
+    |> array.map(fn(r) => {
+        r.processed_at = time.now()
+        return r
+    })
+    |> array.sort_by(fn(r) => r.priority)
+
+// Save results
+io.writefile("processed.json", json.encode(processed))
+log("✅ Processed " + len(processed) + " records")
 ```
 
-## Contributing
+### Concurrent Task Runner
+```sentra
+// concurrent.sn
+import async
 
-Contributions are welcome! Please feel free to submit pull requests.
+fn fetch_data(urls) {
+    let tasks = []
+    
+    for url in urls {
+        tasks.push(async.spawn(fn() {
+            let response = http.get(url)
+            return {"url": url, "status": response.status}
+        }))
+    }
+    
+    let results = async.await_all(tasks)
+    return results
+}
 
-## License
+let urls = [
+    "https://api1.example.com",
+    "https://api2.example.com",
+    "https://api3.example.com"
+]
 
-MIT License - See LICENSE file for details
+let results = fetch_data(urls)
+log("Fetched " + len(results) + " APIs concurrently")
+```
 
-## Acknowledgments
+### Contributing
 
-Built with Go 1.25.0, inspired by modern language design principles and optimized for performance.
+We love contributions! Here's how to get started:
+
+1. **Fork & Clone**: Fork the repo and clone locally
+2. **Branch**: Create a feature branch (`git checkout -b feature/amazing`)
+3. **Code**: Make your changes
+4. **Test**: Add tests and ensure all pass
+5. **Commit**: Commit with clear message
+6. **Push**: Push to your fork
+7. **PR**: Open a Pull Request
+
+For Language Developers:
+
+  # 1. Check status
+  ./dev.sh status
+
+  # 2. Enable development mode
+  ./dev.sh enable
+
+  # 3. Build your changes
+  ./dev.sh build
+
+  # 4. Install globally (points to your local version)
+  ./dev.sh install
+
+  # 5. Test everything works
+  ./dev.sh test
+
+  # When done developing, switch back:
+  ./dev.sh disable
+
+
+---
+
+**Ready to code with confidence?** Get started with `sentra init my-app` today! 🚀

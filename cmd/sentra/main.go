@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sentra/cmd/sentra/commands"
@@ -17,12 +18,40 @@ import (
 	"sentra/internal/repl"
 	"sentra/internal/testing"
 	"sentra/internal/vm"
+	"time"
+)
+
+const VERSION = "1.0.0"
+
+// Build variables - can be set during build with ldflags
+var (
+	BuildDate = time.Now().Format("2006-01-02")
+	GitCommit = "unknown"
 )
 
 func main() {
 	args := os.Args[1:]
 	if len(args) == 0 {
 		showUsage()
+		return
+	}
+	
+	// Debug: print what we got
+	// fmt.Printf("DEBUG: args[0] = %q\n", args[0])
+	
+	// Handle help, version, and update first - support all variations
+	if args[0] == "--help" || args[0] == "-h" || args[0] == "help" || args[0] == "--h" || args[0] == "-help" {
+		showUsage()
+		return
+	}
+	
+	if args[0] == "--version" || args[0] == "-v" || args[0] == "version" || args[0] == "--v" || args[0] == "-version" {
+		showVersion()
+		return
+	}
+	
+	if args[0] == "update" || args[0] == "--update" {
+		updateSentra()
 		return
 	}
 	
@@ -298,13 +327,8 @@ func runTests(args []string) {
 		c := compiler.NewStmtCompilerWithDebug(testFile)
 		chunk := c.Compile(stmts)
 		
-		// Create VM with testing module
+		// Create VM (testing functions are already included in stdlib)
 		enhancedVM := vm.NewEnhancedVM(chunk)
-		
-		// Add testing functions to VM
-		for name, fn := range testing.GetSimpleTestFunctions() {
-			enhancedVM.AddBuiltinFunction(name, fn)
-		}
 		
 		// Run the test file
 		_, err = enhancedVM.Run()
@@ -421,4 +445,79 @@ func handlePackageCommands(args []string) {
 			}
 		}
 	}
+}
+
+func showVersion() {
+	fmt.Printf("Sentra Programming Language v%s\n", VERSION)
+	fmt.Printf("Build Date: %s\n", BuildDate)
+	
+	// Try to get git commit if we're in a repo
+	if gitCmd, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output(); err == nil {
+		GitCommit = strings.TrimSpace(string(gitCmd))
+	}
+	
+	if GitCommit != "unknown" {
+		fmt.Printf("Git Commit: %s\n", GitCommit)
+	}
+	
+	// Check for dev environment
+	if devPath := os.Getenv("SENTRA_DEV_PATH"); devPath != "" {
+		fmt.Printf("Dev Path: %s\n", devPath)
+	}
+	
+	fmt.Println("Code with Confidence! 🚀")
+}
+
+func updateSentra() {
+	fmt.Println("🔄 Updating Sentra to latest version...")
+	
+	// Check if using dev path
+	if devPath := os.Getenv("SENTRA_DEV_PATH"); devPath != "" {
+		fmt.Printf("📦 Using development version from: %s\n", devPath)
+		fmt.Println("Please run 'git pull' in your development directory")
+		return
+	}
+	
+	// Determine installation directory
+	installDir := os.Getenv("SENTRA_INSTALL_DIR")
+	if installDir == "" {
+		homeDir, _ := os.UserHomeDir()
+		installDir = filepath.Join(homeDir, ".sentra")
+	}
+	
+	// Check if it's a git repository
+	gitDir := filepath.Join(installDir, ".git")
+	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+		fmt.Println("Please run the installer to update:")
+		fmt.Println("  curl -sSL https://raw.githubusercontent.com/sentra-language/sentra/main/install.sh | bash")
+		return
+	}
+	
+	// Save current directory
+	currentDir, _ := os.Getwd()
+	defer os.Chdir(currentDir)
+	
+	// Change to install directory
+	if err := os.Chdir(installDir); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+	
+	// Update from git
+	fmt.Printf("📥 Fetching latest from: %s\n", installDir)
+	cmd := exec.Command("git", "pull", "origin", "main")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		fmt.Printf("Error: %s\n", output)
+		return
+	}
+	
+	// Rebuild
+	fmt.Println("🔨 Building new version...")
+	cmd = exec.Command("go", "build", "-o", "sentra", "./cmd/sentra")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		fmt.Printf("Error: %s\n", output)
+		return
+	}
+	
+	fmt.Println("✅ Successfully updated Sentra!")
+	showVersion()
 }
