@@ -317,22 +317,34 @@ We love contributions! Here's how to get started:
 For Language Developers:
 
   #### 1. Check status
+  ```bash
   ./dev.sh status
+  ```
 
   #### 2. Enable development mode
+  ```bash
   ./dev.sh enable
+  ```
 
   #### 3. Build your changes
-  ./dev.sh build
+```bash
+./dev.sh build
+```
 
   #### 4. Install globally (points to your local version)
+  ```bash
   ./dev.sh install
+  ```
 
   #### 5. Test everything works
+  ```bash
   ./dev.sh test
+  ```
 
   #### When done developing, switch back:
+  ```bash
   ./dev.sh disable
+  ```
 
 
 ---
