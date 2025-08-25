@@ -1,17 +1,31 @@
 package parser
 
 import (
+	"fmt"
 	"sentra/internal/lexer"
 	"testing"
 )
 
 // Test helper to parse a string and check for errors
-func parseString(input string) ([]Stmt, []error) {
+func parseString(input string) (stmts []Stmt, errs []error) {
+	defer func() {
+		if r := recover(); r != nil {
+			// Convert panic to error
+			if err, ok := r.(error); ok {
+				errs = append(errs, err)
+			} else {
+				errs = append(errs, fmt.Errorf("parser panic: %v", r))
+			}
+			stmts = nil
+		}
+	}()
+	
 	scanner := lexer.NewScanner(input)
 	tokens := scanner.ScanTokens()
 	parser := NewParser(tokens)
-	stmts := parser.Parse()
-	return stmts, parser.Errors
+	stmts = parser.Parse()
+	errs = parser.Errors
+	return
 }
 
 // Test helper to check if parsing succeeds

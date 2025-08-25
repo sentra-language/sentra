@@ -1,0 +1,7 @@
+fn test_func() {
+    log("Hello from function")
+}
+
+log("Before call")
+test_func()
+log("After call")

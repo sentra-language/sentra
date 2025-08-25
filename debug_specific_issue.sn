@@ -1,0 +1,3 @@
+if (conc_create_rate_limiter("network_limiter", 100, 20)) {
+    log("[OK] Network rate limiter created (100 req/sec, burst 20)")
+}

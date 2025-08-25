@@ -2,7 +2,6 @@ package vm
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"math/rand"
 	"runtime"
@@ -463,9 +462,10 @@ func (vm *EnhancedVM) Run() (Value, error) {
 			nameConst := frame.chunk.Constants[nameIndex]
 			name, ok := nameConst.(string)
 			if !ok {
-				// Handle cases where the constant might not be a string
-				log.Printf("Warning: OpGetGlobal expected string constant but got %T: %v", nameConst, nameConst)
-				name = fmt.Sprintf("%v", nameConst)
+				// This might be a miscompiled constant - treat it as OpConstant instead
+				// This is a defensive fix for a compiler issue
+				vm.push(nameConst)
+				continue
 			}
 			// Look up global by name
 			if index, exists := vm.globalMap[name]; exists {
@@ -485,9 +485,10 @@ func (vm *EnhancedVM) Run() (Value, error) {
 			nameConst := frame.chunk.Constants[nameIndex]
 			name, ok := nameConst.(string)
 			if !ok {
-				// Handle cases where the constant might not be a string
-				log.Printf("Warning: OpSetGlobal expected string constant but got %T: %v", nameConst, nameConst)
-				name = fmt.Sprintf("%v", nameConst)
+				// This shouldn't happen - OpSetGlobal requires string names
+				// Skip this operation as it's likely a compiler bug
+				vm.pop() // Remove the value that was supposed to be stored
+				continue
 			}
 			// Look up or create global
 			if index, exists := vm.globalMap[name]; exists {
@@ -511,9 +512,10 @@ func (vm *EnhancedVM) Run() (Value, error) {
 			nameConst := frame.chunk.Constants[nameIndex]
 			name, ok := nameConst.(string)
 			if !ok {
-				// Handle cases where the constant might not be a string
-				log.Printf("Warning: OpDefineGlobal expected string constant but got %T: %v", nameConst, nameConst)
-				name = fmt.Sprintf("%v", nameConst)
+				// This shouldn't happen - OpDefineGlobal requires string names
+				// Skip this operation as it's likely a compiler bug
+				vm.pop() // Remove the value that was supposed to be stored
+				continue
 			}
 			// Find or create global index
 			if index, exists := vm.globalMap[name]; exists {

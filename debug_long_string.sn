@@ -1,0 +1,1 @@
+log("Warning: Running with ELEVATED privileges")

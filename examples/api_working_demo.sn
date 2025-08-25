@@ -1,11 +1,11 @@
 // Working API Security Demo
-log("🔒 API Security Testing Suite - Production Ready")
+log("[SECURE] API Security Testing Suite - Production Ready")
 log("=" * 50)
 
 // Use httpbin.org which is designed for testing HTTP clients
-let test_endpoint = "https://httpbin.org/json"
+let test_endpoint = "http://127.0.0.1:8080/json"
 
-log("📡 Testing API Security on: " + test_endpoint)
+log("[RADIO] Testing API Security on: " + test_endpoint)
 
 // Test 1: Security Headers
 log("\n🛡️ Testing Security Headers...")
@@ -55,7 +55,7 @@ if !rate_result["has_rate_limit"] {
 log("Security issues detected: " + issues_found + "/3 tests")
 
 if issues_found == 0 {
-    log("✅ API security appears GOOD")
+    log("[OK] API security appears GOOD")
 } else if issues_found <= 1 {
     log("⚠️ API security needs MINOR improvements")
 } else {

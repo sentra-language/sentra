@@ -1,0 +1,3 @@
+log("Hello World")
+let x = "test string"
+log(x)

@@ -1,10 +1,10 @@
 // Example of failing tests to show error reporting
 
-log("🧪 Running tests with some failures...")
+log("[TEST] Running tests with some failures...")
 
 // This test should pass
 assert_equal(5, 5, "Simple equality test")
-log("✓ First test passed")
+log("[OK] First test passed")
 
 // This test will fail
 assert_equal(10, 20, "This test should fail: 10 != 20")

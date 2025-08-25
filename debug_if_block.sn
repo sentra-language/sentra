@@ -1,0 +1,6 @@
+let is_admin = false
+if is_admin {
+    log("Warning: Running with ELEVATED privileges")
+} else {
+    log("Running with standard privileges")
+}
