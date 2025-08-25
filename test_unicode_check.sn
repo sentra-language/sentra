@@ -1,0 +1,3 @@
+log("Normal text")
+log("✓ Unicode checkmark")
+log("More normal text")

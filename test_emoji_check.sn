@@ -1,0 +1,6 @@
+log("Testing emojis:")
+log("🚀 Rocket")
+log("📊 Chart") 
+log("✅ Check")
+log("⚠️ Warning")
+log("🔒 Lock")

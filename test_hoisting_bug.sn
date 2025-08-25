@@ -1,0 +1,18 @@
+// Test case for hoisting bug with multiple functions
+
+fn func1() {
+    return "func1"
+}
+
+fn func2() {
+    return "func2"
+}
+
+fn func3() {
+    return "func3"
+}
+
+log("Testing...")
+log(func1())
+log(func2())
+log(func3())

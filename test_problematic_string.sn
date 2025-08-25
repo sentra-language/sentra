@@ -1,0 +1,9 @@
+log("Testing the problematic string:")
+
+if (conc_create_worker_pool("test", 2, 10)) {
+    log("✓ Port scanner worker pool created (8 workers)")
+    conc_start_worker_pool("test") 
+    log("✓ Port scanner worker pool started")
+}
+
+log("Test completed")

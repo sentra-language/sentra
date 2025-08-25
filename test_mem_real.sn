@@ -1,0 +1,11 @@
+log("Testing real memory forensics...")
+let processes = mem_enum_processes()
+log("Found " + str(len(processes)) + " processes")
+
+let explorer = mem_find_process("explorer.exe")
+if len(explorer) > 0 {
+    log("Found explorer.exe: PID " + str(explorer[0]["pid"]))
+}
+
+let tree = mem_get_process_tree()
+log("Process tree has " + str(tree["total"]) + " total processes")

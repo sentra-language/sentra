@@ -30,14 +30,14 @@ log("🔍 Process Analysis")
 log("-------------------")
 
 let processes = os_processes()
-log("Total processes: " + processes.length)
+log("Total processes: " + len(processes))
 
 // Find suspicious processes
 log("")
 log("Checking for suspicious processes...")
 let suspicious_count = 0
 let i = 0
-while i < processes.length && i < 100 {
+while i < len(processes) && i < 100 {
     let proc = processes[i]
     let name = proc["name"]
     
@@ -67,12 +67,12 @@ log("🌐 Open Network Ports")
 log("---------------------")
 
 let ports = os_ports()
-log("Total open connections: " + ports.length)
+log("Total open connections: " + len(ports))
 
 // Check for risky ports
 let risky_ports = [23, 135, 139, 445, 3389, 5900]
 let j = 0
-while j < ports.length && j < 20 {
+while j < len(ports) && j < 20 {
     let port = ports[j]
     let local = port["local"]
     
@@ -97,10 +97,10 @@ log("👥 User Accounts")
 log("----------------")
 
 let users = os_users()
-log("Total user accounts: " + users.length)
+log("Total user accounts: " + len(users))
 
 let m = 0
-while m < users.length && m < 10 {
+while m < len(users) && m < 10 {
     let user = users[m]
     let username = user["username"]
     
@@ -121,12 +121,12 @@ log("⚙️ System Services")
 log("------------------")
 
 let services = os_services()
-log("Total services: " + services.length)
+log("Total services: " + len(services))
 
 // Check critical services
 let critical = ["ssh", "rdp", "telnet", "ftp", "vnc"]
 let n = 0
-while n < services.length && n < 50 {
+while n < len(services) && n < 50 {
     let service = services[n]
     let svc_name = lower(service["name"])
     

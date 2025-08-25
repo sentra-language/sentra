@@ -417,8 +417,8 @@ func (vm *EnhancedVM) Run() (Value, error) {
 			
 		case bytecode.OpSetLocal:
 			slot := int(vm.readByte())
-			// Store in the frame's local storage, not the stack
-			value := vm.peek(0) // Keep value on stack for chained assignments
+			// Peek value from stack (leave it on stack for chaining)
+			value := vm.peek(0)
 			if slot < len(frame.locals) {
 				frame.locals[slot] = value
 			} else {
@@ -783,12 +783,11 @@ func (vm *EnhancedVM) Run() (Value, error) {
 				}
 				
 			case *Map:
-				// Map iteration
+				// Map iteration - iterate over keys
 				if state.index < len(state.keys) {
 					key := state.keys[state.index]
-					value := coll.Items[key]
-					// Push value first, then boolean
-					vm.push(value)
+					// Push key first (not value), then boolean
+					vm.push(key)
 					state.index++
 					vm.push(true) // Continue iteration
 				} else {
@@ -1707,7 +1706,7 @@ func (vm *EnhancedVM) registerBuiltins() {
 	cryptoMod := cryptoanalysis.NewCryptoAnalysisModule()
 	reportMod := reporting.NewReportingModule()
 	concMod := concurrency.NewConcurrencyModule()
-	memMod := memory.NewMemoryModule()
+	memMod := memory.NewIntegratedMemoryModule()
 	siemMod := siem.NewSIEMModule()
 	threatMod := threat_intel.NewThreatIntelModule()
 	containerMod := container.NewContainerScanner()
@@ -3001,7 +3000,7 @@ func (vm *EnhancedVM) registerBuiltins() {
 					return nil, err
 				}
 				
-				arr := NewArray(len(processes))
+				arr := NewArray(0)
 				for _, proc := range processes {
 					m := NewMap()
 					m.Items["pid"] = float64(proc.PID)
@@ -3035,7 +3034,7 @@ func (vm *EnhancedVM) registerBuiltins() {
 					return nil, err
 				}
 				
-				arr := NewArray(len(ports))
+				arr := NewArray(0)
 				for _, port := range ports {
 					m := NewMap()
 					for k, v := range port {
@@ -3080,7 +3079,7 @@ func (vm *EnhancedVM) registerBuiltins() {
 					return nil, err
 				}
 				
-				arr := NewArray(len(users))
+				arr := NewArray(0)
 				for _, user := range users {
 					m := NewMap()
 					m.Items["username"] = user.Username
@@ -3102,7 +3101,7 @@ func (vm *EnhancedVM) registerBuiltins() {
 					return nil, err
 				}
 				
-				arr := NewArray(len(services))
+				arr := NewArray(0)
 				for _, service := range services {
 					m := NewMap()
 					m.Items["name"] = service.Name
@@ -3660,32 +3659,34 @@ func (vm *EnhancedVM) registerBuiltins() {
 		},
 		
 		// Memory Forensics functions
-		"mem_list_processes": {
-			Name:  "mem_list_processes",
+		"mem_enum_processes": {
+			Name:  "mem_enum_processes",
 			Arity: 0,
 			Function: func(args []Value) (Value, error) {
-				processes := memMod.ListProcesses()
+				processes := memMod.EnumProcesses()
 				// Convert Go slice to Sentra array
-				if procs, ok := processes.([]map[string]interface{}); ok {
+				if procs, ok := processes.([]interface{}); ok {
 					result := make([]Value, len(procs))
-					for i, proc := range procs {
-						// Convert map to Sentra map
-						procMap := &Map{Items: make(map[string]Value)}
-						for k, v := range proc {
-							switch val := v.(type) {
-							case int:
-								procMap.Items[k] = float64(val)
-							case string:
-								procMap.Items[k] = val
-							default:
-								procMap.Items[k] = v
+					for i, procInterface := range procs {
+						if proc, ok := procInterface.(map[string]interface{}); ok {
+							// Convert map to Sentra map
+							procMap := &Map{Items: make(map[string]Value)}
+							for k, v := range proc {
+								switch val := v.(type) {
+								case int:
+									procMap.Items[k] = float64(val)
+								case string:
+									procMap.Items[k] = val
+								default:
+									procMap.Items[k] = v
+								}
 							}
+							result[i] = procMap
 						}
-						result[i] = procMap
 					}
-					return result, nil
+					return &Array{Elements: result}, nil
 				}
-				return nil, nil
+				return &Array{Elements: []Value{}}, nil
 			},
 		},
 		"mem_get_process_info": {
@@ -3709,6 +3710,24 @@ func (vm *EnhancedVM) registerBuiltins() {
 						result.Items[k] = float64(val)
 					case string:
 						result.Items[k] = val
+					case uint64:
+						result.Items[k] = float64(val)
+					case map[string]interface{}:
+						// Convert nested map
+						nestedMap := &Map{Items: make(map[string]Value)}
+						for nk, nv := range val {
+							switch nval := nv.(type) {
+							case int:
+								nestedMap.Items[nk] = float64(nval)
+							case uint64:
+								nestedMap.Items[nk] = float64(nval)
+							case string:
+								nestedMap.Items[nk] = nval
+							default:
+								nestedMap.Items[nk] = nv
+							}
+						}
+						result.Items[k] = nestedMap
 					default:
 						result.Items[k] = v
 					}
@@ -3731,8 +3750,8 @@ func (vm *EnhancedVM) registerBuiltins() {
 				return memMod.DumpProcessMemory(pid, outputPath), nil
 			},
 		},
-		"mem_get_memory_regions": {
-			Name:  "mem_get_memory_regions",
+		"mem_get_regions": {
+			Name:  "mem_get_regions",
 			Arity: 1,
 			Function: func(args []Value) (Value, error) {
 				if len(args) != 1 {
@@ -3742,24 +3761,33 @@ func (vm *EnhancedVM) registerBuiltins() {
 				if p, ok := args[0].(float64); ok {
 					pid = int(p)
 				}
-				regions := memMod.GetMemoryRegions(pid)
-				// Convert to Sentra array
-				result := make([]Value, len(regions))
-				for i, region := range regions {
-					regionMap := &Map{Items: make(map[string]Value)}
-					for k, v := range region {
-						switch val := v.(type) {
-						case int:
-							regionMap.Items[k] = float64(val)
-						case string:
-							regionMap.Items[k] = val
-						default:
-							regionMap.Items[k] = v
+				regionsInterface := memMod.GetRegions(pid)
+				// Type assert and convert to Sentra array
+				if regions, ok := regionsInterface.([]interface{}); ok {
+					result := make([]Value, len(regions))
+					for i, regionInterface := range regions {
+						if region, ok := regionInterface.(map[string]interface{}); ok {
+							regionMap := &Map{Items: make(map[string]Value)}
+							for k, v := range region {
+								switch val := v.(type) {
+								case int:
+									regionMap.Items[k] = float64(val)
+								case uint64:
+									regionMap.Items[k] = float64(val)
+								case uintptr:
+									regionMap.Items[k] = float64(val)
+								case string:
+									regionMap.Items[k] = val
+								default:
+									regionMap.Items[k] = v
+								}
+							}
+							result[i] = regionMap
 						}
 					}
-					result[i] = regionMap
+					return &Array{Elements: result}, nil
 				}
-				return result, nil
+				return &Array{Elements: []Value{}}, nil
 			},
 		},
 		"mem_scan_malware": {
@@ -3769,25 +3797,17 @@ func (vm *EnhancedVM) registerBuiltins() {
 				if len(args) != 1 {
 					return nil, fmt.Errorf("mem_scan_malware expects 1 argument")
 				}
-				// ScanForMalware doesn't take arguments
-				malware := memMod.ScanForMalware()
-				// Convert to Sentra array
-				result := make([]Value, len(malware))
-				for i, m := range malware {
-					mMap := &Map{Items: make(map[string]Value)}
-					for k, v := range m {
-						switch val := v.(type) {
-						case int:
-							mMap.Items[k] = float64(val)
-						case string:
-							mMap.Items[k] = val
-						default:
-							mMap.Items[k] = v
-						}
+				pid := int(ToNumber(args[0]))
+				malwareInterface := memMod.ScanMalware(pid)
+				// Type assert and convert to Sentra array
+				if malware, ok := malwareInterface.([]string); ok {
+					result := make([]Value, len(malware))
+					for i, m := range malware {
+						result[i] = m
 					}
-					result[i] = mMap
+					return &Array{Elements: result}, nil
 				}
-				return result, nil
+				return &Array{Elements: []Value{}}, nil
 			},
 		},
 		"mem_detect_hollowing": {
@@ -3797,25 +3817,80 @@ func (vm *EnhancedVM) registerBuiltins() {
 				if len(args) != 1 {
 					return nil, fmt.Errorf("mem_detect_hollowing expects 1 argument")
 				}
-				// DetectProcessHollowing doesn't take arguments in our implementation
-				hollowing := memMod.DetectProcessHollowing()
-				// Convert to Sentra array
-				result := make([]Value, len(hollowing))
-				for i, h := range hollowing {
-					hMap := &Map{Items: make(map[string]Value)}
-					for k, v := range h {
+				pid := int(ToNumber(args[0]))
+				result := memMod.DetectHollowing(pid)
+				// Convert result to Sentra map
+				resultMap := &Map{Items: make(map[string]Value)}
+				if resMap, ok := result.(map[string]interface{}); ok {
+					for k, v := range resMap {
 						switch val := v.(type) {
-						case int:
-							hMap.Items[k] = float64(val)
-						case string:
-							hMap.Items[k] = val
+						case bool:
+							resultMap.Items[k] = val
+						case []string:
+							arr := make([]Value, len(val))
+							for i, s := range val {
+								arr[i] = s
+							}
+							resultMap.Items[k] = &Array{Elements: arr}
 						default:
-							hMap.Items[k] = v
+							resultMap.Items[k] = v
 						}
 					}
-					result[i] = hMap
 				}
-				return result, nil
+				return resultMap, nil
+			},
+		},
+		"mem_detect_injection": {
+			Name:  "mem_detect_injection",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("mem_detect_injection expects 1 argument")
+				}
+				pid := int(ToNumber(args[0]))
+				result := memMod.DetectInjection(pid)
+				// Convert string array to Sentra array
+				if indicators, ok := result.([]string); ok {
+					arr := make([]Value, len(indicators))
+					for i, s := range indicators {
+						arr[i] = s
+					}
+					return &Array{Elements: arr}, nil
+				}
+				return &Array{Elements: []Value{}}, nil
+			},
+		},
+		"mem_get_children": {
+			Name:  "mem_get_children",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("mem_get_children expects 1 argument")
+				}
+				pid := int(ToNumber(args[0]))
+				result := memMod.GetChildren(pid)
+				// Convert to Sentra array
+				if children, ok := result.([]interface{}); ok {
+					arr := make([]Value, len(children))
+					for i, childInterface := range children {
+						if child, ok := childInterface.(map[string]interface{}); ok {
+							childMap := &Map{Items: make(map[string]Value)}
+							for k, v := range child {
+								switch val := v.(type) {
+								case int:
+									childMap.Items[k] = float64(val)
+								case string:
+									childMap.Items[k] = val
+								default:
+									childMap.Items[k] = v
+								}
+							}
+							arr[i] = childMap
+						}
+					}
+					return &Array{Elements: arr}, nil
+				}
+				return &Array{Elements: []Value{}}, nil
 			},
 		},
 		"mem_analyze_injection": {
@@ -3861,59 +3936,33 @@ func (vm *EnhancedVM) registerBuiltins() {
 					return nil, fmt.Errorf("mem_find_process expects 1 argument")
 				}
 				name := ToString(args[0])
-				processes := memMod.FindProcessByName(name)
-				// Convert to Sentra array
-				result := make([]Value, len(processes))
-				for i, proc := range processes {
-					procMap := &Map{Items: make(map[string]Value)}
-					for k, v := range proc {
-						switch val := v.(type) {
-						case int:
-							procMap.Items[k] = float64(val)
-						case string:
-							procMap.Items[k] = val
-						default:
-							procMap.Items[k] = v
+				processesInterface := memMod.FindProcess(name)
+				// Type assert and convert to Sentra array
+				if processes, ok := processesInterface.([]interface{}); ok {
+					result := make([]Value, len(processes))
+					for i, procInterface := range processes {
+						if proc, ok := procInterface.(map[string]interface{}); ok {
+							procMap := &Map{Items: make(map[string]Value)}
+							for k, v := range proc {
+								switch val := v.(type) {
+								case int:
+									procMap.Items[k] = float64(val)
+								case string:
+									procMap.Items[k] = val
+								default:
+									procMap.Items[k] = v
+								}
+							}
+							result[i] = procMap
 						}
 					}
-					result[i] = procMap
+					return &Array{Elements: result}, nil
 				}
-				return result, nil
+				return &Array{Elements: []Value{}}, nil
 			},
 		},
-		"mem_get_children": {
-			Name:  "mem_get_children",
-			Arity: 1,
-			Function: func(args []Value) (Value, error) {
-				if len(args) != 1 {
-					return nil, fmt.Errorf("mem_get_children expects 1 argument")
-				}
-				pid := 0
-				if p, ok := args[0].(float64); ok {
-					pid = int(p)
-				}
-				children := memMod.GetProcessChildren(pid)
-				// Convert to Sentra array
-				result := make([]Value, len(children))
-				for i, child := range children {
-					childMap := &Map{Items: make(map[string]Value)}
-					for k, v := range child {
-						switch val := v.(type) {
-						case int:
-							childMap.Items[k] = float64(val)
-						case string:
-							childMap.Items[k] = val
-						default:
-							childMap.Items[k] = v
-						}
-					}
-					result[i] = childMap
-				}
-				return result, nil
-			},
-		},
-		"mem_process_tree": {
-			Name:  "mem_process_tree",
+		"mem_get_process_tree": {
+			Name:  "mem_get_process_tree",
 			Arity: 0,
 			Function: func(args []Value) (Value, error) {
 				tree := memMod.AnalyzeProcessTree()
@@ -3936,13 +3985,24 @@ func (vm *EnhancedVM) registerBuiltins() {
 									mMap.Items[mk] = float64(mval)
 								case string:
 									mMap.Items[mk] = mval
+								case []interface{}:
+									// Convert to Sentra array
+									childArr := make([]Value, len(mval))
+									for ci, child := range mval {
+										if childInt, ok := child.(int); ok {
+											childArr[ci] = float64(childInt)
+										} else {
+											childArr[ci] = child
+										}
+									}
+									mMap.Items[mk] = &Array{Elements: childArr}
 								default:
 									mMap.Items[mk] = mv
 								}
 							}
 							arr[i] = mMap
 						}
-						result.Items[k] = arr
+						result.Items[k] = &Array{Elements: arr}
 					default:
 						result.Items[k] = v
 					}

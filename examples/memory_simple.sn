@@ -5,7 +5,7 @@ log("=================================")
 
 // List all running processes
 log("Getting process list...")
-let processes = mem_list_processes()
+let processes = mem_enum_processes()
 if (processes) {
     log("Total processes: " + str(len(processes)))
     
@@ -27,7 +27,7 @@ if (explorer && len(explorer) > 0) {
     
     // Get memory regions
     log("Getting memory regions...")
-    let regions = mem_get_memory_regions(proc["pid"])
+    let regions = mem_get_regions(proc["pid"])
     if (regions) {
         log("Memory regions: " + str(len(regions)))
     }
@@ -48,7 +48,7 @@ if (explorer && len(explorer) > 0) {
 
 // Get process tree
 log("\nAnalyzing process tree...")
-let tree = mem_process_tree()
+let tree = mem_get_process_tree()
 if (tree) {
     log("Process tree contains " + str(tree["total_processes"]) + " processes")
 }

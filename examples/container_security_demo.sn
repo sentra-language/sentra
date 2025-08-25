@@ -1,6 +1,6 @@
 
 log("Container Security Scanning Demo")
-log("=================================")
+log("=" * 33)
 
 // Scan a container image
 log("Scanning Container Image")

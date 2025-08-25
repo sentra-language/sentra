@@ -1,0 +1,3 @@
+log("Test 1")
+log("Test 2")
+log("Test 3")

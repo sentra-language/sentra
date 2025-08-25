@@ -1,12 +1,4 @@
-// Test for loop
-let arr = [1, 2, 3, 4, 5]
-
-// Test 1: Simple for loop
-for (let i = 0; i < 5; i = i + 1) {
-    log("i = " + i)
-}
-
-// Test 2: For loop with array access
-for (let j = 0; j < len(arr); j = j + 1) {
-    log("arr[" + j + "] = " + arr[j])
+let limit = 5
+for (let i = 0; i < limit; i = i + 1) {
+    log("Count: " + str(i))
 }

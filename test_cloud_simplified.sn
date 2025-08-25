@@ -1,0 +1,20 @@
+// Simplified cloud security test
+
+fn cloud_scan(provider) {
+    if provider == "production-aws" {
+        return {
+            "provider": provider,
+            "resources_scanned": 2,
+            "compliance_score": 75,
+            "critical_findings": 0,
+            "high_findings": 2,
+            "policies": []
+        }
+    }
+    return {}
+}
+
+let aws_report = cloud_scan("production-aws")
+log("Provider: " + aws_report["provider"])
+log("Resources scanned: " + str(aws_report["resources_scanned"]))
+log("Compliance score: " + str(aws_report["compliance_score"]))

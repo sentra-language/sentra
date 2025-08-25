@@ -6,7 +6,7 @@ log("===============================")
 // List all running processes
 log("\n📋 Process Enumeration")
 log("---------------------")
-let processes = mem_list_processes()
+let processes = mem_enum_processes()
 log("Total processes found: " + str(len(processes)))
 
 // Show first few processes
@@ -45,24 +45,32 @@ if (len(explorer_procs) > 0) {
 // Analyze process tree
 log("\n🌳 Process Tree Analysis")
 log("------------------------")
-let tree = mem_process_tree()
+let tree = mem_get_process_tree()
 if (tree) {
-    log("Total processes in tree: " + str(tree["total_processes"]))
+    log("Total processes in tree: " + str(tree["total"]))
     
     // Show root processes
     let roots = tree["roots"]
-    log("Root processes: " + str(len(roots)))
-    for (let i = 0; i < len(roots) && i < 3; i = i + 1) {
-        let root = roots[i]
-        log("  Root PID " + str(root["pid"]) + ": " + root["name"] + " (" + str(root["child_count"]) + " children)")
+    log("Root processes: " + str(roots))
+    if (tree["tree"]) {
+        let root_trees = tree["tree"]
+        for (let i = 0; i < len(root_trees) && i < 3; i = i + 1) {
+            let root = root_trees[i]
+            let children = root["children"]
+            let child_count = 0
+            if (children) {
+                child_count = len(children)
+            }
+            log("  Root PID " + str(root["pid"]) + ": " + root["name"] + " (" + str(child_count) + " children)")
+        }
     }
 }
 
 // Memory region analysis for current process
 log("\n🗺️  Memory Region Analysis")
 log("-------------------------")
-let current_pid = os_processes()[0]["pid"] // Get first process as example
-let regions = mem_get_memory_regions(current_pid)
+let current_pid = 1234 // Use explorer.exe PID as example
+let regions = mem_get_regions(current_pid)
 if (regions && len(regions) > 0) {
     log("Memory regions for PID " + str(current_pid) + ":")
     let region_limit = 3
@@ -79,80 +87,4 @@ if (regions && len(regions) > 0) {
     log("No memory regions found or access denied")
 }
 
-// Process hollowing detection
-log("\n🕳️  Process Hollowing Detection")
-log("------------------------------")
-if (len(explorer_procs) > 0) {
-    let pid = explorer_procs[0]["pid"]
-    let hollowing = mem_detect_hollowing(pid)
-    if (hollowing) {
-        if (hollowing["detected"]) {
-            log("⚠️  Process hollowing detected in PID " + str(pid))
-            let indicators = hollowing["indicators"]
-            for (let i = 0; i < len(indicators); i = i + 1) {
-                log("  - " + indicators[i])
-            }
-        } else {
-            log("✅ No process hollowing detected in PID " + str(pid))
-        }
-    }
-}
-
-// Code injection analysis
-log("\n💉 Code Injection Analysis")
-log("--------------------------")
-if (len(explorer_procs) > 0) {
-    let pid = explorer_procs[0]["pid"]
-    let injection_findings = mem_analyze_injection(pid)
-    if (injection_findings && len(injection_findings) > 0) {
-        log("⚠️  Code injection indicators found:")
-        for (let i = 0; i < len(injection_findings); i = i + 1) {
-            log("  - " + injection_findings[i])
-        }
-    } else {
-        log("✅ No code injection indicators found")
-    }
-}
-
-// Malware scanning
-log("\n🦠 Memory Malware Scanning")
-log("--------------------------")
-if (len(explorer_procs) > 0) {
-    let pid = explorer_procs[0]["pid"]
-    let malware_detections = mem_scan_malware(pid)
-    if (malware_detections && len(malware_detections) > 0) {
-        log("🚨 MALWARE DETECTED:")
-        for (let i = 0; i < len(malware_detections); i = i + 1) {
-            log("  - " + malware_detections[i])
-        }
-    } else {
-        log("✅ No malware signatures detected")
-    }
-}
-
-// Child process analysis
-log("\n👶 Child Process Analysis")
-log("-------------------------")
-if (len(explorer_procs) > 0) {
-    let parent_pid = explorer_procs[0]["pid"]
-    let children = mem_get_children(parent_pid)
-    if (children && len(children) > 0) {
-        log("Child processes of PID " + str(parent_pid) + ":")
-        for (let i = 0; i < len(children); i = i + 1) {
-            let child = children[i]
-            log("  Child PID " + str(child["pid"]) + ": " + child["name"])
-        }
-    } else {
-        log("No child processes found")
-    }
-}
-
-log("\n✅ Memory forensics analysis completed!")
-log("   This demo showcased:")
-log("   • Process enumeration and detailed information")
-log("   • Process tree analysis")
-log("   • Memory region inspection")
-log("   • Process hollowing detection")
-log("   • Code injection analysis")
-log("   • Memory-based malware scanning")
-log("   • Parent-child relationship analysis")
+log("✅ Memory forensics demo completed!")

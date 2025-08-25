@@ -1,0 +1,23 @@
+log("🧠 Sentra Memory Forensics Demo")
+log("===============================")
+
+// List all running processes
+log("\n📋 Process Enumeration")
+log("---------------------")
+let processes = mem_enum_processes()
+log("Total processes found: " + str(len(processes)))
+
+// Show first few processes
+let limit = 5
+for (let i = 0; i < len(processes) && i < limit; i = i + 1) {
+    let proc = processes[i]
+    log("PID " + str(proc["pid"]) + ": " + proc["name"])
+}
+
+// Find specific process by name
+log("\n🔍 Find Process by Name")
+log("-----------------------")
+let explorer_procs = mem_find_process("explorer.exe")
+log("Found " + str(len(explorer_procs)) + " instances of explorer.exe")
+
+log("Test completed successfully!")

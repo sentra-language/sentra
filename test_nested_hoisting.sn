@@ -1,0 +1,12 @@
+// Test nested function calls with hoisting
+
+fn inner() {
+    return "inner result"
+}
+
+fn outer() {
+    return inner()
+}
+
+log("Testing nested hoisted calls:")
+log(outer())

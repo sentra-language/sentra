@@ -1,0 +1,25 @@
+log("Testing tree elements...")
+
+let tree = mem_get_process_tree()
+if (tree && tree["tree"]) {
+    let tree_data = tree["tree"]
+    log("Tree length: " + str(len(tree_data)))
+    
+    if (len(tree_data) > 0) {
+        let first_root = tree_data[0]
+        log("First root type: " + type(first_root))
+        
+        if (first_root) {
+            log("First root PID: " + str(first_root["pid"]))
+            log("First root name: " + first_root["name"])
+            
+            log("Children type: " + type(first_root["children"]))
+            let children = first_root["children"]
+            if (children) {
+                log("Children length: " + str(len(children)))
+            }
+        }
+    }
+}
+
+log("Done!")

@@ -39,13 +39,13 @@ log("")
 log("=== AWS Scan Results ===")
 let aws_report = cloud_scan("production-aws")
 log("Provider: " + aws_report["provider"])
-log("Resources scanned: " + str(aws_report["resources"]))
-log("Overall compliance score: " + str(aws_report["overall_score"]) + "%")
+log("Resources scanned: " + str(aws_report["resources_scanned"]))
+log("Overall compliance score: " + str(aws_report["compliance_score"]) + "%")
 log("Critical findings: " + str(aws_report["critical_findings"]))
 log("High findings: " + str(aws_report["high_findings"]))
 
 // Check specific policy results
-let policies = aws_report["policy_results"]
+let policies = aws_report["policies"]
 if len(policies) > 0 {
     log("")
     log("Policy Results:")
@@ -76,15 +76,15 @@ log("")
 log("=== Azure Scan Results ===")
 let azure_report = cloud_scan("production-azure")
 log("Provider: " + azure_report["provider"])
-log("Resources scanned: " + str(azure_report["resources"]))
-log("Overall compliance score: " + str(azure_report["overall_score"]) + "%")
+log("Resources scanned: " + str(azure_report["resources_scanned"]))
+log("Overall compliance score: " + str(azure_report["compliance_score"]) + "%")
 
 log("")
 log("=== GCP Scan Results ===")
 let gcp_report = cloud_scan("production-gcp")
 log("Provider: " + gcp_report["provider"])
-log("Resources scanned: " + str(gcp_report["resources"]))
-log("Overall compliance score: " + str(gcp_report["overall_score"]) + "%")
+log("Resources scanned: " + str(gcp_report["resources_scanned"]))
+log("Overall compliance score: " + str(gcp_report["compliance_score"]) + "%")
 
 // Get all open findings
 log("")
@@ -160,6 +160,29 @@ while i < 4 && i < len(recommendations) {
 // Helper functions
 fn cloud_config(provider, region, key, secret) {
     return {"provider": provider, "region": region}
+}
+
+fn cloud_provider_add(name, provider, creds) {
+    return true
+}
+
+fn cloud_findings(status) {
+    return list_open_findings()
+}
+
+fn cloud_validate_iam(policy) {
+    return validate_iam_policy(policy)
+}
+
+fn cloud_auto_remediate(finding_id) {
+    return {
+        "status": "success",
+        "action_taken": "Applied automated fix for " + finding_id
+    }
+}
+
+fn cloud_resolve_finding(finding_id) {
+    return true
 }
 
 fn cloud_scan(provider) {

@@ -1,0 +1,2 @@
+let msg = "✓ Test Unicode"
+log(msg)

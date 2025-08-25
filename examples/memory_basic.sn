@@ -2,10 +2,10 @@
 
 log("Memory Forensics Test")
 
-let processes = mem_list_processes()
+let processes = mem_enum_processes()
 log("Got process list")
 
-let tree = mem_process_tree()
+let tree = mem_get_process_tree()
 log("Got process tree")
 
 log("Test completed!")

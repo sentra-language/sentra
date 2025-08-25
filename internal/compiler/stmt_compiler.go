@@ -9,11 +9,11 @@ import (
 type StmtCompiler struct {
 	Chunk           *bytecode.Chunk
 	currentFunction *Function
-	fileName        string
+	FileName        string        // Exported for hoisting compiler
 	currentLine     int
 	currentColumn   int
-	locals          []string  // Track local variables in current function
-	localCount      int       // Number of locals
+	locals          []string      // Track local variables in current function
+	localCount      int           // Number of locals
 	parent          *StmtCompiler // Parent compiler for closures
 }
 
@@ -45,7 +45,7 @@ func NewStmtCompilerWithDebug(fileName string) *StmtCompiler {
 			Params: []string{},
 			Chunk:  nil, // Will be set later
 		},
-		fileName: fileName,
+		FileName: fileName,
 	}
 }
 
@@ -66,7 +66,7 @@ func (c *StmtCompiler) emitOp(op bytecode.OpCode) {
 	debug := bytecode.DebugInfo{
 		Line:     c.currentLine,
 		Column:   c.currentColumn,
-		File:     c.fileName,
+		File:     c.FileName,
 		Function: c.currentFunction.Name,
 	}
 	c.Chunk.WriteOpWithDebug(op, debug)
@@ -76,7 +76,7 @@ func (c *StmtCompiler) emitByte(b byte) {
 	debug := bytecode.DebugInfo{
 		Line:     c.currentLine,
 		Column:   c.currentColumn,
-		File:     c.fileName,
+		File:     c.FileName,
 		Function: c.currentFunction.Name,
 	}
 	c.Chunk.WriteByteWithDebug(b, debug)

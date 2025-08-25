@@ -1,0 +1,14 @@
+log("Testing memory forensics...")
+
+log("Step 1: Call mem_find_process")
+let explorer_procs = mem_find_process("explorer.exe")
+log("Step 2: Got result")
+
+log("Step 3: Check type")
+log("Type: " + type(explorer_procs))
+
+log("Step 4: Try to get length")
+let length = len(explorer_procs)
+log("Length: " + str(length))
+
+log("Done!")

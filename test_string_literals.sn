@@ -1,0 +1,2 @@
+let test = {"access_key": "value"}
+log(str(test))

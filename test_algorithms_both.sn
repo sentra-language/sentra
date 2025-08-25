@@ -1,0 +1,138 @@
+// Test algorithms with both for loops and while loops
+
+// Bubble sort with while loops
+fn bubbleSortWhile(arr) {
+    let result = []
+    for item in arr {
+        result.push(item)
+    }
+    
+    let n = len(result)
+    let i = 0
+    while i < n - 1 {
+        let j = 0
+        while j < n - i - 1 {
+            if result[j] > result[j + 1] {
+                let temp = result[j]
+                result[j] = result[j + 1]
+                result[j + 1] = temp
+            }
+            j = j + 1
+        }
+        i = i + 1
+    }
+    return result
+}
+
+// Bubble sort with for loops
+fn bubbleSortFor(arr) {
+    let result = []
+    for item in arr {
+        result.push(item)
+    }
+    
+    let n = len(result)
+    for (let i = 0; i < n - 1; i = i + 1) {
+        for (let j = 0; j < n - i - 1; j = j + 1) {
+            if result[j] > result[j + 1] {
+                let temp = result[j]
+                result[j] = result[j + 1]
+                result[j + 1] = temp
+            }
+        }
+    }
+    return result
+}
+
+// Selection sort with while loops
+fn selectionSortWhile(arr) {
+    let result = []
+    for item in arr {
+        result.push(item)
+    }
+    
+    let n = len(result)
+    let i = 0
+    while i < n - 1 {
+        let minIdx = i
+        let j = i + 1
+        while j < n {
+            if result[j] < result[minIdx] {
+                minIdx = j
+            }
+            j = j + 1
+        }
+        if minIdx != i {
+            let temp = result[i]
+            result[i] = result[minIdx]
+            result[minIdx] = temp
+        }
+        i = i + 1
+    }
+    return result
+}
+
+// Selection sort with for loops
+fn selectionSortFor(arr) {
+    let result = []
+    for item in arr {
+        result.push(item)
+    }
+    
+    let n = len(result)
+    for (let i = 0; i < n - 1; i = i + 1) {
+        let minIdx = i
+        for (let j = i + 1; j < n; j = j + 1) {
+            if result[j] < result[minIdx] {
+                minIdx = j
+            }
+        }
+        if minIdx != i {
+            let temp = result[i]
+            result[i] = result[minIdx]
+            result[minIdx] = temp
+        }
+    }
+    return result
+}
+
+// Test data
+let testArray = [64, 34, 25, 12, 22, 11, 90]
+
+log("Original array: " + testArray)
+log("")
+
+log("Bubble sort (while): " + bubbleSortWhile(testArray))
+log("Bubble sort (for):   " + bubbleSortFor(testArray))
+log("")
+
+log("Selection sort (while): " + selectionSortWhile(testArray))
+log("Selection sort (for):   " + selectionSortFor(testArray))
+log("")
+
+// Verify all results are the same
+let bw = bubbleSortWhile(testArray)
+let bf = bubbleSortFor(testArray)
+let sw = selectionSortWhile(testArray)
+let sf = selectionSortFor(testArray)
+
+// Check if all sorted arrays are identical
+fn arraysEqual(a, b) {
+    if len(a) != len(b) {
+        return false
+    }
+    let i = 0
+    while i < len(a) {
+        if a[i] != b[i] {
+            return false
+        }
+        i = i + 1
+    }
+    return true
+}
+
+if arraysEqual(bw, bf) && arraysEqual(bw, sw) && arraysEqual(bw, sf) {
+    log("✅ All sorting methods produce identical results!")
+} else {
+    log("❌ Sorting methods produced different results!")
+}
