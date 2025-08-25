@@ -239,7 +239,11 @@ func (s *Scanner) scanToken() {
 			s.number()
 		} else if isAlpha(c) {
 			s.identifier()
+		} else if c >= 0x80 {
+			// Non-ASCII character - skip UTF-8 sequence to avoid splitting multi-byte characters
+			s.skipUTF8Sequence(c)
 		}
+		// Ignore other unknown characters
 	}
 }
 
@@ -505,6 +509,29 @@ func isAlphaNumeric(c byte) bool {
 
 func isDigit(c byte) bool {
 	return '0' <= c && c <= '9'
+}
+
+func (s *Scanner) skipUTF8Sequence(firstByte byte) {
+	// Skip remaining bytes of UTF-8 sequence based on first byte
+	if firstByte < 0xC0 {
+		// Invalid UTF-8 or continuation byte - already consumed
+		return
+	} else if firstByte < 0xE0 {
+		// 2-byte sequence - skip 1 more byte
+		if !s.isAtEnd() {
+			s.advance()
+		}
+	} else if firstByte < 0xF0 {
+		// 3-byte sequence - skip 2 more bytes
+		for i := 0; i < 2 && !s.isAtEnd(); i++ {
+			s.advance()
+		}
+	} else {
+		// 4-byte sequence - skip 3 more bytes
+		for i := 0; i < 3 && !s.isAtEnd(); i++ {
+			s.advance()
+		}
+	}
 }
 
 // skipShebang skips over shebang line at the beginning of the file

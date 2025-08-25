@@ -1,8 +1,0 @@
-// Test var declarations
-var x = 10
-log("x = " + x)
-
-for (var i = 0; i < 3; i = i + 1) {
-    var j = i * 2
-    log("i = " + i + ", j = " + j)
-}

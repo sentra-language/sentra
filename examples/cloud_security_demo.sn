@@ -39,10 +39,10 @@ log("")
 log("=== AWS Scan Results ===")
 let aws_report = cloud_scan("production-aws")
 log("Provider: " + aws_report["provider"])
-log("Resources scanned: " + str(aws_report["resources_scanned"]))
-log("Overall compliance score: " + str(aws_report["compliance_score"]) + "%")
-log("Critical findings: " + str(aws_report["critical_findings"]))
-log("High findings: " + str(aws_report["high_findings"]))
+log("Resources scanned: " + aws_report["resources_scanned"])
+log("Overall compliance score: " + aws_report["compliance_score"] + "%")
+log("Critical findings: " + aws_report["critical_findings"])
+log("High findings: " + aws_report["high_findings"])
 
 // Check specific policy results
 let policies = aws_report["policies"]
@@ -76,21 +76,21 @@ log("")
 log("=== Azure Scan Results ===")
 let azure_report = cloud_scan("production-azure")
 log("Provider: " + azure_report["provider"])
-log("Resources scanned: " + str(azure_report["resources_scanned"]))
-log("Overall compliance score: " + str(azure_report["compliance_score"]) + "%")
+log("Resources scanned: " + azure_report["resources_scanned"])
+log("Overall compliance score: " + azure_report["compliance_score"] + "%")
 
 log("")
 log("=== GCP Scan Results ===")
 let gcp_report = cloud_scan("production-gcp")
 log("Provider: " + gcp_report["provider"])
-log("Resources scanned: " + str(gcp_report["resources_scanned"]))
-log("Overall compliance score: " + str(gcp_report["compliance_score"]) + "%")
+log("Resources scanned: " + gcp_report["resources_scanned"])
+log("Overall compliance score: " + gcp_report["compliance_score"] + "%")
 
 // Get all open findings
 log("")
 log("=== Open Security Findings ===")
 let open_findings = cloud_findings("open")
-log("Total open findings: " + str(len(open_findings)))
+log("Total open findings: " + len(open_findings))
 
 if len(open_findings) > 0 {
     // Show first few findings
@@ -261,8 +261,14 @@ fn list_open_findings() {
 
 fn validate_iam_policy(policy) {
     let issues = []
-    if !policy["Condition"] {
-        issues.push("Policy lacks conditional access controls")
+    if contains(policy, "*") {
+        issues = push(issues, "Policy contains wildcard permissions")
+    }
+    if contains(policy, "Principal") && contains(policy, "*") {
+        issues = push(issues, "Policy allows public access")
+    }
+    if contains(policy, "s3:*") {
+        issues = push(issues, "Policy grants full S3 permissions")
     }
     return issues
 }

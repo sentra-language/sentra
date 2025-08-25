@@ -1,9 +1,0 @@
-// Test specifically with access_key
-let creds = {
-    "access_key": "AKIA...",
-    "secret_key": "...",
-    "region": "us-east-1"
-}
-
-log("Creds: " + str(creds))
-log("Access key: " + creds["access_key"])

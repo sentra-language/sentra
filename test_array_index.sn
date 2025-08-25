@@ -1,8 +1,0 @@
-// Test array indexing
-let config = {
-    "targets": ["192.168.1.0/24"]
-}
-
-log("Config: " + config)
-log("Targets: " + config["targets"])
-log("Target 0: " + config["targets"][0])

@@ -1,9 +1,10 @@
 // Incident Response Automation Demo
-log("🚨 Sentra Incident Response Automation")
-log("=" * 50)
+log("Sentra Incident Response Automation")
+log("==================================================")
 
 // Create a security incident
-log("\n📋 Creating Security Incident...")
+log("")
+log("Creating Security Incident...")
 let incident = ir_create_incident(
     "Malware Detection on Workstation", 
     "Suspicious malware activity detected on user workstation WS-001",
@@ -154,9 +155,10 @@ let final_metrics = ir_get_metrics()
 log("• Open incidents: " + final_metrics["open_incidents"])
 log("• Closed incidents: " + final_metrics["closed_incidents"])
 
-log("\n" + "=" * 50)
+log("")
+log("==================================================")
 log("🎯 Incident Response Automation Complete!")
-log("=" * 50)
+log("==================================================")
 
 log("\n🛡️ Incident Response Capabilities:")
 log("• Automated incident creation and tracking")

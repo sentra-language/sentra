@@ -1,9 +1,0 @@
-log("Before function definition")
-let result = greet("World")
-log("Result: " + result)
-
-fn greet(name) {
-    return "Hello, " + name
-}
-
-log("After function definition")

@@ -1,4 +1,0 @@
-log("Testing len() function")
-let test_map = {"key1": "value1", "key2": "value2"}
-log("Map length: " + len(test_map))
-log("Done")

@@ -1,8 +1,0 @@
-log("Testing exact function sequence")
-let traffic_result = analyze_traffic("eth0", 1)
-log("Traffic done: " + len(traffic_result["protocol_stats"]))
-let intrusion_alerts = detect_intrusions("eth0", 1) 
-log("Intrusion done: " + len(intrusion_alerts))
-let scan_results = advanced_port_scan("127.0.0.1", 80, 83, "tcp_connect")
-log("Scan done: " + len(scan_results))
-log("All done")

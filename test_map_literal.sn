@@ -1,8 +1,0 @@
-// Test map literal with quoted strings
-let test = {
-    "key1": "value1",
-    "key2": "value2"
-}
-
-log("Test: " + str(test))
-log("Key1: " + test["key1"])

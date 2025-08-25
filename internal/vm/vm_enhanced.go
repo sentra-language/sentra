@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"runtime"
@@ -270,9 +271,9 @@ func (vm *EnhancedVM) Run() (Value, error) {
 		}
 		
 		// Debug: Print opcode being executed (temporary)
-		// if false { // Set to true to enable debug output
-		//	fmt.Printf("IP=%d, Opcode=%d\n", frame.ip-1, instruction)
-		// }
+		if false { // Set to true to enable debug output
+			// fmt.Printf("IP=%d, Opcode=%d\n", frame.ip-1, instruction)
+		}
 		
 		// Bounds check
 		if frame.ip >= len(frame.chunk.Code) {
@@ -282,6 +283,11 @@ func (vm *EnhancedVM) Run() (Value, error) {
 		// Fetch and execute instruction
 		instruction := bytecode.OpCode(frame.chunk.Code[frame.ip])
 		frame.ip++
+		
+		// Debug: Print execution trace for try-catch debugging
+		if false { // Set to true to enable debug output
+			fmt.Printf("IP=%d, Opcode=%v, StackTop=%d\n", frame.ip-1, instruction, vm.stackTop)
+		}
 		
 		// Hot path optimizations for common operations
 		switch instruction {
@@ -331,8 +337,9 @@ func (vm *EnhancedVM) Run() (Value, error) {
 					vm.tryStack = vm.tryStack[:len(vm.tryStack)-1]
 					frame.ip = tryFrame.catchIP
 					vm.stackTop = tryFrame.stackDepth
-					// Push the error for the catch block
-					vm.push(err.Error())
+					vm.frameCount = tryFrame.frameDepth // Also restore frame depth
+					// Push the error for the catch block (consistent with OpThrow)
+					vm.push(vm.lastError)
 				} else {
 					// Not in a try block, return the error
 					return nil, err
@@ -453,7 +460,13 @@ func (vm *EnhancedVM) Run() (Value, error) {
 		case bytecode.OpGetGlobal:
 			// Read name index from bytecode
 			nameIndex := vm.readByte()
-			name := frame.chunk.Constants[nameIndex].(string)
+			nameConst := frame.chunk.Constants[nameIndex]
+			name, ok := nameConst.(string)
+			if !ok {
+				// Handle cases where the constant might not be a string
+				log.Printf("Warning: OpGetGlobal expected string constant but got %T: %v", nameConst, nameConst)
+				name = fmt.Sprintf("%v", nameConst)
+			}
 			// Look up global by name
 			if index, exists := vm.globalMap[name]; exists {
 				if index < len(vm.globals) {
@@ -469,7 +482,13 @@ func (vm *EnhancedVM) Run() (Value, error) {
 		case bytecode.OpSetGlobal:
 			// Read name index from bytecode
 			nameIndex := vm.readByte()
-			name := frame.chunk.Constants[nameIndex].(string)
+			nameConst := frame.chunk.Constants[nameIndex]
+			name, ok := nameConst.(string)
+			if !ok {
+				// Handle cases where the constant might not be a string
+				log.Printf("Warning: OpSetGlobal expected string constant but got %T: %v", nameConst, nameConst)
+				name = fmt.Sprintf("%v", nameConst)
+			}
 			// Look up or create global
 			if index, exists := vm.globalMap[name]; exists {
 				if index < len(vm.globals) {
@@ -489,7 +508,13 @@ func (vm *EnhancedVM) Run() (Value, error) {
 			
 		case bytecode.OpDefineGlobal:
 			nameIndex := vm.readByte()
-			name := frame.chunk.Constants[nameIndex].(string)
+			nameConst := frame.chunk.Constants[nameIndex]
+			name, ok := nameConst.(string)
+			if !ok {
+				// Handle cases where the constant might not be a string
+				log.Printf("Warning: OpDefineGlobal expected string constant but got %T: %v", nameConst, nameConst)
+				name = fmt.Sprintf("%v", nameConst)
+			}
 			// Find or create global index
 			if index, exists := vm.globalMap[name]; exists {
 				// Update existing global
@@ -779,6 +804,8 @@ func (vm *EnhancedVM) Run() (Value, error) {
 					state.index++
 					vm.push(true) // Continue iteration
 				} else {
+					// End iteration - push nil element and false to maintain stack consistency
+					vm.push(nil) // Dummy element (will be popped)
 					vm.push(false) // End iteration
 				}
 				
@@ -791,6 +818,8 @@ func (vm *EnhancedVM) Run() (Value, error) {
 					state.index++
 					vm.push(true) // Continue iteration
 				} else {
+					// End iteration - push nil element and false to maintain stack consistency
+					vm.push(nil) // Dummy element (will be popped)
 					vm.push(false) // End iteration
 				}
 				
@@ -867,10 +896,12 @@ func (vm *EnhancedVM) Run() (Value, error) {
 			
 		// Error handling
 		case bytecode.OpTry:
+			// Save the position of the OpTry instruction
+			tryInstructionIP := frame.ip - 1  // -1 because ip was already incremented
 			catchOffset := vm.readShort()
 			vm.tryStack = append(vm.tryStack, TryFrame{
-				catchIP:    frame.ip + int(catchOffset),
-				stackDepth: vm.stackTop,
+				catchIP:    tryInstructionIP + int(catchOffset), // Offset from OpTry instruction
+				stackDepth: vm.stackTop, // Stack depth at try block entry
 				frameDepth: vm.frameCount,
 			})
 			
@@ -885,10 +916,16 @@ func (vm *EnhancedVM) Run() (Value, error) {
 			if len(vm.tryStack) > 0 {
 				tryFrame := vm.tryStack[len(vm.tryStack)-1]
 				vm.tryStack = vm.tryStack[:len(vm.tryStack)-1]
-				frame.ip = tryFrame.catchIP
-				vm.stackTop = tryFrame.stackDepth
+				
+				// Update frame pointer to the correct try-catch frame
 				vm.frameCount = tryFrame.frameDepth
-				vm.push(vm.lastError)
+				frame = &vm.frames[vm.frameCount-1]
+				
+				// Jump to catch block
+				frame.ip = tryFrame.catchIP
+				// Restore stack to try entry point and push the error for catch block
+				vm.stackTop = tryFrame.stackDepth
+				vm.push(vm.lastError) // Error will be consumed by OpPop in catch block
 			} else {
 				return nil, fmt.Errorf("uncaught error: %s", vm.lastError.Message)
 			}
@@ -963,12 +1000,20 @@ func (vm *EnhancedVM) performAdd(a, b Value) Value {
 		if bf, ok := b.(float64); ok {
 			return a + bf
 		}
+		// If b is a string, convert a to string and concatenate
+		if _, ok := b.(string); ok {
+			return ToString(a) + ToString(b)
+		}
 	case int:
 		if bi, ok := b.(int); ok {
 			return a + bi
 		}
 		if bf, ok := b.(float64); ok {
 			return float64(a) + bf
+		}
+		// If b is a string, convert a to string and concatenate
+		if _, ok := b.(string); ok {
+			return ToString(a) + ToString(b)
 		}
 	case string:
 		return a + ToString(b)
@@ -982,6 +1027,13 @@ func (vm *EnhancedVM) performAdd(a, b Value) Value {
 			newElements = append(newElements, barr.Elements...)
 			return &Array{Elements: newElements}
 		}
+	}
+	// Default: try string concatenation if either operand is a string
+	if _, ok := a.(string); ok {
+		return ToString(a) + ToString(b)
+	}
+	if _, ok := b.(string); ok {
+		return ToString(a) + ToString(b)
 	}
 	return nil
 }

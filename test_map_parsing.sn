@@ -1,8 +1,0 @@
-// Test map parsing with string keys
-let simple_map = {
-    "access_key": "value1",
-    "secret_key": "value2"
-}
-
-log("Map: " + simple_map)
-log("Access key: " + simple_map["access_key"])

@@ -1,3 +1,0 @@
-log("Testing string repetition")
-log("=" * 5)
-log("Done")

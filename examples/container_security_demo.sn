@@ -12,35 +12,35 @@ if (scan_result) {
     log("Scan completed successfully")
     log("Image ID: " + scan_result["image_id"])
     log("Image Name: " + scan_result["image_name"])
-    log("Risk Score: " + str(scan_result["risk_score"]))
+    log("Risk Score: " + scan_result["risk_score"])
     
     // Check summary
     let summary = scan_result["summary"]
     if (summary) {
         log("Summary:")
-        log("  Total Vulnerabilities: " + str(summary["total_vulnerabilities"]))
-        log("  Total Secrets: " + str(summary["total_secrets"]))
-        log("  Total Malware: " + str(summary["total_malware"]))
-        log("  Compliance Score: " + str(summary["compliance_score"]))
-        log("  Scan Passed: " + str(summary["passed"]))
+        log("  Total Vulnerabilities: " + summary["total_vulnerabilities"])
+        log("  Total Secrets: " + summary["total_secrets"])
+        log("  Total Malware: " + summary["total_malware"])
+        log("  Compliance Score: " + summary["compliance_score"])
+        log("  Scan Passed: " + summary["passed"])
     }
     
     // Check vulnerabilities
     let vulns = scan_result["vulnerabilities"]
     if (vulns && len(vulns) > 0) {
-        log("Found " + str(len(vulns)) + " vulnerabilities:")
+        log("Found " + len(vulns) + " vulnerabilities:")
         let first_vuln = vulns[0]
         if (first_vuln) {
             log("  " + first_vuln["id"] + " - " + first_vuln["severity"])
             log("    Package: " + first_vuln["package"])
-            log("    CVSS Score: " + str(first_vuln["cvss_score"]))
+            log("    CVSS Score: " + first_vuln["cvss_score"])
         }
     }
     
     // Check compliance issues
     let compliance = scan_result["compliance_issues"]
     if (compliance && len(compliance) > 0) {
-        log("Found " + str(len(compliance)) + " compliance issues:")
+        log("Found " + len(compliance) + " compliance issues:")
         let first_issue = compliance[0]
         if (first_issue) {
             log("  " + first_issue["rule_id"] + " - " + first_issue["severity"])
@@ -51,7 +51,7 @@ if (scan_result) {
     // Check for exposed secrets
     let secrets = scan_result["secrets"]
     if (secrets && len(secrets) > 0) {
-        log("WARNING: Found " + str(len(secrets)) + " exposed secrets!")
+        log("WARNING: Found " + len(secrets) + " exposed secrets!")
         let first_secret = secrets[0]
         if (first_secret) {
             log("  Type: " + first_secret["type"])
@@ -62,7 +62,7 @@ if (scan_result) {
     // Check for malware
     let malware = scan_result["malware"]
     if (malware && len(malware) > 0) {
-        log("CRITICAL: Found " + str(len(malware)) + " malware instances!")
+        log("CRITICAL: Found " + len(malware) + " malware instances!")
         let first_malware = malware[0]
         if (first_malware) {
             log("  Name: " + first_malware["name"])
@@ -85,10 +85,10 @@ if (dockerfile_analysis) {
     // Check issues
     let issues = dockerfile_analysis["issues"]
     if (issues && len(issues) > 0) {
-        log("Found " + str(len(issues)) + " issues:")
+        log("Found " + len(issues) + " issues:")
         let first_issue = issues[0]
         if (first_issue) {
-            log("  Line " + str(first_issue["line"]) + ": " + first_issue["message"])
+            log("  Line " + first_issue["line"] + ": " + first_issue["message"])
             log("    Severity: " + first_issue["severity"])
             log("    Remediation: " + first_issue["remediation"])
         }
@@ -128,7 +128,7 @@ if (scan_result) {
     let validation = container_validate_policy(scan_result, "strict-policy")
     if (validation) {
         log("Policy validation result:")
-        log("  Passed: " + str(validation["passed"]))
+        log("  Passed: " + validation["passed"])
         
         let violations = validation["violations"]
         if (violations && len(violations) > 0) {
@@ -151,7 +151,7 @@ if (scan_result) {
     if (cached_result) {
         log("Successfully retrieved cached result")
         log("  Image: " + cached_result["image_name"])
-        log("  Risk Score: " + str(cached_result["risk_score"]))
+        log("  Risk Score: " + cached_result["risk_score"])
     }
 }
 

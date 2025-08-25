@@ -1,7 +1,0 @@
-// Test exact pattern from cloud_security_demo
-let aws_creds = {
-    "access_key": "AKIA...",
-    "secret_key": "...",
-    "region": "us-east-1"
-}
-log("AWS creds: " + aws_creds)

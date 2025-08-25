@@ -1,7 +1,0 @@
-log("Test 1")
-let limit = 5
-log("Test 2")
-for (let i = 0; i < limit; i = i + 1) {
-    log("Iteration: " + str(i))
-}
-log("Test 3")

@@ -19,9 +19,9 @@ log("CPUs: " + sys["cpus"])
 // Check privileges
 let is_admin = os_privileges()
 if is_admin {
-    log("⚠️  Running with ELEVATED privileges")
+    log("Warning: Running with ELEVATED privileges")
 } else {
-    log("✓ Running with standard privileges")
+    log("Running with standard privileges")
 }
 
 // 2. Process Analysis
@@ -45,7 +45,7 @@ while i < len(processes) && i < 100 {
     if contains(lower(name), "miner") ||
        contains(lower(name), "cryptor") ||
        contains(lower(name), "backdoor") {
-        log("⚠️  Suspicious: " + name + " (PID: " + proc["pid"] + ")")
+        log("Warning: Suspicious: " + name + " (PID: " + proc["pid"] + ")")
         suspicious_count = suspicious_count + 1
     }
     
@@ -83,7 +83,7 @@ while j < len(ports) && j < 20 {
         while k < 6 {
             let risk_port = risky_ports[k]
             if contains(local, ":" + risk_port) {
-                log("⚠️  RISKY PORT OPEN: " + local + " (" + port["protocol"] + ")")
+                log("Warning: RISKY PORT OPEN: " + local + " (" + port["protocol"] + ")")
             }
             k = k + 1
         }
@@ -106,7 +106,7 @@ while m < len(users) && m < 10 {
     
     // Check for default/suspicious accounts
     if username == "guest" || username == "temp" || username == "test" {
-        log("⚠️  Potentially insecure account: " + username)
+        log("Warning: Potentially insecure account: " + username)
     } else if username == "root" || username == "Administrator" {
         log("👑 Admin account: " + username)
     } else {
@@ -152,7 +152,7 @@ log("---------------------------")
 let issues = 0
 
 if is_admin {
-    log("⚠️  Avoid running with admin privileges for daily tasks")
+    log("Warning: Avoid running with admin privileges for daily tasks")
     issues = issues + 1
 }
 
@@ -161,7 +161,7 @@ let q = 0
 while q < ports.length && q < 100 {
     let port = ports[q]
     if contains(port["local"], ":23") || contains(port["local"], ":21") {
-        log("⚠️  Disable insecure services (Telnet/FTP)")
+        log("Warning: Disable insecure services (Telnet/FTP)")
         issues = issues + 1
         break
     }
@@ -172,7 +172,7 @@ while q < ports.length && q < 100 {
 let r = 0
 while r < users.length {
     if users[r]["username"] == "guest" {
-        log("⚠️  Disable or remove guest accounts")
+        log("Warning: Disable or remove guest accounts")
         issues = issues + 1
         break
     }
@@ -206,6 +206,6 @@ if uptime_output != "" {
 
 log("")
 log("==============================================")
-log("✨ OS Security Scan Complete!")
+log("OS Security Scan Complete!")
 log("   Stay Secure, Stay Protected")
 log("==============================================")

@@ -1,4 +1,0 @@
-log("Starting OS test...")
-let processes = os_processes()
-log("Got processes: " + len(processes))
-log("Test complete")

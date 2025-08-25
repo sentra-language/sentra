@@ -1,3 +1,0 @@
-let name = "TEST"
-log("Original: " + name)
-log("Lowercase: " + lower(name))

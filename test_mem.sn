@@ -1,9 +1,0 @@
-fn mem_scan_malware(pid) {
-    log(5)
-    log("limit")
-    log(0)
-    return []
-}
-
-let result = mem_scan_malware(123)
-log("Result: " + str(result))

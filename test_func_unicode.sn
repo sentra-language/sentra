@@ -1,5 +1,0 @@
-fn test_func() {
-    log("✓ Port scanner worker pool started")
-}
-
-test_func()

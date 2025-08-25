@@ -1,2 +1,0 @@
-let map = {"name": "test", "age": 25}
-let value = map["missing_key"]

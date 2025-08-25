@@ -99,8 +99,14 @@ func (p *Parser) statement() Stmt {
 	// Variable declaration
 	if p.match(lexer.TokenLet) || p.match(lexer.TokenVar) {
 		nameTok := p.consume(lexer.TokenIdent, "Expect variable name")
-		p.consume(lexer.TokenEqual, "Expect '=' after variable name")
-		expr := p.expression()
+		
+		// Check if there's an initializer
+		var expr Expr = nil
+		if p.match(lexer.TokenEqual) {
+			expr = p.expression()
+		}
+		// If no initializer, expr will be nil
+		
 		return &LetStmt{Name: nameTok.Lexeme, Expr: expr}
 	}
 	

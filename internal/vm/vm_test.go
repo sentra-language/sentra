@@ -495,18 +495,16 @@ func TestControlFlow(t *testing.T) {
 // Test error handling
 func TestErrorHandling(t *testing.T) {
 	t.Run("try-catch", func(t *testing.T) {
-		// Skip this test - error handling implementation has pre-existing issues
-		t.Skip("Pre-existing error handling implementation issues")
-		return
+		// Test try-catch implementation
 		
 		chunk := &bytecode.Chunk{
 			Code: []byte{
-				byte(bytecode.OpTry), 0, 8,   // Set catch point 8 bytes ahead
+				byte(bytecode.OpTry), 0, 9,   // Set catch point 9 bytes ahead (to OpPop)
 				byte(bytecode.OpConstant), 0, // "error message"
 				byte(bytecode.OpThrow),       // Throw error
 				byte(bytecode.OpConstant), 1, // 10 (skipped)
-				byte(bytecode.OpReturn),
-				// Catch block
+				byte(bytecode.OpReturn),      // End of try block
+				// Catch block starts at byte 9
 				byte(bytecode.OpPop),         // Pop the error
 				byte(bytecode.OpConstant), 2, // 20
 				byte(bytecode.OpReturn),

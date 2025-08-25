@@ -1,4 +1,0 @@
-let limit = 5
-for (let i = 0; i < limit; i = i + 1) {
-    log("Count: " + str(i))
-}

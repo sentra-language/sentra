@@ -1,5 +1,0 @@
-fn hello() {
-    return "world"
-}
-
-log(hello())

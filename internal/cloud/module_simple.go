@@ -37,7 +37,9 @@ func CloudScan(cspm interface{}, providerName string) (map[string]interface{}, e
 	result["provider"] = report.Provider
 	result["timestamp"] = report.Timestamp.String()
 	result["resources"] = report.Resources
+	result["resources_scanned"] = report.Resources  // Add alias for compatibility
 	result["overall_score"] = report.OverallScore
+	result["compliance_score"] = report.OverallScore  // Add alias for compatibility
 	result["critical_findings"] = report.CriticalFindings
 	result["high_findings"] = report.HighFindings
 	result["medium_findings"] = report.MediumFindings
@@ -70,6 +72,7 @@ func CloudScan(cspm interface{}, providerName string) (map[string]interface{}, e
 		policies = append(policies, policyMap)
 	}
 	result["policy_results"] = policies
+	result["policies"] = policies  // Add alias for compatibility
 	
 	return result, nil
 }

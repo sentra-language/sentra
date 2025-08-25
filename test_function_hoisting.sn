@@ -1,7 +1,0 @@
-// Test if functions can be called before definition
-let result = test_func()
-log("Result: " + result)
-
-fn test_func() {
-    return "works"
-}

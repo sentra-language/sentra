@@ -1,9 +1,0 @@
-// test_double.sn - Test file to debug double function
-
-fn double(x) {
-  return x * 2
-}
-
-log(double(10))  // Should be 20
-log(double(5))   // Should be 10
-log(double(3))   // Should be 6
