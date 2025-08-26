@@ -160,7 +160,7 @@ Sentra is perfect for:
 <div class="code-example">
   <div class="example-header">Installation</div>
   <pre><code class="language-bash"># Clone and build Sentra
-git clone https://github.com/yourusername/sentra.git
+git clone https://github.com/sentra-language/sentra.git
 cd sentra
 make sentra
 
@@ -188,5 +188,5 @@ echo 'log("Hello, Sentra!")' > hello.sn
     Start with our quick start guide and build your first security tool in minutes.
   </p>
   <a href="/quick-start/" class="btn btn-primary" style="margin-right: 1rem;">Get Started</a>
-  <a href="https://github.com/yourusername/sentra" class="btn btn-secondary">View on GitHub</a>
+  <a href="https://github.com/sentra-language/sentra" class="btn btn-secondary">View on GitHub</a>
 </div>

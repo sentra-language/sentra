@@ -37,7 +37,7 @@ A high-performance, modern programming language with a stack-based virtual machi
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/sentra.git
+git clone https://github.com/sentra-language/sentra.git
 cd sentra
 
 # Build the interpreter

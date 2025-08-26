@@ -2,7 +2,7 @@
 title: "Sentra Programming Language"
 description: "A security-focused programming language with built-in defensive capabilities"
 baseurl: "/sentra"
-url: "https://yourusername.github.io"
+url: "https://sentra-language.github.io"
 
 # Jekyll configuration
 markdown: kramdown
@@ -34,23 +34,23 @@ nav_links:
   - title: "Examples"
     url: "/examples/"
   - title: "GitHub"
-    url: "https://github.com/yourusername/sentra"
+    url: "https://github.com/sentra-language/sentra"
     external: true
 
 # Footer links
 footer_links:
   - title: "GitHub"
-    url: "https://github.com/yourusername/sentra"
+    url: "https://github.com/sentra-language/sentra"
   - title: "Issues"
-    url: "https://github.com/yourusername/sentra/issues"
+    url: "https://github.com/sentra-language/sentra/issues"
   - title: "License"
-    url: "https://github.com/yourusername/sentra/blob/main/LICENSE"
+    url: "https://github.com/sentra-language/sentra/blob/main/LICENSE"
 
 # Site metadata
 author: "Sentra Team"
 email: "contact@sentra-lang.org"
 twitter_username: "sentra_lang"
-github_username: "sentra-lang"
+github_username: "sentra-language"
 
 # Collections
 collections:

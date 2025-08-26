@@ -24,7 +24,7 @@ Get up and running with Sentra in just 5 minutes!
 ### Build from Source
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/sentra.git
+git clone https://github.com/sentra-language/sentra.git
 cd sentra
 
 # Build the executable
