@@ -1,0 +1,99 @@
+// Benchmark comparing EnhancedVM vs ProductionVM performance
+// Tests the impact of hot path optimizations
+
+log("=== SENTRA VM OPTIMIZATION BENCHMARK ===")
+log("")
+
+// Arithmetic benchmark
+log("Testing arithmetic operations...")
+let start_time = time()
+
+let sum = 0
+for i in range(1, 10001) {
+    sum = sum + i * 2 - 1
+    sum = sum / 1.1
+    sum = sum % 1000
+}
+
+let arithmetic_time = time() - start_time
+log("Arithmetic (10k ops): " + tostring(arithmetic_time) + "ms")
+
+// Array operations benchmark
+log("")
+log("Testing array operations...")
+start_time = time()
+
+let arr = []
+for i in range(1, 1001) {
+    push(arr, i)
+    push(arr, i * 2)
+    push(arr, i * 3)
+}
+
+let total = 0
+for val in arr {
+    total = total + val
+}
+
+let array_time = time() - start_time
+log("Array operations (3k elements): " + tostring(array_time) + "ms")
+
+// Map operations benchmark  
+log("")
+log("Testing map operations...")
+start_time = time()
+
+let map_data = {}
+for i in range(1, 501) {
+    map_data["key" + tostring(i)] = i * 10
+    map_data["data" + tostring(i)] = "value" + tostring(i)
+}
+
+let map_sum = 0
+for key in map_data {
+    if typeof(map_data[key]) == "number" {
+        map_sum = map_sum + map_data[key]
+    }
+}
+
+let map_time = time() - start_time
+log("Map operations (1k entries): " + tostring(map_time) + "ms")
+
+// Function call benchmark
+log("")
+log("Testing function calls...")
+
+fn fibonacci(n) {
+    if n <= 1 {
+        return n
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2)
+}
+
+start_time = time()
+let fib_result = fibonacci(25)
+let function_time = time() - start_time
+log("Function calls (fib 25): " + tostring(function_time) + "ms")
+
+// String operations benchmark
+log("")
+log("Testing string operations...")
+start_time = time()
+
+let text = "performance"
+for i in range(1, 1001) {
+    text = text + " test " + tostring(i)
+    if len(text) > 50000 {
+        text = "reset"
+    }
+}
+
+let string_time = time() - start_time  
+log("String operations (1k ops): " + tostring(string_time) + "ms")
+
+// Total benchmark time
+let total_time = arithmetic_time + array_time + map_time + function_time + string_time
+log("")
+log("=== OPTIMIZATION BENCHMARK RESULTS ===")
+log("Total execution time: " + tostring(total_time) + "ms")
+log("Memory profile: Stack-tree architecture with optimized hot paths")

@@ -1,0 +1,64 @@
+// Function Call Benchmark Test
+// Tests function call overhead and recursion performance
+
+// Simple function for call overhead testing
+fn simple_add(a, b) {
+    return a + b
+}
+
+// Recursive function for recursion testing
+fn fibonacci(n) {
+    if n <= 1 {
+        return n
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2)
+}
+
+// Iterative version for comparison
+fn fibonacci_iterative(n) {
+    if n <= 1 {
+        return n
+    }
+    
+    let a = 0
+    let b = 1
+    let i = 2
+    while i <= n {
+        let temp = a + b
+        a = b
+        b = temp
+        i = i + 1
+    }
+    return b
+}
+
+log("Starting function call benchmarks...")
+
+// Function call overhead test
+let iterations = 1000000
+let start_time = time_ms()
+
+let result = 0
+let i = 0
+while i < iterations {
+    result = simple_add(i, result)
+    i = i + 1
+}
+
+let call_end_time = time_ms()
+log("Function calls (" + iterations + "): " + (call_end_time - start_time) + " ms")
+log("Calls per second: " + (iterations / ((call_end_time - start_time) / 1000)))
+
+// Recursion test
+let recursion_start = time_ms()
+let fib_result = fibonacci(30)
+let recursion_end = time_ms()
+log("Fibonacci(30) recursive: " + fib_result + " in " + (recursion_end - recursion_start) + " ms")
+
+// Iterative comparison
+let iterative_start = time_ms()
+let fib_iter_result = fibonacci_iterative(30)
+let iterative_end = time_ms()
+log("Fibonacci(30) iterative: " + fib_iter_result + " in " + (iterative_end - iterative_start) + " ms")
+
+log("Total benchmark time: " + (iterative_end - start_time) + " ms")

@@ -1,0 +1,10 @@
+// Test to show stack accumulation in loops
+log("Testing stack accumulation in loops...")
+
+// This should cause stack overflow if not properly cleaned
+for (let i = 0; i < 20000; i = i + 1) {
+    let temp = i * 2  // Creates a value on stack
+    // The temp variable and intermediate calculations stay on stack
+}
+
+log("If you see this, the stack was properly cleaned!")

@@ -72,7 +72,20 @@ func main() {
 	}
 
 	if args[0] == "run" && len(args) > 1 {
-		source, err := os.ReadFile(args[1])
+		// Filter out optimization flags from file arguments
+		var filename string
+		for _, arg := range args[1:] {
+			if arg != "--production" && arg != "-p" && arg != "--fast" && arg != "-f" && 
+			   arg != "--hotfix" && arg != "-h" && arg != "--super" && arg != "-s" &&
+			   arg != "--stackfix" && arg != "--sf" {
+				filename = arg
+				break
+			}
+		}
+		if filename == "" {
+			log.Fatal("No filename provided to run command")
+		}
+		source, err := os.ReadFile(filename)
 		if err != nil {
 			log.Fatalf("Could not read file: %v", err)
 		}
@@ -86,7 +99,7 @@ func main() {
 		// fmt.Println("============================")
 
 		// Create scanner with file information
-		scanner := lexer.NewScannerWithFile(string(fullSource), args[1])
+		scanner := lexer.NewScannerWithFile(string(fullSource), filename)
 		tokens := scanner.ScanTokens()
 
 		// --- And here ---
@@ -98,7 +111,7 @@ func main() {
 		// -----------------------------
 
 		// Create parser with source for error reporting
-		p := parser.NewParserWithSource(tokens, string(fullSource), args[1])
+		p := parser.NewParserWithSource(tokens, string(fullSource), filename)
 		
 		// Wrap parsing in error handler
 		var stmts []interface{}
@@ -122,12 +135,53 @@ func main() {
 				stmts = append(stmts, s)
 			}
 		}()
-		compiler := compiler.NewStmtCompilerWithDebug(args[1])
+		compiler := compiler.NewStmtCompilerWithDebug(filename)
 		chunk := compiler.Compile(stmts)
 
-		// Use the enhanced VM for better performance and features
-		enhancedVM := vm.NewEnhancedVM(chunk)
-		result, err := enhancedVM.Run()
+		// Check for optimization flags
+		useFastVM := false
+		useHotfixVM := false
+		useSuperVM := false
+		useStackFixVM := false
+		
+		for _, arg := range os.Args {
+			if arg == "--fast" || arg == "-f" {
+				useFastVM = true
+				break
+			}
+			if arg == "--hotfix" || arg == "-h" {
+				useHotfixVM = true
+				break
+			}
+			if arg == "--super" || arg == "-s" {
+				useSuperVM = true
+				break
+			}
+			if arg == "--stackfix" || arg == "--sf" {
+				useStackFixVM = true
+				break
+			}
+		}
+		
+		// Use optimized VM variants or enhanced VM for full features
+		var result interface{}
+		
+		if useStackFixVM {
+			stackFixVM := vm.NewStackFixVM(chunk)
+			result, err = stackFixVM.StackFixRun()
+		} else if useSuperVM {
+			superVM := vm.NewSuperVM(chunk)
+			result, err = superVM.SuperRun()
+		} else if useHotfixVM {
+			hotfixVM := vm.NewHotfixVM(chunk)
+			result, err = hotfixVM.HotfixRun()
+		} else if useFastVM {
+			fastVM := vm.NewFastVM(chunk)
+			result, err = fastVM.OptimizedRun()
+		} else {
+			enhancedVM := vm.NewEnhancedVM(chunk)
+			result, err = enhancedVM.Run()
+		}
 		if err != nil {
 			if sentraErr, ok := err.(*errors.SentraError); ok {
 				fmt.Fprintf(os.Stderr, "%s\n", sentraErr.Error())

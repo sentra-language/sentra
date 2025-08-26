@@ -1,0 +1,113 @@
+// Stable benchmark for Sentra VM that avoids stack overflow
+// Reduced iteration counts for stability
+
+log("=== SENTRA STABLE BENCHMARK ===")
+log("")
+
+// Test 1: Arithmetic Operations (10k iterations)
+log("Test 1: Arithmetic operations...")
+let start_time = time()
+
+let sum = 0
+for (let i = 0; i < 10000; i = i + 1) {
+    sum = sum + i * 2 - 1
+    sum = sum / 1.1
+    sum = sum % 10000
+}
+
+let arithmetic_time = time() - start_time
+log("Arithmetic (10k ops): " + arithmetic_time + "ms")
+
+// Test 2: Array Operations
+log("")
+log("Test 2: Array operations...")
+start_time = time()
+
+let arr = []
+for (let i = 0; i < 1000; i = i + 1) {
+    push(arr, i)
+    push(arr, i * 2)
+}
+
+let total = 0
+for val in arr {
+    total = total + val
+}
+
+let array_time = time() - start_time
+log("Array (2k elements): " + array_time + "ms")
+
+// Test 3: Map Operations
+log("")
+log("Test 3: Map operations...")
+start_time = time()
+
+let map_data = {}
+for (let i = 0; i < 500; i = i + 1) {
+    map_data["key" + i] = i * 10
+    map_data["data" + i] = i * 20
+}
+
+let map_count = 0
+for key in map_data {
+    map_count = map_count + 1
+}
+
+let map_time = time() - start_time
+log("Map (1k entries): " + map_time + "ms")
+
+// Test 4: String Operations
+log("")
+log("Test 4: String operations...")
+start_time = time()
+
+let text = "benchmark"
+for (let i = 0; i < 200; i = i + 1) {
+    text = text + " test " + i
+    if len(text) > 10000 {
+        text = "reset"
+    }
+}
+
+let string_time = time() - start_time
+log("String (200 concatenations): " + string_time + "ms")
+
+// Test 5: Function Calls
+log("")
+log("Test 5: Function calls...")
+
+fn calculate(a, b) {
+    return a * b + (a - b)
+}
+
+start_time = time()
+
+let func_result = 0
+for (let i = 0; i < 2000; i = i + 1) {
+    func_result = func_result + calculate(i, i + 1)
+}
+
+let function_time = time() - start_time
+log("Function calls (2k): " + function_time + "ms")
+
+// Test 6: Nested Loops
+log("")
+log("Test 6: Nested loops...")
+start_time = time()
+
+let nested_sum = 0
+for (let i = 0; i < 50; i = i + 1) {
+    for (let j = 0; j < 50; j = j + 1) {
+        nested_sum = nested_sum + i * j
+    }
+}
+
+let nested_time = time() - start_time
+log("Nested loops (2.5k iterations): " + nested_time + "ms")
+
+// Total time
+let total_time = arithmetic_time + array_time + map_time + string_time + function_time + nested_time
+log("")
+log("=== BENCHMARK COMPLETE ===")
+log("Total execution time: " + total_time + "ms")
+log("Platform: Sentra VM")

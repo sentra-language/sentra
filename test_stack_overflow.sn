@@ -1,0 +1,8 @@
+// Test to trigger stack overflow
+log("Testing with 50k iterations...")
+
+for (let i = 0; i < 50000; i = i + 1) {
+    let temp = i * 2
+}
+
+log("If you see this, no stack overflow!")

@@ -1,0 +1,12 @@
+// Test with 100k iterations
+log("Testing with 100k iterations...")
+
+let sum = 0
+for (let i = 0; i < 100000; i = i + 1) {
+    sum = sum + i * 2 - 1
+    sum = sum / 1.1
+    sum = sum % 10000
+}
+
+log("Final sum: " + sum)
+log("SUCCESS - No stack overflow with 100k iterations!")

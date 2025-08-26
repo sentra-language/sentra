@@ -1,0 +1,62 @@
+// Stable benchmark for VM comparison (avoiding stack overflow)
+log("=== SENTRA VM STABLE BENCHMARK ===")
+
+// Arithmetic operations
+log("Running arithmetic benchmark...")
+let sum = 0
+for (let i = 0; i < 8000; i = i + 1) {
+    sum = sum + i * 2 - 1
+    sum = sum / 1.1  
+    sum = sum % 1000
+}
+log("Arithmetic result: " + sum)
+
+// Array operations
+log("Running array benchmark...")
+let arr = []
+for (let i = 0; i < 800; i = i + 1) {
+    push(arr, i)
+    push(arr, i * 2)
+}
+
+let total = 0
+for val in arr {
+    total = total + val
+}
+log("Array total: " + total + " (length: " + len(arr) + ")")
+
+// Map operations
+log("Running map benchmark...")
+let map_data = {}
+for (let i = 0; i < 400; i = i + 1) {
+    map_data["key" + i] = i * 10
+    map_data["data" + i] = "value" + i
+}
+
+let count = 0
+for key in map_data {
+    count = count + 1
+}
+log("Map entries: " + count)
+
+// Simple calculations instead of function calls
+log("Running calculation benchmark...")
+let calc_result = 0
+for (let i = 1; i <= 500; i = i + 1) {
+    calc_result = calc_result + i
+}
+log("Calculation result: " + calc_result)
+
+// String operations
+log("Running string benchmark...")
+let text = "test"
+for (let i = 0; i < 150; i = i + 1) {
+    text = text + " " + i
+    if len(text) > 5000 {
+        text = "reset" + i
+    }
+}
+log("String final length: " + len(text))
+
+log("=== STABLE BENCHMARK COMPLETE ===")
+log("VM: Stack-tree hybrid EnhancedVM")

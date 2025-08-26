@@ -123,6 +123,8 @@ func (c *StmtCompiler) VisitAssignmentStmt(stmt *parser.AssignmentStmt) interfac
 			if local == stmt.Name {
 				c.Chunk.WriteOp(bytecode.OpSetLocal)
 				c.Chunk.WriteByte(byte(i))
+				// Pop the value left by OpSetLocal (assignments are statements, not expressions)
+				c.Chunk.WriteOp(bytecode.OpPop)
 				return nil
 			}
 		}
@@ -132,6 +134,8 @@ func (c *StmtCompiler) VisitAssignmentStmt(stmt *parser.AssignmentStmt) interfac
 	idx := c.Chunk.AddConstant(stmt.Name)
 	c.Chunk.WriteOp(bytecode.OpSetGlobal)
 	c.Chunk.WriteByte(byte(idx))
+	// Pop the value left by OpSetGlobal (assignments are statements, not expressions)
+	c.Chunk.WriteOp(bytecode.OpPop)
 	return nil
 }
 

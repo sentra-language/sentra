@@ -1,0 +1,4 @@
+// Simple loop to debug stack behavior
+for (let i = 0; i < 3; i = i + 1) {
+    log("Iteration: " + i)
+}

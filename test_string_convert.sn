@@ -1,0 +1,10 @@
+// Test string conversion
+let num = 42
+let time_val = 1000
+
+log("Number: " + num)
+log("Time: " + time_val + "ms")
+
+// Test stringify
+log(stringify(num))
+log(stringify(time_val))

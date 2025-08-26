@@ -1,0 +1,96 @@
+// Micro Benchmarks for Sentra VM
+// Smaller tests to avoid stack overflow
+
+log("=== Sentra VM Performance Benchmarks ===")
+log("")
+
+// Arithmetic benchmark
+log("1. Arithmetic Operations")
+let iterations = 10000
+let result = 0
+let i = 0
+
+while i < iterations {
+    result = result + i * 2 - 1
+    result = result / 2
+    result = result % 1000
+    i = i + 1
+}
+
+log("Arithmetic test completed: " + iterations + " iterations")
+log("Result: " + result)
+log("")
+
+// Array operations
+log("2. Array Operations")
+let arr = []
+i = 0
+while i < 1000 {
+    push(arr, i)
+    i = i + 1
+}
+
+log("Array creation completed: " + len(arr) + " elements")
+
+// Array access
+let sum = 0
+i = 0
+while i < len(arr) {
+    sum = sum + arr[i]
+    i = i + 1
+}
+
+log("Array sum: " + sum)
+log("")
+
+// Map operations
+log("3. Map Operations")
+let map_obj = {}
+i = 0
+while i < 500 {
+    map_obj["key_" + i] = i * 2
+    i = i + 1
+}
+
+log("Map creation completed: 500 entries")
+
+// Map access test
+let map_sum = 0
+i = 0
+while i < 500 {
+    map_sum = map_sum + map_obj["key_" + i]
+    i = i + 1
+}
+
+log("Map sum: " + map_sum)
+log("")
+
+// Function calls
+log("4. Function Call Overhead")
+fn simple_add(a, b) {
+    return a + b
+}
+
+let call_result = 0
+i = 0
+while i < 5000 {
+    call_result = simple_add(i, call_result)
+    i = i + 1
+}
+
+log("Function calls completed: " + call_result)
+log("")
+
+// String operations
+log("5. String Operations")
+let str_result = ""
+i = 0
+while i < 100 {
+    str_result = str_result + "test"
+    i = i + 1
+}
+
+log("String concatenation completed: length " + len(str_result))
+log("")
+
+log("=== All benchmarks completed successfully ===")

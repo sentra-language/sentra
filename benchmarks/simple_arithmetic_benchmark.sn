@@ -1,0 +1,21 @@
+// Simple Arithmetic Benchmark Test
+// Tests basic mathematical operations
+
+let iterations = 100000
+
+log("Starting arithmetic benchmark...")
+log("Iterations: " + iterations)
+
+// Basic arithmetic operations
+let result = 0
+let i = 0
+while i < iterations {
+    result = result + i * 2 - 1
+    result = result / 2
+    result = result % 1000
+    i = i + 1
+}
+
+log("Arithmetic benchmark completed")
+log("Final result: " + result)
+log("Operations performed: " + (iterations * 4))

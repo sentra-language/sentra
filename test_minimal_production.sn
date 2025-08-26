@@ -1,0 +1,3 @@
+// Minimal test for ProductionVM
+let x = 5
+log("Value: " + x)

@@ -1,0 +1,12 @@
+// Test complex loop operations that might accumulate stack
+log("Testing complex loop with multiple operations...")
+
+let sum = 0
+for (let i = 0; i < 50000; i = i + 1) {
+    sum = sum + i * 2 - 1
+    sum = sum / 1.1
+    sum = sum % 10000
+}
+
+log("Final sum: " + sum)
+log("Success - no stack overflow!")

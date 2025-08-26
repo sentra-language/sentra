@@ -1,0 +1,4 @@
+// Test to see what bytecode is generated for assignments
+let x = 0
+x = x + 1
+log("x = " + x)
