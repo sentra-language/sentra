@@ -212,6 +212,8 @@ func (s *Scanner) scanToken() {
 		}
 	case '"':
 		s.string()
+	case '`':
+		s.templateString()
 	case ',':
 		s.addToken(TokenComma)
 	case '.':
@@ -237,7 +239,11 @@ func (s *Scanner) scanToken() {
 			s.number()
 		} else if isAlpha(c) {
 			s.identifier()
+		} else if c >= 0x80 {
+			// Non-ASCII character - skip UTF-8 sequence to avoid splitting multi-byte characters
+			s.skipUTF8Sequence(c)
 		}
+		// Ignore other unknown characters
 	}
 }
 
@@ -398,6 +404,54 @@ func (s *Scanner) string() {
 	})
 }
 
+func (s *Scanner) templateString() {
+	var result []byte
+	
+	for s.peek() != '`' && !s.isAtEnd() {
+		if s.peek() == '\\' && !s.isAtEnd() {
+			s.advance() // consume backslash
+			if !s.isAtEnd() {
+				next := s.advance()
+				switch next {
+				case 'n':
+					result = append(result, '\n')
+				case 't':
+					result = append(result, '\t')
+				case 'r':
+					result = append(result, '\r')
+				case '\\':
+					result = append(result, '\\')
+				case '`':
+					result = append(result, '`')
+				default:
+					// Unknown escape sequence, keep the backslash and character
+					result = append(result, '\\', next)
+				}
+			}
+		} else {
+			if s.peek() == '\n' {
+				s.line++
+			}
+			result = append(result, s.advance())
+		}
+	}
+	
+	if s.isAtEnd() {
+		return // Unterminated string; ignore for now
+	}
+	s.advance() // consume closing backtick
+	
+	// Use the processed string with escape sequences resolved
+	value := string(result)
+	s.tokens = append(s.tokens, Token{
+		Type:   TokenString,
+		Lexeme: value,
+		Line:   s.line,
+		Column: s.startCol,
+		File:   s.file,
+	})
+}
+
 func (s *Scanner) addToken(t TokenType) {
 	text := s.source[s.start:s.current]
 	s.tokens = append(s.tokens, Token{
@@ -455,6 +509,29 @@ func isAlphaNumeric(c byte) bool {
 
 func isDigit(c byte) bool {
 	return '0' <= c && c <= '9'
+}
+
+func (s *Scanner) skipUTF8Sequence(firstByte byte) {
+	// Skip remaining bytes of UTF-8 sequence based on first byte
+	if firstByte < 0xC0 {
+		// Invalid UTF-8 or continuation byte - already consumed
+		return
+	} else if firstByte < 0xE0 {
+		// 2-byte sequence - skip 1 more byte
+		if !s.isAtEnd() {
+			s.advance()
+		}
+	} else if firstByte < 0xF0 {
+		// 3-byte sequence - skip 2 more bytes
+		for i := 0; i < 2 && !s.isAtEnd(); i++ {
+			s.advance()
+		}
+	} else {
+		// 4-byte sequence - skip 3 more bytes
+		for i := 0; i < 3 && !s.isAtEnd(); i++ {
+			s.advance()
+		}
+	}
 }
 
 // skipShebang skips over shebang line at the beginning of the file

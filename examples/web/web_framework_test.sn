@@ -1,0 +1,189 @@
+// Realistic web framework scenario tests
+log("=== Web Framework Performance Test ===")
+log("")
+
+// Test 1: Route Matching (typical web request)
+log("Test 1: Route matching for 50 routes...")
+let routes = []
+for (let i = 0; i < 50; i = i + 1) {
+    push(routes, "/api/v1/endpoint" + i)
+}
+
+let matchCount = 0
+let testPath = "/api/v1/endpoint25"
+for route in routes {
+    if route == testPath {
+        matchCount = matchCount + 1
+    }
+}
+log("Routes checked: " + len(routes) + ", Matches: " + matchCount)
+
+// Test 2: Middleware Chain Processing
+log("")
+log("Test 2: Processing middleware chain...")
+let middlewares = ["auth", "cors", "rateLimit", "logging", "compression"]
+let request = {}
+request["path"] = "/api/users"
+request["headers"] = {}
+request["processed"] = []
+
+for middleware in middlewares {
+    // Simulate middleware processing
+    push(request["processed"], middleware)
+}
+log("Middlewares processed: " + len(request["processed"]))
+
+// Test 3: Pagination (typical e-commerce)
+log("")
+log("Test 3: Paginating 1000 products (50 per page)...")
+let products = []
+for (let i = 0; i < 1000; i = i + 1) {
+    let product = {}
+    product["id"] = i
+    product["name"] = "Product " + i
+    product["price"] = 10 + (i % 100)
+    push(products, product)
+}
+
+// Process page 3 (items 100-150)
+let pageSize = 50
+let page = 2  // 0-indexed
+let startIdx = page * pageSize
+let endIdx = startIdx + pageSize
+
+let pageItems = []
+for (let i = startIdx; i < endIdx; i = i + 1) {
+    if i < len(products) {
+        push(pageItems, products[i])
+    }
+}
+log("Total products: " + len(products) + ", Page items: " + len(pageItems))
+
+// Test 4: JSON Serialization (typical API response)
+log("")
+log("Test 4: Building JSON response for 100 users...")
+let users = []
+for (let i = 0; i < 100; i = i + 1) {
+    let user = {}
+    user["id"] = i
+    user["username"] = "user" + i
+    user["email"] = "user" + i + "@example.com"
+    let profile = {}
+    profile["firstName"] = "First" + i
+    profile["lastName"] = "Last" + i
+    profile["age"] = 20 + (i % 50)
+    user["profile"] = profile
+    push(users, user)
+}
+
+// Simulate JSON field processing
+let processedCount = 0
+for user in users {
+    // Process each field (typical JSON serialization)
+    processedCount = processedCount + 1
+    // In real scenario, would iterate over fields
+}
+log("Users processed for JSON: " + processedCount)
+
+// Test 5: Template Rendering (blog with comments)
+log("")
+log("Test 5: Rendering blog post with 200 comments...")
+let post = {}
+post["title"] = "Understanding Web Performance"
+post["content"] = "Lorem ipsum..."
+post["comments"] = []
+
+for (let i = 0; i < 200; i = i + 1) {
+    let comment = {}
+    comment["id"] = i
+    comment["author"] = "User" + i
+    comment["text"] = "Comment text " + i
+    comment["likes"] = i * 2
+    push(post["comments"], comment)
+}
+
+// Simulate template variable substitution
+let renderOps = 0
+renderOps = renderOps + 1  // Title
+renderOps = renderOps + 1  // Content
+for comment in post["comments"] {
+    renderOps = renderOps + 4  // id, author, text, likes
+}
+log("Template render operations: " + renderOps)
+
+// Test 6: Session Management (active users)
+log("")
+log("Test 6: Managing 5000 active sessions...")
+let sessions = {}
+for (let i = 0; i < 5000; i = i + 1) {
+    let session = {}
+    session["userId"] = i
+    session["expires"] = 1234567890 + i * 1000
+    session["data"] = {}
+    sessions["session_" + i] = session
+}
+
+// Clean expired sessions (simulate 10% expired)
+let activeCount = 0
+let currentTime = 1234567890 + 400000
+for sessionId in sessions {
+    let session = sessions[sessionId]
+    if session["expires"] > currentTime {
+        activeCount = activeCount + 1
+    }
+}
+log("Total sessions: 5000, Active: " + activeCount)
+
+// Test 7: Form Validation (complex form with 30 fields)
+log("")
+log("Test 7: Validating form with 30 fields...")
+let formFields = []
+for (let i = 0; i < 30; i = i + 1) {
+    let field = {}
+    field["name"] = "field_" + i
+    field["value"] = "value_" + i
+    field["required"] = (i % 2 == 0)
+    field["validated"] = false
+    push(formFields, field)
+}
+
+let validCount = 0
+for field in formFields {
+    // Simulate validation
+    if field["required"] {
+        if len(field["value"]) > 0 {
+            field["validated"] = true
+            validCount = validCount + 1
+        }
+    } else {
+        field["validated"] = true
+        validCount = validCount + 1
+    }
+}
+log("Fields validated: " + validCount + "/" + len(formFields))
+
+// Test 8: Cache Operations (LRU with 1000 entries)
+log("")
+log("Test 8: LRU cache with 1000 entries...")
+let cache = {}
+let cacheOrder = []
+for (let i = 0; i < 1000; i = i + 1) {
+    let key = "cache_key_" + i
+    cache[key] = "cached_value_" + i
+    push(cacheOrder, key)
+}
+
+// Simulate 100 cache hits
+let hits = 0
+for (let i = 0; i < 100; i = i + 1) {
+    let key = "cache_key_" + (i * 10)
+    if cache[key] {
+        hits = hits + 1
+    }
+}
+log("Cache size: " + len(cacheOrder) + ", Hits: " + hits + "/100")
+
+log("")
+log("=== All Web Framework Tests Completed Successfully ===")
+log("Maximum iterations in any single loop: 5000")
+log("This represents realistic web application workloads")

@@ -1,7 +1,0 @@
-log("Testing basic for-in loop")
-let test_array = [1, 2, 3]
-log("Array length: " + len(test_array))
-for item in test_array {
-    log("Item: " + item)
-}
-log("Done")

@@ -1,0 +1,53 @@
+// Data Structures Benchmark Test
+// Tests array and map operations performance
+
+log("Starting data structures benchmark...")
+
+let iterations = 100000
+let start_time = time_ms()
+
+// Array operations
+let arr = []
+let i = 0
+while i < iterations {
+    push(arr, i)
+    i = i + 1
+}
+
+let mid_time = time_ms()
+log("Array creation (" + iterations + " elements): " + (mid_time - start_time) + " ms")
+
+// Array access
+let sum = 0
+i = 0
+while i < len(arr) {
+    sum = sum + arr[i]
+    i = i + 1
+}
+
+let array_end_time = time_ms()
+log("Array access (" + len(arr) + " reads): " + (array_end_time - mid_time) + " ms")
+
+// Map operations
+let map_start = time_ms()
+let map_obj = {}
+i = 0
+while i < 10000 {
+    map_obj["key_" + i] = i * 2
+    i = i + 1
+}
+
+let map_mid = time_ms()
+log("Map creation (10000 entries): " + (map_mid - map_start) + " ms")
+
+// Map access
+let map_sum = 0
+i = 0
+while i < 10000 {
+    map_sum = map_sum + map_obj["key_" + i]
+    i = i + 1
+}
+
+let end_time = time_ms()
+log("Map access (10000 reads): " + (end_time - map_mid) + " ms")
+log("Total benchmark time: " + (end_time - start_time) + " ms")

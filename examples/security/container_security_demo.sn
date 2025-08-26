@@ -1,0 +1,166 @@
+
+log("Container Security Scanning Demo")
+log("=" * 33)
+
+// Scan a container image
+log("Scanning Container Image")
+log("------------------------")
+let image_path = "nginx:latest"
+let scan_result = container_scan_image(image_path)
+
+if (scan_result) {
+    log("Scan completed successfully")
+    log("Image ID: " + scan_result["image_id"])
+    log("Image Name: " + scan_result["image_name"])
+    log("Risk Score: " + scan_result["risk_score"])
+    
+    // Check summary
+    let summary = scan_result["summary"]
+    if (summary) {
+        log("Summary:")
+        log("  Total Vulnerabilities: " + summary["total_vulnerabilities"])
+        log("  Total Secrets: " + summary["total_secrets"])
+        log("  Total Malware: " + summary["total_malware"])
+        log("  Compliance Score: " + summary["compliance_score"])
+        log("  Scan Passed: " + summary["passed"])
+    }
+    
+    // Check vulnerabilities
+    let vulns = scan_result["vulnerabilities"]
+    if (vulns && len(vulns) > 0) {
+        log("Found " + len(vulns) + " vulnerabilities:")
+        let first_vuln = vulns[0]
+        if (first_vuln) {
+            log("  " + first_vuln["id"] + " - " + first_vuln["severity"])
+            log("    Package: " + first_vuln["package"])
+            log("    CVSS Score: " + first_vuln["cvss_score"])
+        }
+    }
+    
+    // Check compliance issues
+    let compliance = scan_result["compliance_issues"]
+    if (compliance && len(compliance) > 0) {
+        log("Found " + len(compliance) + " compliance issues:")
+        let first_issue = compliance[0]
+        if (first_issue) {
+            log("  " + first_issue["rule_id"] + " - " + first_issue["severity"])
+            log("    " + first_issue["description"])
+        }
+    }
+    
+    // Check for exposed secrets
+    let secrets = scan_result["secrets"]
+    if (secrets && len(secrets) > 0) {
+        log("WARNING: Found " + len(secrets) + " exposed secrets!")
+        let first_secret = secrets[0]
+        if (first_secret) {
+            log("  Type: " + first_secret["type"])
+            log("  File: " + first_secret["file"])
+        }
+    }
+    
+    // Check for malware
+    let malware = scan_result["malware"]
+    if (malware && len(malware) > 0) {
+        log("CRITICAL: Found " + len(malware) + " malware instances!")
+        let first_malware = malware[0]
+        if (first_malware) {
+            log("  Name: " + first_malware["name"])
+            log("  Type: " + first_malware["type"])
+        }
+    }
+} else {
+    log("Scan failed")
+}
+
+// Scan a Dockerfile
+log("Scanning Dockerfile")
+log("------------------")
+let dockerfile_analysis = container_scan_dockerfile("Dockerfile")
+
+if (dockerfile_analysis) {
+    log("Dockerfile analysis completed")
+    log("File: " + dockerfile_analysis["file"])
+    
+    // Check issues
+    let issues = dockerfile_analysis["issues"]
+    if (issues && len(issues) > 0) {
+        log("Found " + len(issues) + " issues:")
+        let first_issue = issues[0]
+        if (first_issue) {
+            log("  Line " + first_issue["line"] + ": " + first_issue["message"])
+            log("    Severity: " + first_issue["severity"])
+            log("    Remediation: " + first_issue["remediation"])
+        }
+    }
+    
+    // Show best practices
+    let best_practices = dockerfile_analysis["best_practices"]
+    if (best_practices && len(best_practices) > 0) {
+        log("Best Practices:")
+        let i = 0
+        while (i < 3 && i < len(best_practices)) {
+            log("  - " + best_practices[i])
+            i = i + 1
+        }
+    }
+}
+
+// Add and validate against security policy
+log("Security Policy Validation")
+log("-------------------------")
+
+// Create a security policy
+let policy = {
+    "id": "strict-policy",
+    "name": "Strict Container Security Policy",
+    "severity_threshold": "medium",
+    "block_on_fail": true
+}
+
+let policy_added = container_add_policy(policy)
+if (policy_added) {
+    log("Policy added successfully")
+}
+
+// Validate scan against policy
+if (scan_result) {
+    let validation = container_validate_policy(scan_result, "strict-policy")
+    if (validation) {
+        log("Policy validation result:")
+        log("  Passed: " + validation["passed"])
+        
+        let violations = validation["violations"]
+        if (violations && len(violations) > 0) {
+            log("  Violations found:")
+            let j = 0
+            while (j < len(violations)) {
+                log("    - " + violations[j])
+                j = j + 1
+            }
+        }
+    }
+}
+
+// Retrieve cached scan result
+log("Retrieving Cached Results")
+log("------------------------")
+if (scan_result) {
+    let image_id = scan_result["image_id"]
+    let cached_result = container_get_scan_result(image_id)
+    if (cached_result) {
+        log("Successfully retrieved cached result")
+        log("  Image: " + cached_result["image_name"])
+        log("  Risk Score: " + cached_result["risk_score"])
+    }
+}
+
+log("Container Security Demo Complete!")
+log("Demonstrated capabilities:")
+log("  Comprehensive vulnerability scanning")
+log("  Compliance checking (CIS benchmarks)")
+log("  Secret detection in container layers")
+log("  Malware scanning")
+log("  Dockerfile security analysis")
+log("  Policy-based validation")
+log("  Risk scoring and reporting")

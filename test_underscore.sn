@@ -1,9 +1,0 @@
-#!/usr/bin/env sentra
-
-log("Testing underscore functions")
-
-// Test basic function with underscore
-let test_var = "hello"
-log("Variable with underscore: " + test_var)
-
-log("Test complete")

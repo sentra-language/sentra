@@ -1,0 +1,123 @@
+// Simplified Cloud Security Demo
+// Avoiding long strings and complex patterns that trigger compiler bugs
+
+log("Cloud Security Management")
+log("")
+
+// AWS Configuration
+let aws = {
+    "access_key": "AKIA123",
+    "secret_key": "secret123", 
+    "region": "us-east-1"
+}
+
+cloud_provider_add("prod-aws", "AWS", aws)
+log("AWS provider ready")
+
+// Azure Configuration  
+let azure = {
+    "tenant_id": "tenant123",
+    "client_id": "client123",
+    "client_secret": "secret123",
+    "subscription_id": "sub123"
+}
+
+cloud_provider_add("prod-azure", "Azure", azure)
+log("Azure provider ready")
+
+// GCP Configuration
+let gcp = {
+    "project_id": "my-project",
+    "credentials_json": "{\"type\":\"service_account\"}"
+}
+
+cloud_provider_add("prod-gcp", "GCP", gcp)
+log("GCP provider ready")
+
+log("")
+log("Scanning providers...")
+
+// AWS Scan
+let aws_report = cloud_scan("prod-aws")
+log("AWS Results:")
+log("Provider: " + aws_report["provider"])
+log("Resources: " + aws_report["resources_scanned"])
+log("Score: " + aws_report["compliance_score"] + "%")
+log("Critical: " + aws_report["critical_findings"])
+
+// Azure Scan
+let azure_report = cloud_scan("prod-azure")  
+log("")
+log("Azure Results:")
+log("Provider: " + azure_report["provider"])
+log("Resources: " + azure_report["resources_scanned"])
+log("Score: " + azure_report["compliance_score"] + "%")
+
+// GCP Scan
+let gcp_report = cloud_scan("prod-gcp")
+log("")
+log("GCP Results:")
+log("Provider: " + gcp_report["provider"]) 
+log("Resources: " + gcp_report["resources_scanned"])
+log("Score: " + gcp_report["compliance_score"] + "%")
+
+// Security Findings
+log("")
+log("Security Findings:")
+let findings = cloud_findings("open")
+log("Total findings: " + len(findings))
+
+if findings && len(findings) > 0 {
+    let i = 0
+    while i < 3 && i < len(findings) {
+        let finding = findings[i]
+        log("")
+        log("Finding: " + finding["id"])
+        log("Resource: " + finding["resource_id"])
+        log("Severity: " + finding["severity"])
+        log("Issue: " + finding["description"])
+        i = i + 1
+    }
+}
+
+// IAM Policy Check
+log("")
+log("IAM Policy Validation:")
+let policy = "{'Version':'2012-10-17','Statement':[{'Effect':'Allow','Action':'s3:*','Resource':'*'}]}"
+let issues = cloud_validate_iam(policy)
+
+if issues && len(issues) > 0 {
+    log("Policy issues found:")
+    let i = 0
+    while i < len(issues) {
+        log("- " + issues[i])
+        i = i + 1
+    }
+} else {
+    log("Policy validation passed")
+}
+
+// Cost Analysis
+log("")
+log("Cost Analysis:")
+let costs = cloud_cost_analysis("prod-aws")
+log("Provider: " + costs["provider"])
+log("Monthly cost: $" + costs["total_cost"])
+log("Compute: $" + costs["compute_cost"])
+log("Storage: $" + costs["storage_cost"])
+
+// Recommendations
+let recs = costs["recommendations"]
+if recs && len(recs) > 0 {
+    log("")
+    log("Cost recommendations:")
+    let i = 0
+    while i < len(recs) {
+        log("* " + recs[i])
+        i = i + 1
+    }
+}
+
+log("")
+log("Cloud security scan complete!")
+log("Review findings and apply fixes as needed.")

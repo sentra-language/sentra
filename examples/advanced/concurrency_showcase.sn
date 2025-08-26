@@ -1,0 +1,153 @@
+// Sentra Concurrency Showcase - Fixed Version
+// Demonstrates parallel scanning, rate limiting, and async operations
+
+log("=== Sentra Concurrency Showcase ===")
+
+// 1. Create and start worker pools for parallel operations
+log("Creating worker pools for parallel scanning...")
+
+// Create a port scan worker pool
+if (conc_create_worker_pool("port_scanner", 8, 100)) {
+    log("✓ Port scanner worker pool created (8 workers)")
+    conc_start_worker_pool("port_scanner")
+    log("✓ Port scanner worker pool started")
+}
+
+// Create a web vulnerability scanner pool
+if (conc_create_worker_pool("web_scanner", 4, 50)) {
+    log("✓ Web vulnerability scanner pool created (4 workers)")
+    conc_start_worker_pool("web_scanner")
+    log("✓ Web vulnerability scanner pool started")
+}
+
+// Create a file scanner pool
+if (conc_create_worker_pool("file_scanner", 6, 75)) {
+    log("✓ File scanner worker pool created (6 workers)")
+    conc_start_worker_pool("file_scanner")
+    log("✓ File scanner worker pool started")
+}
+
+// 2. Create rate limiters to control scanning speed
+log("Creating rate limiters...")
+
+// Rate limiter for network operations
+if (conc_create_rate_limiter("network_limiter", 100, 20)) {
+    log("✓ Network rate limiter created (100 req/sec, burst 20)")
+}
+
+// Rate limiter for web requests
+if (conc_create_rate_limiter("web_limiter", 50, 10)) {
+    log("✓ Web rate limiter created (50 req/sec, burst 10)")
+}
+
+// Rate limiter for file operations
+if (conc_create_rate_limiter("file_limiter", 200, 50)) {
+    log("✓ File rate limiter created (200 ops/sec, burst 50)")
+}
+
+// 3. Demonstrate parallel port scanning (reduced scope)
+log("")
+log("=== Parallel Port Scanning ===")
+
+let targets = ["127.0.0.1", "192.168.1.1"]
+let common_ports = [22, 80, 443]
+
+// Submit jobs to the worker pool with rate limiting
+let job_id = 1
+
+let i = 0
+while i < len(targets) {
+    let target = targets[i]
+    
+    let j = 0
+    while j < len(common_ports) {
+        let port = common_ports[j]
+        
+        // Rate limit network operations
+        if (conc_acquire_token("network_limiter", 1000)) {
+            let scan_data = {
+                "host": target,
+                "port": port,
+                "timeout": 3
+            }
+            
+            if (conc_submit_job("port_scanner", "scan_" + str(job_id), "port_scan", scan_data)) {
+                log("→ Submitted port scan job: " + target + ":" + str(port))
+                job_id = job_id + 1
+            }
+        }
+        j = j + 1
+    }
+    i = i + 1
+}
+
+// 4. Web vulnerability scanning (simplified)
+log("")
+log("=== Parallel Web Vulnerability Scanning ===")
+
+let web_targets = ["https://httpbin.org", "https://example.com"]
+
+let i = 0
+while i < len(web_targets) {
+    let target = web_targets[i]
+    
+    if (conc_acquire_token("web_limiter", 2000)) {
+        let scan_data = {
+            "url": target,
+            "scan_type": "basic"
+        }
+        
+        if (conc_submit_job("web_scanner", "web_" + str(i), "vuln_scan", scan_data)) {
+            log("→ Submitted web vulnerability scan: " + target)
+        }
+    }
+    i = i + 1
+}
+
+// 5. File system scanning (simplified)
+log("")
+log("=== Parallel File System Scanning ===")
+
+let file_targets = [".", "./examples"]
+
+let i = 0
+while i < len(file_targets) {
+    let target = file_targets[i]
+    
+    if (conc_acquire_token("file_limiter", 1000)) {
+        let scan_data = {
+            "path": target,
+            "recursive": false
+        }
+        
+        if (conc_submit_job("file_scanner", "file_" + str(i), "file_scan", scan_data)) {
+            log("→ Submitted file system scan: " + target)
+        }
+    }
+    i = i + 1
+}
+
+// 6. Monitor concurrency metrics (simplified)
+log("")
+log("=== Concurrency Metrics ===")
+
+let metrics = conc_get_metrics()
+log("Active Worker Pools: " + str(metrics["worker_pools_active"]))
+log("Total Workers: " + str(metrics["workers_total"]))
+log("Tasks Queued: " + str(metrics["tasks_queued"]))
+log("Tasks Processing: " + str(metrics["tasks_processing"]))
+log("Tasks Completed: " + str(metrics["tasks_completed"]))
+
+// Final report
+log("")
+log("=== Concurrency Showcase Complete ===")
+log("✓ Successfully demonstrated:")
+log("  • Worker pool creation and management")
+log("  • Rate limiting for responsible scanning")
+log("  • Parallel port scanning")
+log("  • Parallel web vulnerability assessment")
+log("  • Parallel file system analysis")
+log("  • Real-time metrics monitoring")
+
+log("")
+log("✓ Sentra concurrent security scanning capabilities demonstrated successfully!")

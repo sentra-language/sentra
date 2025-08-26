@@ -1,0 +1,280 @@
+// Database Security Assessment Demo
+// Comprehensive database security testing and compliance checking
+
+log("DATABASE SECURITY ASSESSMENT SUITE")
+log("")
+
+// Database connections for testing
+let databases = [
+    {"name": "production_mysql", "type": "mysql", "host": "db-prod.company.com", "conn": "user:pass@db-prod.company.com:3306/prod"},
+    {"name": "staging_postgres", "type": "postgresql", "host": "db-staging.company.com", "conn": "user:pass@db-staging.company.com:5432/staging"},
+    {"name": "development_mongodb", "type": "mongodb", "host": "db-dev.company.com", "conn": "mongodb://user:pass@db-dev.company.com:27017/dev"}
+]
+
+log("Testing " + len(databases) + " database connections...")
+log("")
+
+let all_connections = [{}, {}, {}]  // Pre-allocate array
+let connection_count = 0
+let total_findings = 0
+
+// Connect to each database
+let i = 0
+while i < len(databases) {
+    let db_config = databases[i]
+    
+    log("=== " + db_config["name"] + " ===")
+    log("Type: " + db_config["type"])
+    log("Host: " + db_config["host"])
+    
+    // Establish connection
+    let connection = db_connect(db_config["type"], db_config["host"], db_config["conn"])
+    if connection && connection["status"] == "connected" {
+        log("Connection successful: " + connection["connection_id"])
+        log("Database version: " + connection["version"])
+        log("SSL enabled: " + connection["ssl_enabled"])
+        
+        // Store connection info
+        all_connections[connection_count] = {
+            "config": db_config,
+            "connection": connection
+        }
+        connection_count = connection_count + 1
+    } else {
+        log("Connection failed for " + db_config["name"])
+    }
+    
+    log("")
+    i = i + 1
+}
+
+log("Successfully connected to " + connection_count + " databases")
+log("")
+
+// Security assessment for each connected database  
+let j = 0
+while j < connection_count {
+    let db_conn = all_connections[j]
+    let config = db_conn["config"]
+    let connection = db_conn["connection"]
+    let conn_id = connection["connection_id"]
+    
+    log("SECURITY ASSESSMENT: " + config["name"])
+    log("Connection ID: " + conn_id)
+    log("")
+    
+    // 1. General security scan
+    log("1. General Security Scan")
+    let scan_results = db_security_scan(conn_id)
+    if scan_results {
+        log("Scan completed at: " + scan_results["scan_time"])
+        log("Risk score: " + scan_results["risk_score"] + "/100")
+        
+        let findings = scan_results["findings"]
+        if findings && len(findings) > 0 {
+            log("Security findings: " + len(findings))
+            
+            let k = 0
+            while k < len(findings) {
+                let finding = findings[k]
+                log("  [" + finding["severity"] + "] " + finding["description"])
+                log("    Category: " + finding["category"])
+                log("    Fix: " + finding["remediation"])
+                total_findings = total_findings + 1
+                k = k + 1
+            }
+        } else {
+            log("No security findings")
+        }
+    }
+    log("")
+    
+    // 2. SQL injection testing
+    log("2. SQL Injection Testing")
+    let injection_tests = [
+        {"name": "Basic OR injection", "query": "SELECT * FROM users WHERE id = ?", "payload": "1' OR '1'='1"},
+        {"name": "UNION attack", "query": "SELECT * FROM products WHERE name = ?", "payload": "test' UNION SELECT username,password FROM users--"},
+        {"name": "Comment injection", "query": "SELECT * FROM orders WHERE user_id = ?", "payload": "1; DROP TABLE users; --"},
+        {"name": "Blind injection", "query": "SELECT * FROM accounts WHERE email = ?", "payload": "test@test.com' AND SLEEP(5)--"}
+    ]
+    
+    let m = 0
+    let injection_vulnerabilities = 0
+    while m < len(injection_tests) {
+        let test = injection_tests[m]
+        let result = db_test_injection(conn_id, test["query"], test["payload"])
+        
+        if result && result["vulnerable"] {
+            log("  [VULNERABLE] " + test["name"])
+            log("    Risk: " + result["risk_level"])
+            log("    Message: " + result["message"])
+            injection_vulnerabilities = injection_vulnerabilities + 1
+        } else {
+            log("  [SAFE] " + test["name"])
+        }
+        m = m + 1
+    }
+    
+    if injection_vulnerabilities > 0 {
+        log("SQL injection vulnerabilities found: " + injection_vulnerabilities)
+    } else {
+        log("No SQL injection vulnerabilities detected")
+    }
+    log("")
+    
+    // 3. Privilege audit
+    log("3. Database Privilege Audit")
+    let privilege_audit = db_audit_privileges(conn_id)
+    if privilege_audit {
+        log("Audit completed at: " + privilege_audit["audit_time"])
+        log("Total users: " + privilege_audit["total_users"])
+        log("High-risk users: " + privilege_audit["high_risk_users"])
+        
+        let users = privilege_audit["users"]
+        if users && len(users) > 0 {
+            log("User privileges:")
+            let n = 0
+            while n < len(users) {
+                let user = users[n]
+                log("  User: " + user["username"] + "@" + user["host"])
+                log("    Risk level: " + user["risk_level"])
+                
+                let privileges = user["privileges"]
+                if privileges && len(privileges) > 0 {
+                    log("    Privileges: " + len(privileges) + " permissions")
+                    let p = 0
+                    while p < len(privileges) && p < 3 {
+                        log("      - " + privileges[p])
+                        p = p + 1
+                    }
+                }
+                n = n + 1
+            }
+        }
+    }
+    log("")
+    
+    // 4. Encryption check
+    log("4. Encryption Security Check")
+    let encryption_check = db_check_encryption(conn_id)
+    if encryption_check {
+        log("Check completed at: " + encryption_check["check_time"])
+        log("SSL connection: " + encryption_check["ssl_connection"])
+        log("TLS version: " + encryption_check["tls_version"])
+        log("Data at rest encrypted: " + encryption_check["data_at_rest_encrypted"])
+        log("Transparent encryption: " + encryption_check["transparent_encryption"])
+        log("Compliance score: " + encryption_check["compliance_score"] + "%")
+        
+        let issues = encryption_check["issues"]
+        if issues && len(issues) > 0 {
+            log("Encryption issues:")
+            let q = 0
+            while q < len(issues) {
+                let issue = issues[q]
+                log("  [" + issue["severity"] + "] " + issue["message"])
+                q = q + 1
+            }
+        }
+    }
+    log("")
+    
+    // 5. Backup security assessment
+    log("5. Backup Security Assessment")
+    let backup_check = db_backup_security(conn_id)
+    if backup_check {
+        log("Check completed at: " + backup_check["check_time"])
+        log("Total backups: " + backup_check["total_backups"])
+        log("Secure backups: " + backup_check["secure_backups"])
+        log("Insecure backups: " + backup_check["insecure_backups"])
+        
+        let backups = backup_check["backups"]
+        if backups && len(backups) > 0 {
+            log("Backup analysis:")
+            let r = 0
+            while r < len(backups) {
+                let backup = backups[r]
+                log("  Path: " + backup["path"])
+                log("    Encrypted: " + backup["encrypted"])
+                log("    Permissions: " + backup["permissions"])
+                log("    Risk level: " + backup["risk_level"])
+                log("    Last backup: " + backup["last_backup"])
+                r = r + 1
+            }
+        }
+    }
+    log("")
+    
+    // 6. Compliance framework checking
+    log("6. Compliance Framework Assessment")
+    let frameworks = ["PCI-DSS", "GDPR", "SOX", "HIPAA"]
+    
+    let s = 0
+    while s < len(frameworks) {
+        let framework = frameworks[s]
+        let compliance = db_compliance_check(conn_id, framework)
+        
+        if compliance {
+            log("Framework: " + framework)
+            log("  Compliance score: " + compliance["compliance_score"] + "%")
+            log("  Checks passed: " + compliance["passed"] + "/" + compliance["total_checks"])
+            
+            let checks = compliance["checks"]
+            if checks && len(checks) > 0 {
+                let t = 0
+                while t < len(checks) && t < 2 {
+                    let check = checks[t]
+                    log("    " + check["requirement"] + ": " + check["status"])
+                    log("      " + check["description"])
+                    t = t + 1
+                }
+            }
+        }
+        s = s + 1
+    }
+    
+    log("")
+    log("----------------------------------------")
+    log("")
+    j = j + 1
+}
+
+// Overall security summary
+log("OVERALL DATABASE SECURITY SUMMARY")
+log("")
+log("Databases assessed: " + connection_count)
+log("Total security findings: " + total_findings)
+
+// Calculate overall risk level
+let avg_risk = 0
+if connection_count > 0 {
+    avg_risk = total_findings / connection_count * 20  // Approximate risk calculation
+}
+
+if avg_risk > 80 {
+    log("Overall risk level: CRITICAL")
+    log("Immediate remediation required!")
+} else if avg_risk > 60 {
+    log("Overall risk level: HIGH")
+    log("Priority fixes needed")
+} else if avg_risk > 40 {
+    log("Overall risk level: MEDIUM")
+    log("Regular maintenance required")
+} else {
+    log("Overall risk level: LOW")
+    log("Good security posture maintained")
+}
+
+log("")
+log("SECURITY RECOMMENDATIONS")
+log("1. Implement database activity monitoring")
+log("2. Enable data-at-rest encryption for all databases") 
+log("3. Regular privilege audits and access reviews")
+log("4. Secure backup encryption and access controls")
+log("5. Deploy database firewall and access controls")
+log("6. Regular security assessments and penetration testing")
+log("7. Compliance framework alignment and monitoring")
+log("8. Database hardening and configuration management")
+
+log("")
+log("DATABASE SECURITY ASSESSMENT COMPLETE")
+log("Next assessment recommended in 30 days")

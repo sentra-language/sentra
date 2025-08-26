@@ -1,0 +1,205 @@
+// Simple IoT Security Demo
+// Basic IoT device security testing functionality
+
+log("IoT Security Testing")
+log("")
+
+// Scan IoT device
+let device_scan = iot_scan_device("smart_sensor", "iot_device_001")
+
+if device_scan {
+    log("IoT Device Scan Complete")
+    log("Device ID: " + device_scan["device_id"])
+    log("Device Type: " + device_scan["device_type"])
+    log("Manufacturer: " + device_scan["manufacturer"])
+    log("Model: " + device_scan["model"])
+    log("Firmware Version: " + device_scan["firmware_version"])
+    log("IP Address: " + device_scan["ip_address"])
+    log("Risk Score: " + device_scan["risk_score"])
+    
+    let vulnerabilities = device_scan["vulnerabilities"]
+    if vulnerabilities && len(vulnerabilities) > 0 {
+        log("Vulnerabilities: " + len(vulnerabilities))
+        
+        let i = 0
+        while i < len(vulnerabilities) {
+            let vuln = vulnerabilities[i]
+            log("- " + vuln["severity"] + ": " + vuln["description"])
+            if vuln["cve"] {
+                log("  CVE: " + vuln["cve"])
+            }
+            i = i + 1
+        }
+    }
+}
+
+// Network traffic analysis
+log("")
+log("Analyzing network traffic...")
+let network_analysis = iot_network_analysis("iot_device_001")
+
+if network_analysis {
+    log("Network Segment: " + network_analysis["network_segment"])
+    log("Total Connections: " + network_analysis["total_connections"])
+    log("Encrypted Traffic: " + network_analysis["encrypted_traffic"] + "%")
+    log("Unencrypted Traffic: " + network_analysis["unencrypted_traffic"] + "%")
+    log("Network Risk Score: " + network_analysis["network_risk_score"])
+    
+    let suspicious_activities = network_analysis["suspicious_activities"]
+    if suspicious_activities && len(suspicious_activities) > 0 {
+        log("Suspicious Activities: " + len(suspicious_activities))
+        
+        let j = 0
+        while j < len(suspicious_activities) {
+            let activity = suspicious_activities[j]
+            log("- " + activity["type"] + " [" + activity["severity"] + "]")
+            log("  " + activity["description"])
+            j = j + 1
+        }
+    }
+}
+
+// Firmware analysis
+log("")
+log("Analyzing firmware...")
+let firmware_analysis = iot_firmware_analysis("iot_device_001", "/firmware/sensor_v1.4.2.bin")
+
+if firmware_analysis {
+    log("Firmware Size: " + firmware_analysis["firmware_size"])
+    log("Architecture: " + firmware_analysis["architecture"])
+    log("Digital Signature: " + firmware_analysis["digital_signature"])
+    log("Signature Valid: " + firmware_analysis["signature_valid"])
+    log("Security Score: " + firmware_analysis["security_score"])
+    log("Critical Issues: " + firmware_analysis["critical_count"])
+    log("High Issues: " + firmware_analysis["high_count"])
+    
+    let findings = firmware_analysis["security_findings"]
+    if findings && len(findings) > 0 {
+        log("Security Findings: " + len(findings))
+        
+        let k = 0
+        while k < len(findings) && k < 2 {
+            let finding = findings[k]
+            log("- " + finding["severity"] + ": " + finding["type"])
+            log("  " + finding["description"])
+            k = k + 1
+        }
+    }
+}
+
+// Protocol security assessment
+log("")
+log("Checking MQTT protocol security...")
+let protocol_security = iot_protocol_security("iot_device_001", "MQTT")
+
+if protocol_security {
+    log("Protocol: " + protocol_security["protocol"])
+    log("TLS Enabled: " + protocol_security["tls_enabled"])
+    log("Authentication: " + protocol_security["authentication"])
+    log("Protocol Security Score: " + protocol_security["protocol_security_score"])
+    
+    let issues = protocol_security["security_issues"]
+    if issues && len(issues) > 0 {
+        log("Security Issues: " + len(issues))
+        
+        let l = 0
+        while l < len(issues) {
+            let issue = issues[l]
+            log("- " + issue["issue"] + " [" + issue["severity"] + "]")
+            log("  " + issue["description"])
+            l = l + 1
+        }
+    }
+}
+
+// Device authentication check
+log("")
+log("Checking device authentication...")
+let auth_check = iot_device_authentication("iot_device_001")
+
+if auth_check {
+    log("Authentication Score: " + auth_check["authentication_score"])
+    log("Multi-factor Enabled: " + auth_check["multi_factor_enabled"])
+    log("Account Lockout: " + auth_check["account_lockout"])
+    
+    let auth_methods = auth_check["authentication_methods"]
+    if auth_methods && len(auth_methods) > 0 {
+        log("Authentication Methods:")
+        
+        let m = 0
+        while m < len(auth_methods) {
+            let method = auth_methods[m]
+            log("- " + method["method"] + " [" + method["risk_level"] + "]")
+            log("  Strength: " + method["strength"])
+            m = m + 1
+        }
+    }
+}
+
+// Data protection analysis
+log("")
+log("Analyzing data protection...")
+let data_protection = iot_data_protection("iot_device_001")
+
+if data_protection {
+    log("Data Protection Score: " + data_protection["data_protection_score"])
+    log("Encrypted Flows: " + data_protection["encrypted_flows"])
+    log("Unencrypted Flows: " + data_protection["unencrypted_flows"])
+    log("High-risk Flows: " + data_protection["high_risk_flows"])
+    
+    let data_flows = data_protection["data_flows"]
+    if data_flows && len(data_flows) > 0 {
+        log("Data Flows: " + len(data_flows))
+        
+        let n = 0
+        while n < len(data_flows) && n < 2 {
+            let flow = data_flows[n]
+            log("- " + flow["flow_type"] + " [" + flow["risk_level"] + "]")
+            log("  Destination: " + flow["destination"])
+            log("  Encrypted: " + flow["encryption"])
+            n = n + 1
+        }
+    }
+}
+
+// Compliance check
+log("")
+log("Checking NIST compliance...")
+let compliance = iot_compliance_check("iot_device_001", "NIST")
+
+if compliance {
+    log("Standard: " + compliance["compliance_standard"])
+    log("Compliance Score: " + compliance["compliance_score"] + "%")
+    log("Checks Passed: " + compliance["passed"])
+    log("Checks Failed: " + compliance["failed"])
+    log("Overall Compliance: " + compliance["overall_compliance"])
+}
+
+// Threat modeling
+log("")
+log("Running threat modeling...")
+let threat_model = iot_threat_modeling("iot_device_001")
+
+if threat_model {
+    log("Threat Model: " + threat_model["threat_model"])
+    log("Overall Risk: " + threat_model["overall_risk"])
+    log("Critical Threats: " + threat_model["critical_threats"])
+    log("High Threats: " + threat_model["high_threats"])
+    
+    let threats = threat_model["identified_threats"]
+    if threats && len(threats) > 0 {
+        log("Identified Threats:")
+        
+        let o = 0
+        while o < len(threats) && o < 2 {
+            let threat = threats[o]
+            log("- " + threat["category"] + " [" + threat["risk_rating"] + "]")
+            log("  " + threat["description"])
+            log("  Mitigation: " + threat["mitigation"])
+            o = o + 1
+        }
+    }
+}
+
+log("")
+log("IoT security testing complete")

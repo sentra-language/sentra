@@ -1,0 +1,64 @@
+// Simple Memory Analysis
+// Basic memory monitoring and analysis
+
+log("Memory Analysis System")
+log("")
+
+// System overview
+let sys_info = os_info()
+log("System: " + sys_info["platform"])
+log("Architecture: " + sys_info["arch"])
+
+// Process analysis
+log("")
+log("Process Analysis")
+let processes = os_processes()
+log("Active processes: " + len(processes))
+
+if processes && len(processes) > 0 {
+    log("")
+    log("Top memory consumers:")
+    
+    let i = 0
+    while i < 5 && i < len(processes) {
+        let proc = processes[i]
+        log("PID " + proc["pid"] + ": " + proc["name"])
+        log("Memory: " + proc["memory"] + " MB")
+        log("User: " + proc["user"])
+        log("")
+        i = i + 1
+    }
+}
+
+// Memory analysis
+log("Memory Pattern Analysis")
+let suspicious_count = 0
+
+let j = 0
+while j < len(processes) && j < 10 {
+    let proc = processes[j]
+    let mem = proc["memory"]
+    
+    if mem > 1000 {
+        log("High memory process: " + proc["name"] + " (" + mem + " MB)")
+        suspicious_count = suspicious_count + 1
+    }
+    
+    j = j + 1
+}
+
+log("")
+log("Analysis Summary:")
+log("Total processes: " + len(processes))
+log("High memory processes: " + suspicious_count)
+
+if suspicious_count > 3 {
+    log("Status: INVESTIGATE - Multiple high memory processes")
+} else if suspicious_count > 0 {
+    log("Status: MONITOR - Some memory usage concerns")
+} else {
+    log("Status: NORMAL - Memory usage appears typical")
+}
+
+log("")
+log("Memory analysis complete")

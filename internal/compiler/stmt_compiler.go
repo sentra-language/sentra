@@ -9,11 +9,11 @@ import (
 type StmtCompiler struct {
 	Chunk           *bytecode.Chunk
 	currentFunction *Function
-	fileName        string
+	FileName        string        // Exported for hoisting compiler
 	currentLine     int
 	currentColumn   int
-	locals          []string  // Track local variables in current function
-	localCount      int       // Number of locals
+	locals          []string      // Track local variables in current function
+	localCount      int           // Number of locals
 	parent          *StmtCompiler // Parent compiler for closures
 }
 
@@ -45,7 +45,7 @@ func NewStmtCompilerWithDebug(fileName string) *StmtCompiler {
 			Params: []string{},
 			Chunk:  nil, // Will be set later
 		},
-		fileName: fileName,
+		FileName: fileName,
 	}
 }
 
@@ -66,7 +66,7 @@ func (c *StmtCompiler) emitOp(op bytecode.OpCode) {
 	debug := bytecode.DebugInfo{
 		Line:     c.currentLine,
 		Column:   c.currentColumn,
-		File:     c.fileName,
+		File:     c.FileName,
 		Function: c.currentFunction.Name,
 	}
 	c.Chunk.WriteOpWithDebug(op, debug)
@@ -76,7 +76,7 @@ func (c *StmtCompiler) emitByte(b byte) {
 	debug := bytecode.DebugInfo{
 		Line:     c.currentLine,
 		Column:   c.currentColumn,
-		File:     c.fileName,
+		File:     c.FileName,
 		Function: c.currentFunction.Name,
 	}
 	c.Chunk.WriteByteWithDebug(b, debug)
@@ -89,7 +89,13 @@ func (c *StmtCompiler) VisitPrintStmt(stmt *parser.PrintStmt) interface{} {
 }
 
 func (c *StmtCompiler) VisitLetStmt(stmt *parser.LetStmt) interface{} {
-	stmt.Expr.Accept(c)
+	// If there's an initializer expression, compile it
+	if stmt.Expr != nil {
+		stmt.Expr.Accept(c)
+	} else {
+		// No initializer, push nil
+		c.emitOp(bytecode.OpNil)
+	}
 	
 	// If we're inside a function, create a local
 	if c.currentFunction != nil && c.currentFunction.Name != "<script>" {
@@ -117,6 +123,8 @@ func (c *StmtCompiler) VisitAssignmentStmt(stmt *parser.AssignmentStmt) interfac
 			if local == stmt.Name {
 				c.Chunk.WriteOp(bytecode.OpSetLocal)
 				c.Chunk.WriteByte(byte(i))
+				// Pop the value left by OpSetLocal (assignments are statements, not expressions)
+				c.Chunk.WriteOp(bytecode.OpPop)
 				return nil
 			}
 		}
@@ -126,6 +134,8 @@ func (c *StmtCompiler) VisitAssignmentStmt(stmt *parser.AssignmentStmt) interfac
 	idx := c.Chunk.AddConstant(stmt.Name)
 	c.Chunk.WriteOp(bytecode.OpSetGlobal)
 	c.Chunk.WriteByte(byte(idx))
+	// Pop the value left by OpSetGlobal (assignments are statements, not expressions)
+	c.Chunk.WriteOp(bytecode.OpPop)
 	return nil
 }
 
@@ -352,14 +362,21 @@ func (c *StmtCompiler) VisitForInStmt(stmt *parser.ForInStmt) interface{} {
 	
 	// Check if iteration is done
 	c.Chunk.WriteOp(bytecode.OpIterNext)
+	// OpIterNext pushes: element, boolean - we need to handle both
+	
+	// Duplicate the boolean for the jump test
+	c.Chunk.WriteOp(bytecode.OpDup) // Stack: element, boolean, boolean
 	c.Chunk.WriteOp(bytecode.OpJumpIfFalse)
 	jumpPos := len(c.Chunk.Code)
 	c.Chunk.WriteByte(0) // Placeholder
 	c.Chunk.WriteByte(0)
 	
-	// Store iteration value in variable
+	// Pop the boolean, leaving element on stack
+	c.Chunk.WriteOp(bytecode.OpPop) // Stack: element
+	
+	// Store iteration value in variable (use SetGlobal to update existing var)
 	idx := c.Chunk.AddConstant(stmt.Variable)
-	c.Chunk.WriteOp(bytecode.OpDefineGlobal)
+	c.Chunk.WriteOp(bytecode.OpSetGlobal)
 	c.Chunk.WriteByte(byte(idx))
 	
 	// Compile body
@@ -373,13 +390,18 @@ func (c *StmtCompiler) VisitForInStmt(stmt *parser.ForInStmt) interface{} {
 	c.Chunk.WriteByte(byte(loopOffset >> 8))
 	c.Chunk.WriteByte(byte(loopOffset & 0xff))
 	
-	// Patch jump offset
+	// Jump target for loop end - clean up stack
 	endPos := len(c.Chunk.Code)
 	jumpOffset := endPos - jumpPos - 2
 	c.Chunk.Code[jumpPos] = byte(jumpOffset >> 8)
 	c.Chunk.Code[jumpPos+1] = byte(jumpOffset & 0xff)
 	
-	// End iteration
+	// Pop the boolean that caused the jump (false)
+	c.Chunk.WriteOp(bytecode.OpPop)
+	// Pop the element that was left on stack
+	c.Chunk.WriteOp(bytecode.OpPop)
+	
+	// End iteration - clean up iteration state
 	c.Chunk.WriteOp(bytecode.OpIterEnd)
 	
 	return nil

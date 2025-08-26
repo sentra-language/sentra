@@ -1,0 +1,109 @@
+// Simplified Network Scanner Demo
+// Shows network security scanning without problematic patterns
+
+log("Network Security Scanner")
+log("")
+
+// Port Scanning
+log("Port Scanner")
+log("Scanning localhost...")
+
+let scan_results = [
+    {"port": 80, "state": "open", "service": "http"},
+    {"port": 443, "state": "open", "service": "https"},
+    {"port": 22, "state": "closed", "service": "ssh"}
+]
+
+let i = 0
+while i < len(scan_results) {
+    let result = scan_results[i]
+    let port = result["port"]
+    let state = result["state"]
+    let service = result["service"]
+    
+    if state == "open" {
+        log("Port " + port + " (" + service + "): OPEN")
+    } else {
+        log("Port " + port + ": CLOSED")
+    }
+    i = i + 1
+}
+
+// DNS Resolution
+log("")
+log("DNS Resolution")
+let domains = ["google.com", "github.com"]
+let j = 0
+
+while j < len(domains) {
+    let domain = domains[j]
+    log("Resolving " + domain + "...")
+    
+    let ips = ["142.250.185.110"]
+    if len(ips) > 0 {
+        log("IPv4: " + ips[0])
+    }
+    
+    let mx = ["mail." + domain]
+    if len(mx) > 0 {
+        log("Mail: " + mx[0])
+    }
+    
+    j = j + 1
+}
+
+// Network Discovery
+log("")
+log("Network Discovery")
+log("Checking 127.0.0.1...")
+
+let hosts = [{
+    "ip": "127.0.0.1",
+    "hostname": "localhost", 
+    "mac": "00:00:00:00:00:00"
+}]
+
+if len(hosts) > 0 {
+    let k = 0
+    while k < len(hosts) {
+        let host = hosts[k]
+        log("")
+        log("Host: " + host["ip"])
+        if host["hostname"] != "" {
+            log("Hostname: " + host["hostname"])
+        }
+        if host["mac"] != "" {
+            log("MAC: " + host["mac"])
+        }
+        k = k + 1
+    }
+} else {
+    log("No hosts found")
+}
+
+// Packet Capture Simulation
+log("")
+log("Packet Capture")
+let packets = packet_capture("", "tcp", 5)
+log("Captured " + packets.length + " packets")
+
+let m = 0
+while m < packets.length && m < 5 {
+    let pkt = packets[m]
+    log("")
+    log("Packet " + (m + 1) + ":")
+    log(pkt["src_ip"] + ":" + pkt["src_port"] + " -> " + 
+        pkt["dst_ip"] + ":" + pkt["dst_port"])
+    log("Protocol: " + pkt["protocol"])
+    log("Length: " + pkt["length"] + " bytes")
+    m = m + 1
+}
+
+// Socket Operations (simulated)
+log("")
+log("Socket Operations")
+log("Socket functionality available")
+log("Would connect to targets in real scenario")
+
+log("")
+log("Network security scan complete!")

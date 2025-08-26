@@ -1,7 +1,0 @@
-log("Testing regular for loop")
-let i = 0
-while i < 5 {
-    log("i = " + i)
-    i = i + 1
-}
-log("Done")

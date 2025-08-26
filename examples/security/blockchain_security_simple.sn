@@ -1,0 +1,135 @@
+// Simple Blockchain Security Demo
+// Basic blockchain security testing functionality
+
+log("Blockchain Security Testing")
+log("")
+
+// Connect to blockchain network
+let connection = blockchain_connect("ethereum", "https://eth-mainnet.g.alchemy.com/v2/key")
+
+if connection && connection["status"] == "connected" {
+    log("Connected to blockchain network")
+    log("Connection ID: " + connection["connection_id"])
+    log("Network: " + connection["network"])
+    log("Chain ID: " + connection["chain_id"])
+    
+    let conn_id = connection["connection_id"]
+    
+    // Analyze a transaction
+    log("")
+    log("Analyzing transaction...")
+    let tx_analysis = blockchain_analyze_transaction(conn_id, "0xabcd1234")
+    
+    if tx_analysis {
+        log("Transaction hash: " + tx_analysis["transaction_hash"])
+        log("Gas used: " + tx_analysis["gas_used"])
+        log("Status: " + tx_analysis["status"])
+        
+        let risk_factors = tx_analysis["risk_factors"]
+        if risk_factors && len(risk_factors) > 0 {
+            log("Risk factors detected: " + len(risk_factors))
+            
+            let i = 0
+            while i < len(risk_factors) {
+                let factor = risk_factors[i]
+                log("- " + factor["type"] + ": " + factor["description"])
+                i = i + 1
+            }
+        }
+    }
+    
+    // Smart contract audit
+    log("")
+    log("Auditing smart contract...")
+    let audit_result = blockchain_audit_contract(conn_id, "0x1234567890123456789012345678901234567890")
+    
+    if audit_result {
+        log("Contract address: " + audit_result["contract_address"])
+        log("Security score: " + audit_result["security_score"])
+        log("High vulnerabilities: " + audit_result["high_count"])
+        log("Medium vulnerabilities: " + audit_result["medium_count"])
+        
+        let vulnerabilities = audit_result["vulnerabilities"]
+        if vulnerabilities && len(vulnerabilities) > 0 {
+            log("Vulnerabilities found: " + len(vulnerabilities))
+            
+            let j = 0
+            while j < len(vulnerabilities) && j < 2 {
+                let vuln = vulnerabilities[j]
+                log("- " + vuln["severity"] + ": " + vuln["description"])
+                j = j + 1
+            }
+        }
+    }
+    
+    // Trace funds
+    log("")
+    log("Tracing funds...")
+    let trace_result = blockchain_trace_funds(conn_id, "0x1234567890123456789012345678901234567890", 3)
+    
+    if trace_result {
+        log("Trace depth: " + trace_result["trace_depth"])
+        log("Mixing detected: " + trace_result["mixing_detected"])
+        
+        let transaction_path = trace_result["transaction_path"]
+        if transaction_path && len(transaction_path) > 0 {
+            log("Transaction path: " + len(transaction_path) + " hops")
+        }
+    }
+    
+    // Check wallet security
+    log("")
+    log("Checking wallet security...")
+    let wallet_check = blockchain_check_wallet(conn_id, "0x1234567890123456789012345678901234567890")
+    
+    if wallet_check {
+        log("Wallet address: " + wallet_check["wallet_address"])
+        log("Balance: " + wallet_check["balance"])
+        log("Transaction count: " + wallet_check["transaction_count"])
+        log("Blacklisted: " + wallet_check["blacklisted"])
+        
+        let risk_indicators = wallet_check["risk_indicators"]
+        if risk_indicators && len(risk_indicators) > 0 {
+            log("Risk indicators: " + len(risk_indicators))
+        }
+    }
+    
+    // DeFi protocol analysis
+    log("")
+    log("Analyzing DeFi protocol...")
+    let defi_analysis = blockchain_analyze_defi(conn_id, "0x1234567890123456789012345678901234567890")
+    
+    if defi_analysis {
+        log("Protocol: " + defi_analysis["protocol_name"])
+        log("Liquidity pools: " + defi_analysis["liquidity_pools"])
+        log("Security score: " + defi_analysis["security_score"])
+    }
+    
+    // NFT analysis
+    log("")
+    log("Analyzing NFT...")
+    let nft_analysis = blockchain_nft_analysis(conn_id, "0x1234567890123456789012345678901234567890")
+    
+    if nft_analysis {
+        log("Collection: " + nft_analysis["collection_name"])
+        log("Total supply: " + nft_analysis["total_supply"])
+        log("Authenticity score: " + nft_analysis["authenticity_score"])
+    }
+    
+    // Compliance check
+    log("")
+    log("Checking compliance...")
+    let compliance = blockchain_compliance_check(conn_id, "0x1234567890123456789012345678901234567890", "US")
+    
+    if compliance {
+        log("Jurisdiction: " + compliance["jurisdiction"])
+        log("Overall compliance: " + compliance["overall_compliance"])
+        log("Requires KYC: " + compliance["requires_kyc"])
+    }
+    
+} else {
+    log("Blockchain connection failed")
+}
+
+log("")
+log("Blockchain security testing complete")

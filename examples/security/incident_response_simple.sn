@@ -1,0 +1,172 @@
+// Simplified Incident Response Demo
+// Demonstrates incident management without problematic string patterns
+
+log("Incident Response Automation")
+log("")
+
+// Create security incident
+log("Creating incident...")
+let incident = ir_create_incident(
+    "Malware on Workstation", 
+    "Suspicious activity on WS-001",
+    "high",
+    "endpoint_detection"
+)
+
+log("Incident ID: " + incident["id"])
+log("Title: " + incident["title"])
+log("Severity: " + incident["severity"])
+log("Status: " + incident["status"])
+
+let incident_id = incident["id"]
+
+// Collect evidence
+log("")
+log("Collecting evidence...")
+ir_collect_evidence(incident_id, "file_hash", "abc123hash", "antivirus")
+ir_collect_evidence(incident_id, "ip_address", "192.168.1.50", "network_monitor")
+ir_collect_evidence(incident_id, "process_name", "suspicious.exe", "endpoint_agent")
+log("Evidence collected")
+
+// Update incident
+log("")
+log("Updating incident...")
+let updates = {
+    "category": "malware",
+    "assigned_to": "analyst_1"
+}
+ir_update_incident(incident_id, updates)
+log("Incident updated")
+
+// Get playbooks
+log("")
+log("Available playbooks...")
+let playbooks = ir_list_playbooks()
+log("Total playbooks: " + len(playbooks))
+
+let playbook_id = ""
+for playbook in playbooks {
+    log("- " + playbook["id"] + ": " + playbook["name"])
+    if playbook_id == "" {
+        playbook_id = playbook["id"]
+    }
+    if playbook["category"] == "malware" {
+        playbook_id = playbook["id"]
+    }
+}
+
+// Execute playbook
+log("")
+log("Executing playbook...")
+let response = ir_execute_playbook(incident_id, playbook_id)
+log("Action: " + response["action"])
+log("Status: " + response["status"])
+log("Message: " + response["message"])
+log("Evidence items: " + len(response["evidence"]))
+log("Next steps: " + len(response["next_steps"]))
+
+// Execute response action
+log("")
+log("Executing response...")
+let action_params = {"host": "WS-001"}
+let action_result = ir_execute_action(incident_id, "RA-001", action_params)
+log("Action: " + action_result["action"])
+log("Status: " + action_result["status"])
+log("Message: " + action_result["message"])
+
+// Get incident details
+log("")
+log("Incident details...")
+let details = ir_get_incident(incident_id)
+log("ID: " + details["id"])
+log("Title: " + details["title"])
+log("Category: " + details["category"])
+log("Assigned: " + details["assigned_to"])
+log("Artifacts: " + len(details["artifacts"]))
+log("Timeline events: " + len(details["timeline"]))
+
+// Create second incident
+log("")
+log("Creating second incident...")
+let incident2 = ir_create_incident(
+    "Login Attempt",
+    "Failed logins from external IP",
+    "medium", 
+    "siem_system"
+)
+log("Second incident: " + incident2["id"])
+
+// List all incidents
+log("")
+log("All incidents...")
+let all_incidents = ir_list_incidents({})
+log("Total incidents: " + len(all_incidents))
+
+for incident in all_incidents {
+    log("- " + incident["id"] + ": " + incident["title"])
+}
+
+// Filter by severity
+log("")
+log("High severity incidents...")
+let high_incidents = ir_list_incidents({"severity": "high"})
+log("High severity count: " + len(high_incidents))
+
+// Create custom playbook
+log("")
+log("Creating custom playbook...")
+let steps = [
+    {
+        "name": "Isolate System",
+        "description": "Isolate affected system",
+        "action": "isolate_host"
+    },
+    {
+        "name": "Collect Evidence", 
+        "description": "Collect forensic data",
+        "action": "collect_logs"
+    },
+    {
+        "name": "Notify Team",
+        "description": "Alert management",
+        "action": "notify_team"
+    }
+]
+
+let custom = ir_create_playbook(
+    "Data Breach Response",
+    "Custom data breach playbook",
+    "data_breach",
+    steps
+)
+
+log("Custom playbook: " + custom["id"])
+log("Name: " + custom["name"])
+log("Category: " + custom["category"])
+
+// Get metrics
+log("")
+log("Incident metrics...")
+let metrics = ir_get_metrics()
+log("Total incidents: " + metrics["total_incidents"])
+log("Open: " + metrics["open_incidents"])
+log("Closed: " + metrics["closed_incidents"])
+log("Critical: " + metrics["critical_incidents"])
+log("High: " + metrics["high_incidents"])
+
+// Close incident
+log("")
+log("Closing incident...")
+ir_close_incident(incident_id, "Resolved - malware removed")
+log("Incident " + incident_id + " closed")
+
+// Final metrics
+log("")
+log("Final metrics...")
+let final = ir_get_metrics()
+log("Open: " + final["open_incidents"])
+log("Closed: " + final["closed_incidents"])
+
+log("")
+log("Incident response complete!")
+log("All features operational.")
