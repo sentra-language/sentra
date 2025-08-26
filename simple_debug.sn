@@ -1,5 +1,0 @@
-log("Starting simple debug test")
-let x = 10
-let y = 20
-let result = x + y
-log("Result: " + str(result))
