@@ -1,7 +1,7 @@
 # Sentra Language Documentation
 title: "Sentra Documentation"
 description: "Official documentation for the Sentra Programming Language"
-baseurl: ""
+baseurl: "/sentra"
 url: "https://sentra-language.github.io"
 
 # Jekyll configuration
