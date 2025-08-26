@@ -1,3 +1,0 @@
-log("=== Sentra Test ===")
-log("Warning: Running with ELEVATED privileges")
-log("Total processes found: " + 5)

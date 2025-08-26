@@ -1,2 +1,0 @@
-let rate = 100
-log("Rate is: " + rate)

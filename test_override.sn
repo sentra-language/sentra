@@ -1,7 +1,0 @@
-fn len(x) {
-    log("My len function")
-    return 999
-}
-
-let arr = [1, 2, 3]
-log("Array length: " + len(arr))

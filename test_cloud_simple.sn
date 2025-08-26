@@ -1,3 +1,0 @@
-// Simple test
-let result = cloud_cost_analysis("test")
-log("Done")

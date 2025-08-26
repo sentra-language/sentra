@@ -1,3 +1,0 @@
-// Test string with equals signs
-log("=== Test ===")
-log("Done")

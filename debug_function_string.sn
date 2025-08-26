@@ -1,4 +1,0 @@
-log("===============================")
-let sys = os_info()
-log("Platform: " + sys["platform"])
-log("Running with standard privileges")
