@@ -1774,6 +1774,9 @@ func (vm *EnhancedVM) registerBuiltins() {
 	concMod := concurrency.NewConcurrencyModule()
 	memMod := memory.NewIntegratedMemoryModule()
 	siemMod := siem.NewSIEMModule()
+	
+	// Register HTTP functions  
+	RegisterHTTPFunctions(vm, netMod)
 	threatMod := threat_intel.NewThreatIntelModule()
 	containerMod := container.NewContainerScanner()
 	mlMod := ml.NewMLModule()
