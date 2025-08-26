@@ -1,0 +1,172 @@
+// Simple Mobile Security Demo
+// Basic mobile security testing functionality
+
+log("Mobile Security Testing")
+log("")
+
+// Scan mobile device
+let device_scan = mobile_scan_device("android", "device_123")
+
+if device_scan {
+    log("Device Security Scan Complete")
+    log("Device ID: " + device_scan["device_id"])
+    log("Device Type: " + device_scan["device_type"])
+    log("OS Version: " + device_scan["os_version"])
+    log("Security Patch Level: " + device_scan["security_patch_level"])
+    log("Jailbroken/Rooted: " + device_scan["jailbroken_rooted"])
+    log("Risk Score: " + device_scan["risk_score"])
+    
+    let findings = device_scan["security_findings"]
+    if findings && len(findings) > 0 {
+        log("Security Findings: " + len(findings))
+        
+        let i = 0
+        while i < len(findings) {
+            let finding = findings[i]
+            log("- " + finding["severity"] + ": " + finding["description"])
+            i = i + 1
+        }
+    }
+}
+
+// Analyze mobile app
+log("")
+log("Analyzing mobile app...")
+let app_analysis = mobile_analyze_app("device_123", "com.bank.mobile", "/data/app/com.bank.mobile")
+
+if app_analysis {
+    log("App Name: " + app_analysis["app_name"])
+    log("Version: " + app_analysis["app_version"])
+    log("Package: " + app_analysis["package_name"])
+    log("Security Score: " + app_analysis["security_score"])
+    log("Malware Detected: " + app_analysis["malware_detected"])
+    
+    let vulnerabilities = app_analysis["vulnerabilities"]
+    if vulnerabilities && len(vulnerabilities) > 0 {
+        log("Vulnerabilities: " + len(vulnerabilities))
+        
+        let j = 0
+        while j < len(vulnerabilities) {
+            let vuln = vulnerabilities[j]
+            log("- " + vuln["severity"] + ": " + vuln["description"])
+            j = j + 1
+        }
+    }
+}
+
+// Check app permissions
+log("")
+log("Checking app permissions...")
+let permissions_check = mobile_check_permissions("device_123", "com.bank.mobile")
+
+if permissions_check {
+    log("High-risk permissions: " + permissions_check["high_risk_count"])
+    log("Medium-risk permissions: " + permissions_check["medium_risk_count"]) 
+    log("Low-risk permissions: " + permissions_check["low_risk_count"])
+    log("Excessive permissions: " + permissions_check["excessive_permissions"])
+    
+    let permissions = permissions_check["permissions"]
+    if permissions && len(permissions) > 0 {
+        log("Permission Details:")
+        
+        let k = 0
+        while k < len(permissions) && k < 2 {
+            let perm = permissions[k]
+            log("- " + perm["permission"] + " [" + perm["risk_level"] + "]")
+            log("  Granted: " + perm["granted"] + " - " + perm["usage"])
+            k = k + 1
+        }
+    }
+}
+
+// Network security assessment
+log("")
+log("Checking network security...")
+let network_scan = mobile_network_security("device_123")
+
+if network_scan {
+    log("WiFi Enabled: " + network_scan["wifi_enabled"])
+    log("Bluetooth Enabled: " + network_scan["bluetooth_enabled"])
+    log("VPN Active: " + network_scan["vpn_active"])
+    log("Open Networks Detected: " + network_scan["open_networks_detected"])
+    log("Overall Network Risk: " + network_scan["overall_network_risk"])
+    
+    let wifi_networks = network_scan["wifi_networks"]
+    if wifi_networks && len(wifi_networks) > 0 {
+        log("WiFi Networks:")
+        
+        let l = 0
+        while l < len(wifi_networks) {
+            let network = wifi_networks[l]
+            log("- " + network["ssid"] + " (" + network["security"] + ") - " + network["risk_level"])
+            l = l + 1
+        }
+    }
+}
+
+// Compliance check
+log("")
+log("Checking GDPR compliance...")
+let compliance = mobile_compliance_check("device_123", "GDPR")
+
+if compliance {
+    log("Framework: " + compliance["framework"])
+    log("Compliance Score: " + compliance["compliance_score"] + "%")
+    log("Checks Passed: " + compliance["passed"])
+    log("Checks Failed: " + compliance["failed"])
+    log("Overall Compliance: " + compliance["overall_compliance"])
+}
+
+// Threat detection
+log("")
+log("Running threat detection...")
+let threats = mobile_threat_detection("device_123")
+
+if threats {
+    log("Threats Detected: " + threats["threat_count"])
+    log("Overall Risk: " + threats["overall_risk"])
+    log("High Severity: " + threats["high_severity"])
+    log("Medium Severity: " + threats["medium_severity"])
+    
+    let threat_list = threats["threats_detected"]
+    if threat_list && len(threat_list) > 0 {
+        log("Threat Details:")
+        
+        let m = 0
+        while m < len(threat_list) {
+            let threat = threat_list[m]
+            log("- " + threat["type"] + " [" + threat["severity"] + "]")
+            log("  " + threat["description"])
+            m = m + 1
+        }
+    }
+}
+
+// Data protection analysis
+log("")
+log("Analyzing data protection...")
+let data_protection = mobile_data_protection("device_123", "com.bank.mobile")
+
+if data_protection {
+    log("Protection Score: " + data_protection["protection_score"])
+    log("Encrypted Data Types: " + data_protection["encrypted_data"])
+    log("Unencrypted Data Types: " + data_protection["unencrypted_data"])
+    log("High-risk Data: " + data_protection["high_risk_data"])
+}
+
+// Forensic analysis
+log("")
+log("Running forensic analysis...")
+let forensics = mobile_forensic_analysis("device_123")
+
+if forensics {
+    log("Device Locked: " + forensics["device_locked"])
+    log("Encryption Status: " + forensics["encryption_status"])
+    log("Extraction Method: " + forensics["extraction_method"])
+    log("Total Artifacts: " + forensics["total_artifacts"])
+    log("Success Rate: " + forensics["extraction_success_rate"] + "%")
+    log("Analysis Complete: " + forensics["analysis_complete"])
+}
+
+log("")
+log("Mobile security testing complete")

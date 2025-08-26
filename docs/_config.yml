@@ -1,0 +1,81 @@
+# Sentra Language Documentation Site
+title: "Sentra Programming Language"
+description: "A security-focused programming language with built-in defensive capabilities"
+baseurl: "/sentra"
+url: "https://sentra-language.github.io"
+
+# Jekyll configuration
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# Build settings
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# Code highlighting theme
+kramdown:
+  syntax_highlighter_opts:
+    default_lang: sentra
+    css_class: 'highlight'
+
+# Navigation
+nav_links:
+  - title: "Home"
+    url: "/"
+  - title: "Quick Start"
+    url: "/quick-start/"
+  - title: "Language Reference"
+    url: "/language-reference/"
+  - title: "Standard Library"
+    url: "/stdlib/"
+  - title: "Examples"
+    url: "/examples/"
+  - title: "GitHub"
+    url: "https://github.com/sentra-language/sentra"
+    external: true
+
+# Footer links
+footer_links:
+  - title: "GitHub"
+    url: "https://github.com/sentra-language/sentra"
+  - title: "Issues"
+    url: "https://github.com/sentra-language/sentra/issues"
+  - title: "License"
+    url: "https://github.com/sentra-language/sentra/blob/main/LICENSE"
+
+# Site metadata
+author: "Sentra Team"
+email: "contact@sentra-lang.org"
+twitter_username: "sentra_lang"
+github_username: "sentra-language"
+
+# Collections
+collections:
+  examples:
+    output: true
+    permalink: /:collection/:name/
+
+# Exclude from processing
+exclude:
+  - README.md
+  - LANGUAGE_REFERENCE.md
+  - QUICK_START.md
+  - STDLIB_REFERENCE.md
+  - node_modules/
+  - vendor/
+
+# Default front matter
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+  - scope:
+      path: ""
+      type: "examples"
+    values:
+      layout: "example"

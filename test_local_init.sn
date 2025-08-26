@@ -1,9 +1,0 @@
-let x = 42
-log("x=" + x)
-
-fn test() {
-    let y = 100
-    log("y=" + y)
-}
-
-test()

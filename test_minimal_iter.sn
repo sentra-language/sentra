@@ -1,6 +1,0 @@
-log("Test: Minimal array iteration")
-let arr = [1, 2, 3]
-for x in arr {
-    log(x)
-}
-log("Done")

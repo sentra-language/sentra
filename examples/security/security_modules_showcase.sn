@@ -1,0 +1,73 @@
+// Security Modules Showcase
+// Demonstrates all 5 security modules
+
+log("Sentra Security Modules Showcase")
+log("=" * 40)
+
+// Database Security
+log("1. Database Security Module")
+let db_conn = db_connect("mysql", "localhost", "user:pass@localhost/testdb")
+if db_conn {
+    log("✓ Database connection established: " + db_conn["connection_id"])
+    let scan = db_security_scan(db_conn["connection_id"])
+    if scan {
+        log("✓ Security scan completed - Risk score: " + scan["risk_score"])
+    }
+}
+
+log("")
+
+// Blockchain Security  
+log("2. Blockchain Security Module")
+let bc_conn = blockchain_connect("ethereum", "https://eth-mainnet.g.alchemy.com")
+if bc_conn {
+    log("✓ Blockchain connected: " + bc_conn["network"])
+    let tx_analysis = blockchain_analyze_transaction(bc_conn["connection_id"], "0xabcd1234")
+    if tx_analysis {
+        log("✓ Transaction analyzed: " + tx_analysis["status"])
+    }
+}
+
+log("")
+
+// Mobile Security
+log("3. Mobile Security Module")
+let mobile_scan = mobile_scan_device("android", "device_123")
+if mobile_scan {
+    log("✓ Mobile device scanned - Risk score: " + mobile_scan["risk_score"])
+    let app_analysis = mobile_analyze_app("device_123", "com.bank.mobile", "/app/path")
+    if app_analysis {
+        log("✓ App analyzed: " + app_analysis["app_name"] + " v" + app_analysis["app_version"])
+    }
+}
+
+log("")
+
+// IoT Security
+log("4. IoT Security Module")
+let iot_scan = iot_scan_device("smart_sensor", "iot_001")
+if iot_scan {
+    log("✓ IoT device scanned: " + iot_scan["manufacturer"] + " " + iot_scan["model"])
+    let firmware = iot_firmware_analysis("iot_001", "/firmware/sensor.bin")
+    if firmware {
+        log("✓ Firmware analyzed - Security score: " + firmware["security_score"])
+    }
+}
+
+log("")
+
+// Compliance Framework
+log("5. Compliance Framework Module")
+let compliance = compliance_assess_framework("SOC2", "TechCorp", "IT Systems")
+if compliance {
+    log("✓ SOC2 assessment completed - Score: " + compliance["overall_score"])
+    let gap = compliance_gap_analysis("SOC2", "ISO27001")
+    if gap {
+        log("✓ Gap analysis: " + gap["total_gaps"] + " gaps identified")
+    }
+}
+
+log("")
+log("=" * 40)
+log("All 5 security modules operational!")
+log("Total functions available: 38")

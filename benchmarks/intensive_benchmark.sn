@@ -1,0 +1,90 @@
+// More intensive benchmark for better comparison
+
+log("=== Sentra VM Intensive Benchmarks ===")
+log("")
+
+// Computational benchmark - Prime number generation
+log("1. Prime Number Generation (Sieve of Eratosthenes)")
+let limit = 1000
+let primes = []
+let is_prime = []
+
+// Initialize array
+let i = 0
+while i <= limit {
+    push(is_prime, true)
+    i = i + 1
+}
+
+// Sieve algorithm
+i = 2
+while i * i <= limit {
+    if is_prime[i] {
+        let j = i * i
+        while j <= limit {
+            is_prime[j] = false
+            j = j + i
+        }
+    }
+    i = i + 1
+}
+
+// Collect primes
+i = 2
+while i <= limit {
+    if is_prime[i] {
+        push(primes, i)
+    }
+    i = i + 1
+}
+
+log("Found " + len(primes) + " primes up to " + limit)
+log("")
+
+// Recursive benchmark - Factorial calculation
+log("2. Recursive Factorial Calculation")
+fn factorial(n) {
+    if n <= 1 {
+        return 1
+    }
+    return n * factorial(n - 1)
+}
+
+let fact_result = factorial(10)
+log("Factorial of 10: " + fact_result)
+log("")
+
+// Data structure intensive - Matrix operations
+log("3. Matrix Operations")
+let matrix_size = 50
+let matrix = []
+
+// Create matrix
+i = 0
+while i < matrix_size {
+    let row = []
+    let j = 0
+    while j < matrix_size {
+        push(row, i + j)
+        j = j + 1
+    }
+    push(matrix, row)
+    i = i + 1
+}
+
+// Matrix sum
+let matrix_sum = 0
+i = 0
+while i < matrix_size {
+    let j = 0
+    while j < matrix_size {
+        matrix_sum = matrix_sum + matrix[i][j]
+        j = j + 1
+    }
+    i = i + 1
+}
+
+log("Matrix sum (" + matrix_size + "x" + matrix_size + "): " + matrix_sum)
+log("")
+
+log("=== Intensive benchmarks completed ===")

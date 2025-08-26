@@ -1,0 +1,86 @@
+// Real-world web framework iteration patterns
+log("=== Realistic Web Framework Iteration Counts ===")
+log("")
+
+// 1. HTTP Request Processing (typical)
+log("1. HTTP Request: Processing 50 headers")
+let headerCount = 0
+for (let i = 0; i < 50; i = i + 1) {
+    headerCount = headerCount + 1
+}
+log("   Headers processed: " + headerCount)
+
+// 2. Database Query Results (typical pagination)
+log("")
+log("2. Database: Processing 100 rows (typical page)")
+let rowCount = 0
+for (let i = 0; i < 100; i = i + 1) {
+    rowCount = rowCount + 1
+}
+log("   Rows processed: " + rowCount)
+
+// 3. Template Rendering (medium complexity)
+log("")
+log("3. Template: Rendering page with 500 elements")
+let elementCount = 0
+for (let i = 0; i < 500; i = i + 1) {
+    elementCount = elementCount + 1
+}
+log("   Elements rendered: " + elementCount)
+
+// 4. JSON API Response (large but realistic)
+log("")
+log("4. API: Building response with 1000 items")
+let apiItems = 0
+for (let i = 0; i < 1000; i = i + 1) {
+    apiItems = apiItems + 1
+}
+log("   API items processed: " + apiItems)
+
+// 5. Cache Management (typical cache size)
+log("")
+log("5. Cache: Managing 5000 cached entries")
+let cacheOps = 0
+for (let i = 0; i < 5000; i = i + 1) {
+    cacheOps = cacheOps + 1
+}
+log("   Cache operations: " + cacheOps)
+
+// 6. Session cleanup (peak load scenario)
+log("")
+log("6. Sessions: Cleaning 10000 expired sessions")
+let sessionCount = 0
+for (let i = 0; i < 10000; i = i + 1) {
+    sessionCount = sessionCount + 1
+}
+log("   Sessions cleaned: " + sessionCount)
+
+// 7. Log processing (batch operation)
+log("")
+log("7. Logging: Processing 20000 log entries")
+let logCount = 0
+for (let i = 0; i < 20000; i = i + 1) {
+    logCount = logCount + 1
+}
+log("   Log entries processed: " + logCount)
+
+// 8. Analytics aggregation (daily batch)
+log("")
+log("8. Analytics: Aggregating 30000 events")
+let eventCount = 0
+for (let i = 0; i < 30000; i = i + 1) {
+    eventCount = eventCount + 1
+}
+log("   Events aggregated: " + eventCount)
+
+log("")
+log("=== SUMMARY ===")
+log("Common web operations: 50-5,000 iterations")
+log("Batch operations: 10,000-30,000 iterations")
+log("Sentra VM handles all these workloads successfully!")
+log("")
+log("Note: Most web frameworks process:")
+log("- Per request: 100-1,000 iterations total")
+log("- Per page render: 500-5,000 iterations")
+log("- Batch jobs: 10,000-50,000 iterations")
+log("- Data exports: Can go up to 100,000+ (but usually streamed)")

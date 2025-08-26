@@ -1,0 +1,102 @@
+// Simple Database Security Demo
+// Basic database security testing functionality
+
+log("Database Security Testing")
+log("")
+
+// Connect to test database
+let connection = db_connect("mysql", "localhost", "user:pass@localhost/testdb")
+
+if connection && connection["status"] == "connected" {
+    log("Connected to database")
+    log("Connection ID: " + connection["connection_id"])
+    log("Database type: " + connection["type"])
+    log("SSL enabled: " + connection["ssl_enabled"])
+    
+    let conn_id = connection["connection_id"]
+    
+    // Security scan
+    log("")
+    log("Running security scan...")
+    let scan_results = db_security_scan(conn_id)
+    
+    if scan_results {
+        log("Risk score: " + scan_results["risk_score"])
+        
+        let findings = scan_results["findings"]
+        if findings && len(findings) > 0 {
+            log("Security findings: " + len(findings))
+            
+            let i = 0
+            while i < len(findings) {
+                let finding = findings[i]
+                log("- " + finding["severity"] + ": " + finding["description"])
+                i = i + 1
+            }
+        }
+    }
+    
+    // SQL injection test
+    log("")
+    log("Testing SQL injection...")
+    let injection_result = db_test_injection(conn_id, "SELECT * FROM users WHERE id = ?", "1' OR '1'='1")
+    
+    if injection_result {
+        if injection_result["vulnerable"] {
+            log("VULNERABLE to SQL injection!")
+            log("Risk level: " + injection_result["risk_level"])
+        } else {
+            log("SQL injection test passed")
+        }
+    }
+    
+    // Privilege audit
+    log("")
+    log("Auditing privileges...")
+    let privilege_audit = db_audit_privileges(conn_id)
+    
+    if privilege_audit {
+        log("Total users: " + privilege_audit["total_users"])
+        log("High-risk users: " + privilege_audit["high_risk_users"])
+    }
+    
+    // Encryption check
+    log("")
+    log("Checking encryption...")
+    let encryption_check = db_check_encryption(conn_id)
+    
+    if encryption_check {
+        log("SSL connection: " + encryption_check["ssl_connection"])
+        log("TLS version: " + encryption_check["tls_version"])
+        log("Compliance score: " + encryption_check["compliance_score"] + "%")
+    }
+    
+    // Backup security
+    log("")
+    log("Checking backup security...")
+    let backup_check = db_backup_security(conn_id)
+    
+    if backup_check {
+        log("Total backups: " + backup_check["total_backups"])
+        log("Secure backups: " + backup_check["secure_backups"])
+        log("Insecure backups: " + backup_check["insecure_backups"])
+    }
+    
+    // Compliance check
+    log("")
+    log("Checking PCI-DSS compliance...")
+    let compliance = db_compliance_check(conn_id, "PCI-DSS")
+    
+    if compliance {
+        log("Framework: " + compliance["framework"])
+        log("Compliance score: " + compliance["compliance_score"] + "%")
+        log("Checks passed: " + compliance["passed"])
+        log("Checks failed: " + compliance["failed"])
+    }
+    
+} else {
+    log("Database connection failed")
+}
+
+log("")
+log("Database security testing complete")

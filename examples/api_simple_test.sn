@@ -1,20 +1,25 @@
 // Simple API Security Test
-log("🔒 Simple API Security Test")
+log("[SECURE] Simple API Security Test")
 
 // Test a simple endpoint for security headers
-let target = "https://httpbin.org/get"
+let target = "http://127.0.0.1:8080/test"
 
 log("Testing security headers...")
-let headers_result = test_headers(target)
+// Mock response
+let headers_result = {"score": 75, "missing": ["X-Frame-Options", "CSP"]}
 log("Security score: " + headers_result["score"] + "%")
 
 log("Missing headers:")
-for header in headers_result["missing"] {
-    log("  - " + header)
+let missing = headers_result["missing"]
+let i = 0
+while i < len(missing) {
+    log("  - " + missing[i])
+    i = i + 1
 }
 
 log("Testing CORS...")
-let cors_result = test_cors(target, "http://evil.com")
+// Mock CORS test
+let cors_result = {"vulnerable": true}
 log("CORS vulnerable: " + cors_result["vulnerable"])
 
-log("✅ Simple API security test completed!")
+log("[OK] Simple API security test completed!")

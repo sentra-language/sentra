@@ -1,6 +1,0 @@
-log("Testing string iteration")
-let text = "hello"
-for ch in text {
-    log("Char: " + ch)
-}
-log("Done")

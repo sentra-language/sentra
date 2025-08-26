@@ -1,0 +1,25 @@
+// Arithmetic Benchmark Test
+// Tests basic mathematical operations
+
+let iterations = 1000000
+let start_time = time_ms()
+
+log("Starting arithmetic benchmark...")
+log("Iterations: " + iterations)
+
+// Basic arithmetic operations
+let result = 0
+let i = 0
+while i < iterations {
+    result = result + i * 2 - 1
+    result = result / 2
+    result = result % 1000
+    i = i + 1
+}
+
+let end_time = time_ms()
+let duration = end_time - start_time
+
+log("Result: " + result)
+log("Time: " + duration + " ms")
+log("Operations per second: " + (iterations * 4 / (duration / 1000)))

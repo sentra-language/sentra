@@ -1,6 +1,0 @@
-let n = 3
-let i = 1
-log("n = " + n)
-log("i = " + i)
-log("n - i = " + (n - i))
-log("n - i - 1 = " + (n - i - 1))

@@ -1,4 +1,0 @@
-// Simple test for error reporting
-fn test() {
-    log("missing paren"
-}

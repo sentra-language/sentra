@@ -803,12 +803,12 @@ func (n *NetworkModule) AnalyzeTraffic(interfaceName string, duration int) (*Tra
 	}
 	
 	// Simulate traffic analysis (in production, would use packet capture)
-	startTime := time.Now()
 	packetCount := 0
 	totalBytes := int64(0)
 	
-	// Generate simulated traffic data for demonstration
-	for time.Since(startTime).Seconds() < float64(duration) {
+	// Generate simulated traffic data for demonstration (instant for demos)
+	simulatedPacketCount := duration * 100 // Simulate 100 packets per second
+	for i := 0; i < simulatedPacketCount; i++ {
 		// Simulate capturing packets
 		packet := n.generateSimulatedPacket()
 		packetCount++
@@ -826,8 +826,6 @@ func (n *NetworkModule) AnalyzeTraffic(interfaceName string, duration int) (*Tra
 			result.AlertsGenerated = append(result.AlertsGenerated, 
 				fmt.Sprintf("Suspicious traffic from %s to port %d", packet.SrcIP, packet.DstPort))
 		}
-		
-		time.Sleep(10 * time.Millisecond) // Simulate processing time
 	}
 	
 	result.TotalPackets = packetCount
@@ -844,10 +842,10 @@ func (n *NetworkModule) AnalyzeTraffic(interfaceName string, duration int) (*Tra
 func (n *NetworkModule) DetectIntrusions(interfaceName string, duration int) ([]IntrusionAlert, error) {
 	alerts := []IntrusionAlert{}
 	
-	// Simulate intrusion detection
-	startTime := time.Now()
+	// Simulate intrusion detection (instant for demos)
+	simulatedPacketCount := duration * 50 // Simulate 50 packets per second for intrusion analysis
 	
-	for time.Since(startTime).Seconds() < float64(duration) {
+	for i := 0; i < simulatedPacketCount; i++ {
 		// Generate simulated network activity
 		packet := n.generateSimulatedPacket()
 		
@@ -895,8 +893,6 @@ func (n *NetworkModule) DetectIntrusions(interfaceName string, duration int) ([]
 			}
 			alerts = append(alerts, alert)
 		}
-		
-		time.Sleep(50 * time.Millisecond)
 	}
 	
 	return alerts, nil

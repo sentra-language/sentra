@@ -1,7 +1,0 @@
-log("Testing network function calls")
-let traffic_result = network_analyze_traffic("eth0", 1)
-log("Traffic analysis done")
-let scan_results = network_advanced_port_scan("192.168.1.1", [80, 443, 22, 21, 25, 53])
-log("Port scan done")
-log("Scan results length: " + len(scan_results))
-log("Done")

@@ -1,7 +1,0 @@
-// Simple test
-fn test(x) {
-  return x * 2
-}
-
-let result = test(5)
-log(result)

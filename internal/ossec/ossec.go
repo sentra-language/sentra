@@ -92,8 +92,8 @@ func (o *OSSecurityModule) GetProcessList() ([]ProcessInfo, error) {
 func (o *OSSecurityModule) getWindowsProcesses() ([]ProcessInfo, error) {
 	processes := []ProcessInfo{}
 	
-	// Use tasklist command
-	cmd := exec.Command("tasklist", "/fo", "csv", "/v")
+	// Use tasklist command without /v flag for better performance
+	cmd := exec.Command("tasklist", "/fo", "csv")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -109,18 +109,19 @@ func (o *OSSecurityModule) getWindowsProcesses() ([]ProcessInfo, error) {
 		
 		line := scanner.Text()
 		fields := parseCSV(line)
-		if len(fields) >= 9 {
+		// Without /v flag, we have fewer fields: "Image Name","PID","Session Name","Session#","Mem Usage"
+		if len(fields) >= 5 {
 			pid, _ := strconv.Atoi(strings.Trim(fields[1], " "))
-			mem := strings.ReplaceAll(fields[5], ",", "")
+			mem := strings.ReplaceAll(fields[4], ",", "")
 			mem = strings.ReplaceAll(mem, " K", "")
 			memKB, _ := strconv.ParseUint(mem, 10, 64)
 			
 			proc := ProcessInfo{
 				PID:    pid,
 				Name:   strings.Trim(fields[0], "\""),
-				Status: fields[6],
+				Status: "Running", // Default status since we don't have this info without /v
 				Memory: memKB * 1024,
-				User:   fields[7],
+				User:   fields[2], // Session name is the closest we have
 			}
 			processes = append(processes, proc)
 		}

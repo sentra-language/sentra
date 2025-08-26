@@ -1,0 +1,46 @@
+// String Operations Benchmark Test
+// Tests string concatenation and manipulation performance
+
+log("Starting string operations benchmark...")
+
+// String concatenation test
+let iterations = 50000
+let start_time = time_ms()
+
+let result_str = ""
+let i = 0
+while i < iterations {
+    result_str = result_str + "test"
+    i = i + 1
+}
+
+let concat_end_time = time_ms()
+log("String concatenation (" + iterations + "): " + (concat_end_time - start_time) + " ms")
+log("Final string length: " + len(result_str))
+
+// String with numbers concatenation
+let number_start = time_ms()
+let number_str = ""
+i = 0
+while i < 10000 {
+    number_str = number_str + i
+    i = i + 1
+}
+
+let number_end_time = time_ms()
+log("String + number concat (10000): " + (number_end_time - number_start) + " ms")
+
+// String length operations
+let length_start = time_ms()
+let total_length = 0
+i = 0
+while i < 100000 {
+    total_length = total_length + len("benchmark string " + i)
+    i = i + 1
+}
+
+let length_end_time = time_ms()
+log("String length operations (100000): " + (length_end_time - length_start) + " ms")
+log("Total length sum: " + total_length)
+
+log("Total benchmark time: " + (length_end_time - start_time) + " ms")

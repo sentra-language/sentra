@@ -1,0 +1,47 @@
+// Quick Security Demo - Individual Functions
+
+log("Sentra Security Functions Demo")
+log("")
+
+// Database: SQL Injection Test
+log("Database SQL Injection Test:")
+let db_conn = db_connect("mysql", "server", "conn_string")
+let injection_test = db_test_injection(db_conn["connection_id"], "SELECT * FROM users WHERE id = ?", "1' OR '1'='1")
+if injection_test["vulnerable"] {
+    log("Result: VULNERABLE")
+} else {
+    log("Result: SAFE")
+}
+log("")
+
+// Blockchain: Smart Contract Audit
+log("Smart Contract Security Audit:")
+let bc_conn = blockchain_connect("ethereum", "endpoint")
+let contract_audit = blockchain_audit_contract(bc_conn["connection_id"], "0x1234567890123456789012345678901234567890")
+log("Security Score: " + contract_audit["security_score"] + "/100")
+log("High Risk Issues: " + contract_audit["high_count"])
+log("")
+
+// Mobile: Threat Detection
+log("Mobile Threat Detection:")
+let threats = mobile_threat_detection("device_123")
+log("Threats Found: " + threats["threat_count"])
+log("Risk Level: " + threats["overall_risk"])
+log("")
+
+// IoT: Protocol Security Check
+log("IoT Protocol Security (MQTT):")
+let protocol_check = iot_protocol_security("iot_device", "MQTT")
+log("Protocol: " + protocol_check["protocol"])
+log("Security Score: " + protocol_check["protocol_security_score"] + "/100")
+log("")
+
+// Compliance: Risk Assessment
+log("Compliance Risk Assessment:")
+let risk_assessment = compliance_risk_assessment("GDPR", "database")
+log("Framework: " + risk_assessment["framework"])
+log("Risk Score: " + risk_assessment["overall_risk_score"] + "/100")
+log("High Risks: " + risk_assessment["high_risks"])
+log("")
+
+log("Demo complete - 38 security functions available!")

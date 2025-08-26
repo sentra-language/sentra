@@ -1,8 +1,0 @@
-// Test modulo operator
-let a = 10
-let b = 3
-log("10 % 3 = " + (a % b))
-
-let c = 48
-let d = 18
-log("48 % 18 = " + (c % d))
