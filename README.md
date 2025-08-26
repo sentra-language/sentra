@@ -1,6 +1,50 @@
-# Sentra Programming Language
+<div style="border-left: 4px solid #0366d6; padding: 1em; background: #f1f8ff;">
+<h1 style="margin-top: 0; color: #0366d6;">Sentra Programming Language 🚀</h1>
+<strong style="color: #005cc5; font-size: 1.2em;">Code with Confidence!</strong>
+<p style="margin: 1em 0; color: #24292e;">A blazing-fast, security-focused programming language with a powerful CLI, built from scratch in Go.</p>
+<blockquote style="border-left: 3px solid #0366d6; padding-left: 1em; margin: 1em 0; color: #586069; font-style: italic;">
+Sentra combines the simplicity of Python, the performance of Go, and security features built right into the core. Perfect for security automation, system scripting, and rapid application development.
+</blockquote>
+</div>
 
-A high-performance, modern programming language with a stack-based virtual machine, built from scratch in Go.
+## 🎯 Quick Start
+
+# 1. Clone and build Sentra
+```bash
+git clone https://github.com/sentra-language/sentra.git
+```
+
+
+```bash
+cd sentra  && ./install.sh
+```
+
+<div style="border-left: 4px solid #f39c12; padding: 0.5em; background: #fff8e1;">
+<strong>NOTE:</strong> To build new <code>sentra</code> binary run:
+<pre>go build -o sentra ./cmd/sentra</pre>
+</div>
+
+# 2. Create your first project
+```bash
+sentra init my-awesome-app
+```
+
+```bash
+cd my-awesome-app
+```
+
+# 3. Run your app
+
+```bash
+sentra run main.sn
+```
+
+# 4. Run tests
+
+```bash
+sentra test
+```
+
 
 ## Features
 
@@ -32,25 +76,17 @@ A high-performance, modern programming language with a stack-based virtual machi
 - **HTTP**: Web requests
 - **Time**: Date/time operations
 - **Regex**: Pattern matching
+- **Security**: Cryptography, hashing, threat detection
+- **Network**: Port scanning, network analysis
+- **Database**: SQL operations
+- **SIEM**: Security event management
+- **ML**: Machine learning for security
 
-## Installation
+## 🛠️ Sentra CLI - Your Development Companion
 
-```bash
-# Clone the repository
-git clone https://github.com/sentra-language/sentra.git
-cd sentra
+The Sentra CLI is your primary interface for developing, testing, and deploying Sentra applications. It's designed to make your development workflow smooth and enjoyable.
 
-# Build the interpreter
-make sentra
-
-# Run the REPL
-./sentra repl
-
-# Run a program
-./sentra run program.sn
-```
-
-## Quick Start
+## 📚 Language Guide
 
 ### Hello World
 ```sentra
@@ -266,32 +302,51 @@ See the `examples/` directory for more complex programs:
 - `error_handling.sn` - Exception handling
 - `algorithms.sn` - Classic algorithms
 
-## Development
+### Contributing
 
-### Building from Source
+We love contributions! Here's how to get started:
+
+1. **Fork & Clone**: Fork the repo and clone locally
+2. **Branch**: Create a feature branch (`git checkout -b feature/amazing`)
+3. **Code**: Make your changes
+4. **Test**: Add tests and ensure all pass
+5. **Commit**: Commit with clear message
+6. **Push**: Push to your fork
+7. **PR**: Open a Pull Request
+
+For Language Developers:
+
+  #### 1. Check status
+  ```bash
+  ./dev.sh status
+  ```
+
+  #### 2. Enable development mode
+  ```bash
+  ./dev.sh enable
+  ```
+
+  #### 3. Build your changes
 ```bash
-make sentra
+./dev.sh build
 ```
 
-### Running Tests
-```bash
-make test
-go test ./internal/vm -v
-```
+  #### 4. Install globally (points to your local version)
+  ```bash
+  ./dev.sh install
+  ```
 
-### Benchmarking
-```bash
-go test ./internal/vm -bench=. -benchmem
-```
+  #### 5. Test everything works
+  ```bash
+  ./dev.sh test
+  ```
 
-## Contributing
+  #### When done developing, switch back:
+  ```bash
+  ./dev.sh disable
+  ```
 
-Contributions are welcome! Please feel free to submit pull requests.
 
-## License
+---
 
-MIT License - See LICENSE file for details
-
-## Acknowledgments
-
-Built with Go 1.25.0, inspired by modern language design principles and optimized for performance.
+**Ready to code with confidence?** Get started with `sentra init my-app` today! 🚀

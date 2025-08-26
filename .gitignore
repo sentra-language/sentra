@@ -1,2 +1,27 @@
 # Ignore CLAUDE.md
 CLAUDE.md
+.claude
+.vscode
+
+# Binaries
+*.exe
+*.test
+*.out
+sentra
+
+# Profiling files
+*.prof
+*.pprof
+
+# Build artifacts
+/dist/
+/build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
