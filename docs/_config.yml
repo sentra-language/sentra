@@ -1,71 +1,35 @@
-# Sentra Language Documentation Site
-title: "Sentra Programming Language"
-description: "A security-focused programming language with built-in defensive capabilities"
-baseurl: "/sentra"
+# Sentra Language Documentation
+title: "Sentra Documentation"
+description: "Official documentation for the Sentra Programming Language"
+baseurl: ""
 url: "https://sentra-language.github.io"
 
 # Jekyll configuration
 markdown: kramdown
 highlighter: rouge
-theme: minima
-
-# Build settings
-plugins:
-  - jekyll-feed
-  - jekyll-sitemap
-  - jekyll-seo-tag
-
-# Code highlighting theme
 kramdown:
+  input: GFM
+  syntax_highlighter: rouge
   syntax_highlighter_opts:
-    default_lang: sentra
     css_class: 'highlight'
 
-# Navigation
-nav_links:
-  - title: "Home"
-    url: "/"
-  - title: "Quick Start"
-    url: "/quick-start/"
-  - title: "Language Reference"
-    url: "/language-reference/"
-  - title: "Standard Library"
-    url: "/stdlib/"
-  - title: "Examples"
-    url: "/examples/"
-  - title: "GitHub"
-    url: "https://github.com/sentra-language/sentra"
-    external: true
-
-# Footer links
-footer_links:
-  - title: "GitHub"
-    url: "https://github.com/sentra-language/sentra"
-  - title: "Issues"
-    url: "https://github.com/sentra-language/sentra/issues"
-  - title: "License"
-    url: "https://github.com/sentra-language/sentra/blob/main/LICENSE"
-
-# Site metadata
-author: "Sentra Team"
-email: "contact@sentra-lang.org"
-twitter_username: "sentra_lang"
-github_username: "sentra-language"
+# Permalinks
+permalink: pretty
 
 # Collections
 collections:
-  examples:
+  tutorial:
     output: true
-    permalink: /:collection/:name/
-
-# Exclude from processing
-exclude:
-  - README.md
-  - LANGUAGE_REFERENCE.md
-  - QUICK_START.md
-  - STDLIB_REFERENCE.md
-  - node_modules/
-  - vendor/
+    permalink: /tutorial/:name/
+  library:
+    output: true
+    permalink: /library/:name/
+  reference:
+    output: true
+    permalink: /reference/:name/
+  guide:
+    output: true
+    permalink: /guide/:name/
 
 # Default front matter
 defaults:
@@ -76,6 +40,38 @@ defaults:
       layout: "default"
   - scope:
       path: ""
-      type: "examples"
+      type: "tutorial"
     values:
-      layout: "example"
+      layout: "tutorial"
+      sidebar: tutorial
+  - scope:
+      path: ""
+      type: "library"
+    values:
+      layout: "library"
+      sidebar: library
+  - scope:
+      path: ""
+      type: "reference"
+    values:
+      layout: "reference"
+      sidebar: reference
+  - scope:
+      path: ""
+      type: "guide"
+    values:
+      layout: "guide"
+      sidebar: guide
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/
+  - README.md
+
+# Plugins (if needed for GitHub Pages)
+plugins:
+  - jekyll-sitemap
+  - jekyll-seo-tag
