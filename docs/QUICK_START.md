@@ -1,3 +1,10 @@
+---
+layout: default
+title: Quick Start Guide
+nav_order: 9
+has_children: false
+---
+
 # Sentra Quick Start Guide
 
 Welcome to Sentra! This guide will get you up and running in 5 minutes.

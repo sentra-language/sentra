@@ -1,3 +1,10 @@
+---
+layout: default
+title: Standard Library Reference
+nav_order: 8
+has_children: false
+---
+
 # Sentra Standard Library Reference
 
 Complete reference for all built-in functions in Sentra.

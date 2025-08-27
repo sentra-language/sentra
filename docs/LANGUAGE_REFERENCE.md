@@ -1,3 +1,10 @@
+---
+layout: default
+title: Language Reference
+nav_order: 7
+has_children: false
+---
+
 # Sentra Language Reference
 
 ## Table of Contents
