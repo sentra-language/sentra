@@ -3,7 +3,6 @@ layout: default
 title: Quick Start
 nav_order: 2
 description: "Get up and running with Sentra in 5 minutes"
-  - [Next Steps](#next-steps)
 ---
 
 # Quick Start Guide
