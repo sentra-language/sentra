@@ -42,9 +42,9 @@ cmd/**/*.go linguist-vendored
 go.mod -linguist-vendored
 go.sum -linguist-vendored
 
-# Force Sentra as primary language
-*.sn linguist-language=Sentra linguist-detectable
-*.sentra linguist-language=Sentra linguist-detectable
+# Since Sentra isn't in GitHub Linguist yet, use Go as fallback
+*.sn linguist-language=Go linguist-detectable
+*.sentra linguist-language=Go linguist-detectable
 
 # Count all Sentra files
 **/*.sn linguist-detectable
