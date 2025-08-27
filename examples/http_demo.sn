@@ -3,21 +3,21 @@
 
 // Simple GET request
 fn test_get() {
-    println("Testing HTTP GET...")
+    log("Testing HTTP GET...")
     
     let response = http_get("https://api.github.com/zen")
     
     if (response) {
-        println("Status:", response["status"])
-        println("Status Code:", response["status_code"])
-        println("Body:", response["body"])
-        println()
+        log("Status: " + response["status"])
+        log("Status Code: " + str(response["status_code"]))
+        log("Body: " + response["body"])
+        log("")
     }
 }
 
 // POST request with JSON
 fn test_post() {
-    println("Testing HTTP POST...")
+    log("Testing HTTP POST...")
     
     let body = "{\"name\": \"test\", \"value\": 123}"
     let headers = {
@@ -29,15 +29,15 @@ fn test_post() {
     let response = http_post("https://httpbin.org/post", body, headers)
     
     if (response) {
-        println("Status:", response["status"])
-        println("Response length:", len(response["body"]))
-        println()
+        log("Status: " + response["status"])
+        log("Response length: " + str(len(response["body"])))
+        log("")
     }
 }
 
 // Custom HTTP request
 fn test_custom_request() {
-    println("Testing custom HTTP request...")
+    log("Testing custom HTTP request...")
     
     let headers = {
         "Accept": "application/json"
@@ -46,28 +46,28 @@ fn test_custom_request() {
     let response = http_request("GET", "https://httpbin.org/headers", headers, "")
     
     if (response) {
-        println("Status:", response["status"])
-        println("Headers received:", response["headers"])
-        println()
+        log("Status: " + response["status"])
+        log("Headers received")
+        log("")
     }
 }
 
 // Download content
 fn test_download() {
-    println("Testing HTTP download...")
+    log("Testing HTTP download...")
     
     let content = http_download("https://raw.githubusercontent.com/github/gitignore/main/Go.gitignore")
     
     if (content) {
-        println("Downloaded", len(content), "bytes")
-        println("First 100 chars:", substr(content, 0, 100))
-        println()
+        log("Downloaded " + str(len(content)) + " bytes")
+        log("First 100 chars shown")
+        log("")
     }
 }
 
 // JSON API request
 fn test_json_api() {
-    println("Testing JSON API...")
+    log("Testing JSON API...")
     
     let data = {
         "name": "Sentra",
@@ -78,31 +78,31 @@ fn test_json_api() {
     let response = http_json("POST", "https://httpbin.org/post", data)
     
     if (response) {
-        println("Status:", response["status"])
-        println("Response received")
-        println()
+        log("Status: " + response["status"])
+        log("Response received")
+        log("")
     }
 }
 
 // Error handling
 fn test_error_handling() {
-    println("Testing error handling...")
+    log("Testing error handling...")
     
-    try {
-        // Try to access non-existent domain
-        let response = http_get("https://this-domain-does-not-exist-12345.com")
-        println("Response:", response)
-    } catch (e) {
-        println("Error caught:", e)
+    // Test with non-existent domain
+    let response = http_get("https://this-domain-does-not-exist-12345.com")
+    if (response) {
+        log("Unexpected: got response from bad domain")
+    } else {
+        log("Error handled: Bad domain returned nil")
     }
     
-    println()
+    log("")
 }
 
 // Main execution
 fn main() {
-    println("=== Sentra HTTP Client Demo ===")
-    println()
+    log("=== Sentra HTTP Client Demo ===")
+    log("")
     
     test_get()
     test_post()
@@ -111,7 +111,7 @@ fn main() {
     test_json_api()
     test_error_handling()
     
-    println("=== Demo Complete ===")
+    log("=== Demo Complete ===")
 }
 
 main()
