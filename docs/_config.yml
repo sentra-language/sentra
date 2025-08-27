@@ -1,7 +1,7 @@
 # Sentra Language Documentation
 title: "Sentra Documentation"
 description: "Official documentation for the Sentra Programming Language - A security-focused programming language with built-in networking capabilities"
-baseurl: ""
+baseurl: "/sentra"
 url: "https://sentra-language.github.io"
 
 # Theme

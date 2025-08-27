@@ -20,9 +20,14 @@ Follow this recommended learning path to master Sentra:
 
 1. **[Installation](installation/)** - Get Sentra up and running on your system
 2. **[Your First Program](first-program/)** - Write and run your first Sentra program  
-3. **[Language Basics](language-basics/)** - Variables, data types, and basic operations
-4. **[Network Programming](network-programming/)** - TCP/UDP, HTTP, WebSockets
-5. **[Project Management](project-management/)** - Create and manage Sentra projects
+3. **[Language Basics](language-basics/)** - Variables, data types, control flow, functions
+4. **[Standard Library](standard-library/)** - Built-in functions for strings, arrays, files, JSON
+5. **[Network Module](network-module/)** - TCP/UDP sockets, HTTP client/server, WebSockets
+6. **[Security Module](security-module/)** - Port scanning, SSL analysis, cryptography, vulnerability detection
+7. **[SIEM Module](siem-module/)** - Log analysis, threat detection, incident response  
+8. **[Concurrency](concurrency/)** - Parallel processing, connection pools, advanced patterns
+9. **[Project Management](project-management/)** - Creating and managing larger Sentra projects
+10. **[Real Examples](real-examples/)** - Complete applications and practical use cases
 
 ## What You'll Learn
 
