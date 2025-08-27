@@ -1,9 +1,20 @@
 title: Sentra Documentation
 description: Official documentation for the Sentra Programming Language - A security-focused programming language with built-in networking capabilities
-theme: just-the-docs
+remote_theme: just-the-docs/just-the-docs
 
 url: https://sentra-language.github.io
 baseurl: /sentra
+
+# Enable search
+search_enabled: true
+
+# Syntax highlighting
+highlighter: rouge
+markdown: kramdown
+kramdown:
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    default_lang: javascript
 
 aux_links:
   "GitHub Repository": "https://github.com/sentra-language/sentra"
@@ -11,3 +22,8 @@ aux_links:
 
 # Footer content
 footer_content: "Copyright &copy; 2025 Sentra Language. Distributed under the <a href=\"https://github.com/sentra-language/sentra/blob/main/LICENSE\">MIT License</a>."
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
