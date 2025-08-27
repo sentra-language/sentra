@@ -1,0 +1,106 @@
+/* Force override all Just the Docs styling issues */
+
+/* Code blocks - highest priority overrides */
+.highlight,
+div.highlighter-rouge,
+figure.highlight,
+pre.highlight,
+div[class*="language-"],
+div[class*="highlighter-"] {
+    background-color: #f6f8fa !important;
+    border: 1px solid #d0d7de !important;
+    border-radius: 6px !important;
+    padding: 16px !important;
+    margin: 16px 0 !important;
+    overflow-x: auto !important;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+/* Code elements inside blocks */
+.highlight pre,
+.highlight code,
+.highlighter-rouge pre,
+.highlighter-rouge code,
+pre.highlight,
+pre.highlight code,
+div[class*="language-"] pre,
+div[class*="language-"] code {
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-family: inherit !important;
+    color: inherit !important;
+    white-space: pre !important;
+    word-wrap: normal !important;
+}
+
+/* Inline code */
+code:not(.highlighter-rouge code):not(.highlight code) {
+    background-color: rgba(175, 184, 193, 0.2) !important;
+    color: #24292f !important;
+    padding: 0.2em 0.4em !important;
+    border-radius: 3px !important;
+    font-size: 85% !important;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+/* Syntax highlighting colors */
+.highlight .k, .highlight .kd { color: #cf222e !important; } /* Keywords */
+.highlight .s, .highlight .s1, .highlight .s2 { color: #0a3069 !important; } /* Strings */
+.highlight .c, .highlight .c1, .highlight .cm { color: #656d76 !important; font-style: italic !important; } /* Comments */
+.highlight .nf { color: #8250df !important; } /* Functions */
+.highlight .nb { color: #0550ae !important; } /* Built-ins */
+.highlight .mi, .highlight .mf, .highlight .il { color: #0550ae !important; } /* Numbers */
+.highlight .na { color: #0550ae !important; } /* Attributes */
+.highlight .nt { color: #116329 !important; } /* Tags */
+
+/* Fix any remaining padding issues */
+.main-content pre {
+    padding: 0 !important;
+}
+
+.main-content .highlight pre {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Ensure proper spacing */
+.main-content h1, .main-content h2, .main-content h3 {
+    margin-top: 24px !important;
+    margin-bottom: 16px !important;
+}
+
+.main-content p {
+    margin-bottom: 16px !important;
+}
+
+/* Navigation improvements */
+.btn {
+    margin-right: 8px !important;
+    margin-bottom: 8px !important;
+}
+
+/* Fix any layout issues */
+.page-content {
+    max-width: none !important;
+}
+
+.main-content {
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+    padding: 16px !important;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+    .main-content {
+        padding: 8px !important;
+    }
+    
+    .highlight,
+    div.highlighter-rouge {
+        margin: 8px 0 !important;
+        padding: 12px !important;
+    }
+}
