@@ -426,4 +426,21 @@ try {
 
 You now know enough Sentra to build useful applications. Start with the examples, experiment with the REPL, and build something awesome!
 
+---
+
+{: .fs-6 .fw-300 }
+This completes the reference documentation. Ready to start building? Check out the examples and tutorials.
+
+[← Previous: Standard Library](../stdlib/){: .btn .btn-outline .mr-2 }
+[Browse Examples on GitHub →](https://github.com/sentra-language/sentra/tree/main/examples){: .btn .btn-primary }
+
+---
+
+## Related Documentation
+
+- [Tutorial Overview](../../tutorial/) - Complete learning path
+- [Language Reference](../language/) - Full syntax documentation
+- [Standard Library](../stdlib/) - All built-in functions
+- [Back to Reference Overview](../) - All reference materials
+
 Happy coding with Sentra! 🚀

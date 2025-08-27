@@ -380,3 +380,11 @@ log("Word count: " + str(word_count))
 ```
 
 Keep practicing, and you'll master Sentra in no time!
+
+---
+
+{: .fs-6 .fw-300 }
+Now that you understand the basics, let's learn about Sentra's data types and language features in detail.
+
+[← Previous: Installation](../installation/){: .btn .btn-outline .mr-2 }
+[Next: Language Basics →](../language-basics/){: .btn .btn-primary }

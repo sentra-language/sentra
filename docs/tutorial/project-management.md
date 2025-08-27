@@ -619,7 +619,26 @@ docker run -p 8080:8080 my-sentra-app
 
 ## Next Steps
 
-- [Learn about network programming]({{ site.baseurl }}/network-programming)
-- [Read the language reference]({{ site.baseurl }}/LANGUAGE_REFERENCE)
-- [Explore the standard library]({{ site.baseurl }}/STDLIB_REFERENCE)
-- [View example projects](https://github.com/sentra-language/sentra/tree/main/examples)
+- [Review Network Programming](../network-module/) - Build network-based projects
+- [Review Security Tools](../security-module/) - Build security applications
+- [Language Reference](../../reference/language/) - Complete syntax guide
+- [View example projects](https://github.com/sentra-language/sentra/tree/main/examples) - Real-world applications
+
+---
+
+{: .fs-6 .fw-300 }
+Congratulations! You've completed the Sentra tutorial. You now have the knowledge to build security tools, network applications, and automation scripts with Sentra.
+
+[← Previous: Security Module](../security-module/){: .btn .btn-outline .mr-2 }
+[View Examples on GitHub →](https://github.com/sentra-language/sentra/tree/main/examples){: .btn .btn-primary }
+
+---
+
+## What's Next?
+
+Now that you've completed the tutorial:
+
+- **[Browse Examples](https://github.com/sentra-language/sentra/tree/main/examples)** - See real-world Sentra applications
+- **[Language Reference](../../reference/language/)** - Complete technical documentation  
+- **[Join the Community](https://github.com/sentra-language/sentra)** - Contribute or get help
+- **[Quick Reference](../../reference/quick/)** - Keep handy while coding

@@ -1005,4 +1005,19 @@ let fib = memoize(fn(n) {
 
 5. **Concurrency**: Concurrency functions follow Go's CSP model with channels and goroutines.
 
-For security-specific functions, see the [Security Modules Documentation](SECURITY_MODULES.md).
+---
+
+{: .fs-6 .fw-300 }
+For a quick overview of common functions, check out the Quick Reference guide.
+
+[← Previous: Language Reference](../language/){: .btn .btn-outline .mr-2 }
+[Next: Quick Reference →](../quick/){: .btn .btn-primary }
+
+---
+
+## Related Documentation
+
+- [Tutorial: Standard Library](../../tutorial/standard-library/) - Learn with hands-on examples
+- [Tutorial: Network Module](../../tutorial/network-module/) - Network function examples
+- [Tutorial: Security Module](../../tutorial/security-module/) - Security function examples  
+- [Language Reference](../language/) - Complete syntax guide

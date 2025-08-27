@@ -547,9 +547,18 @@ let assessment_results = security_assessment("127.0.0.1")
 
 Now that you understand security tools:
 
-- [SIEM Module](siem-module/) - Log analysis and threat detection
-- [Concurrency](concurrency/) - Parallel security scanning
-- [Real Examples](real-examples/) - Complete security applications
+- [Project Management](../project-management/) - Building larger security applications
+- [Language Reference](../../reference/language/) - Complete function documentation
+- [Examples on GitHub](https://github.com/sentra-language/sentra/tree/main/examples) - Real security tools
+- [Back to Tutorial Overview](../) - See all available modules
+
+---
+
+{: .fs-6 .fw-300 }
+With security tools mastered, let's learn how to structure and manage larger Sentra projects.
+
+[← Previous: Network Module](../network-module/){: .btn .btn-outline .mr-2 }
+[Next: Project Management →](../project-management/){: .btn .btn-primary }
 
 ---
 

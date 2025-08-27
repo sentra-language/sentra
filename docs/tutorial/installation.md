@@ -271,3 +271,10 @@ code --uninstall-extension sentra-language.sentra
 # Remove project files (optional)
 rm -rf ~/.sentra
 ```
+
+---
+
+{: .fs-6 .fw-300 }
+Next, let's write your first Sentra program and learn the basic syntax.
+
+[Next: Your First Program →](../first-program/){: .btn .btn-primary }
