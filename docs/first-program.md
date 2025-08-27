@@ -1,9 +1,8 @@
 ---
 layout: default
 title: Your First Program
-nav_order: 2
-parent: Tutorial
-permalink: /tutorial/first-program
+nav_order: 3
+has_children: false
 ---
 
 # Your First Sentra Program
@@ -327,10 +326,10 @@ calculator()
 
 Now that you understand the basics:
 
-1. [Learn about data types in detail]({{ site.baseurl }}/tutorial/data-types)
-2. [Explore functions and closures]({{ site.baseurl }}/tutorial/functions)
-3. [Master arrays and maps]({{ site.baseurl }}/tutorial/arrays-and-maps)
-4. [Try network programming]({{ site.baseurl }}/tutorial/network-programming)
+1. [Learn about data types in detail]({{ site.baseurl }}/data-types)
+2. [Explore network programming]({{ site.baseurl }}/network-programming)
+3. [Learn project management]({{ site.baseurl }}/project-management)
+4. [Read the language reference]({{ site.baseurl }}/LANGUAGE_REFERENCE)
 
 ## Practice Exercises
 

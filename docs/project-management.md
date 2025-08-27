@@ -1,9 +1,8 @@
 ---
 layout: default
 title: Project Management
-nav_order: 8
-parent: Tutorial
-permalink: /tutorial/project-management
+nav_order: 6
+has_children: false
 ---
 
 # Project Management with Sentra
@@ -620,7 +619,7 @@ docker run -p 8080:8080 my-sentra-app
 
 ## Next Steps
 
-- [Learn about modules and imports]({{ site.baseurl }}/tutorial/modules)
-- [Explore deployment options]({{ site.baseurl }}/guide/deployment)
-- [Build a complete application]({{ site.baseurl }}/guide/building-apps)
-- [Set up CI/CD pipelines]({{ site.baseurl }}/guide/cicd)
+- [Learn about network programming]({{ site.baseurl }}/network-programming)
+- [Read the language reference]({{ site.baseurl }}/LANGUAGE_REFERENCE)
+- [Explore the standard library]({{ site.baseurl }}/STDLIB_REFERENCE)
+- [View example projects](https://github.com/sentra-language/sentra/tree/main/examples)

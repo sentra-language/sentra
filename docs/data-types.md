@@ -1,9 +1,8 @@
 ---
 layout: default
 title: Data Types
-nav_order: 3
-parent: Tutorial
-permalink: /tutorial/data-types
+nav_order: 4
+has_children: false
 ---
 
 # Data Types and Variables
@@ -508,7 +507,7 @@ display_user(null)
 
 Now that you understand Sentra's data types:
 
-1. [Learn about functions and closures]({{ site.baseurl }}/tutorial/functions)
-2. [Master control flow]({{ site.baseurl }}/tutorial/control-flow)
-3. [Explore advanced data manipulation]({{ site.baseurl }}/tutorial/advanced-data)
-4. [Start building applications]({{ site.baseurl }}/tutorial/building-applications)
+1. [Learn about network programming]({{ site.baseurl }}/network-programming)
+2. [Learn project management]({{ site.baseurl }}/project-management)
+3. [Read the language reference]({{ site.baseurl }}/LANGUAGE_REFERENCE)
+4. [Explore the standard library]({{ site.baseurl }}/STDLIB_REFERENCE)

@@ -1,6 +1,6 @@
 # Sentra Language Documentation
 title: "Sentra Documentation"
-description: "Official documentation for the Sentra Programming Language"
+description: "Official documentation for the Sentra Programming Language - A security-focused programming language"
 baseurl: "/sentra"
 url: "https://sentra-language.github.io"
 
@@ -13,8 +13,6 @@ highlighter: rouge
 kramdown:
   input: GFM
   syntax_highlighter: rouge
-  syntax_highlighter_opts:
-    css_class: 'highlight'
 
 # Permalinks
 permalink: pretty
@@ -31,61 +29,30 @@ search:
   rel_url: true
   button: false
 
+# Navigation
+nav_fold: false
+nav_sort: case_insensitive
+
 # Aux links
 aux_links:
-  "GitHub":
+  "GitHub Repository":
     - "https://github.com/sentra-language/sentra"
-  "Download":
+  "Download Latest":
     - "https://github.com/sentra-language/sentra/releases"
 
 aux_links_new_tab: true
 
-# Collections
-collections:
-  tutorial:
-    output: true
-    permalink: /tutorial/:name/
-  library:
-    output: true
-    permalink: /library/:name/
-  reference:
-    output: true
-    permalink: /reference/:name/
-  guide:
-    output: true
-    permalink: /guide/:name/
+# Footer
+footer_content: "Copyright &copy; 2025 Sentra Language. Distributed under the <a href=\"https://github.com/sentra-language/sentra/blob/main/LICENSE\">MIT License</a>."
+last_edit_timestamp: true
+last_edit_time_format: "%b %e %Y at %I:%M %p"
 
-# Default front matter
-defaults:
-  - scope:
-      path: ""
-      type: "pages"
-    values:
-      layout: "default"
-  - scope:
-      path: ""
-      type: "tutorial"
-    values:
-      layout: "tutorial"
-      sidebar: tutorial
-  - scope:
-      path: ""
-      type: "library"
-    values:
-      layout: "library"
-      sidebar: library
-  - scope:
-      path: ""
-      type: "reference"
-    values:
-      layout: "reference"
-      sidebar: reference
-  - scope:
-      path: ""
-      type: "guide"
-    values:
-      layout: "guide"
-      sidebar: guide
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/sentra-language/sentra"
+gh_edit_branch: "main"
+gh_edit_source: docs
+gh_edit_view_mode: "tree"
 
 # Exclude from processing
 exclude:
@@ -94,8 +61,9 @@ exclude:
   - node_modules/
   - vendor/
   - README.md
+  - LICENSE
 
-# Plugins (if needed for GitHub Pages)
+# Plugins
 plugins:
   - jekyll-sitemap
   - jekyll-seo-tag
