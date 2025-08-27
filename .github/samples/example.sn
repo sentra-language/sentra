@@ -1,0 +1,53 @@
+// Sentra Security Language Example
+// This file helps GitHub recognize Sentra language patterns
+
+import security
+import network
+import siem
+
+// Security configuration structure
+struct SecurityConfig {
+    scan_interval int
+    threat_threshold float
+    enable_logging bool
+    alert_channels []string
+}
+
+// Threat detection function
+fn detect_threats(config SecurityConfig) {
+    let scanner = security.new_scanner(config)
+    
+    // Continuous monitoring loop
+    while true {
+        let threats = scanner.scan()
+        
+        for threat in threats {
+            if threat.severity >= config.threat_threshold {
+                siem.log_event({
+                    type: "threat_detected",
+                    severity: threat.severity,
+                    details: threat
+                })
+                
+                // Send alerts through configured channels
+                for channel in config.alert_channels {
+                    security.alert(channel, threat)
+                }
+            }
+        }
+        
+        time.sleep(config.scan_interval)
+    }
+}
+
+// Main entry point
+fn main() {
+    let config = SecurityConfig{
+        scan_interval: 60,
+        threat_threshold: 7.5,
+        enable_logging: true,
+        alert_channels: ["email", "slack", "siem"]
+    }
+    
+    detect_threats(config)
+}

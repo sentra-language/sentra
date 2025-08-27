@@ -1,0 +1,23 @@
+# Sentra Language Specification for GitHub Linguist
+# This file should be submitted to https://github.com/github/linguist
+# to get official language recognition on GitHub
+
+Sentra:
+  type: programming
+  color: "#FF6B35"  # Security-themed orange color
+  extensions:
+    - ".sn"
+    - ".sentra"
+  tm_scope: source.sentra
+  ace_mode: text
+  language_id: 213853887  # Generated via SHA256 hash
+  aliases:
+    - sn
+  interpreters:
+    - sentra
+  group: Security
+  codemirror_mode: go  # Similar syntax highlighting
+  codemirror_mime_type: text/x-sentra
+  wrap: true
+  filenames:
+    - sentra.mod

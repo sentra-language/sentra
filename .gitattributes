@@ -1,0 +1,51 @@
+# Linguist language detection for Sentra
+# Mark .sn and .sentra files as Sentra language
+*.sn linguist-language=Sentra
+*.sentra linguist-language=Sentra
+
+# Mark Sentra files as detectable (not vendored or generated)
+*.sn linguist-detectable=true
+*.sentra linguist-detectable=true
+
+# Ensure Sentra files are not marked as documentation
+*.sn linguist-documentation=false
+*.sentra linguist-documentation=false
+
+# Mark vendor directories
+vendor/* linguist-vendored
+dist/* linguist-generated
+bin/* linguist-generated
+
+# Mark documentation files
+docs/* linguist-documentation
+*.md linguist-documentation
+
+# Override specific important files to be included
+README.md linguist-documentation=false
+README_SENTRA.md linguist-documentation=false
+
+# Ensure examples are detected as Sentra code
+examples/**/*.sn linguist-detectable=true
+examples/**/*.sn linguist-documentation=false
+
+# Ensure test files are detected
+tests/**/*.sn linguist-detectable=true
+test-project/**/*.sn linguist-detectable=true
+test-sentra-project/**/*.sn linguist-detectable=true
+
+# Override detection - treat all Go files as vendored
+*.go linguist-vendored
+internal/**/*.go linguist-vendored
+cmd/**/*.go linguist-vendored
+
+# Except the module files
+go.mod -linguist-vendored
+go.sum -linguist-vendored
+
+# Force Sentra as primary language
+*.sn linguist-language=Sentra linguist-detectable
+*.sentra linguist-language=Sentra linguist-detectable
+
+# Count all Sentra files
+**/*.sn linguist-detectable
+**/*.sentra linguist-detectable
