@@ -17,7 +17,7 @@ Learn Sentra's built-in security tools for vulnerability scanning, cryptography,
 
 ### Basic Port Scanning
 
-```javascript
+```sentra
 // Simple port scan
 fn basic_port_scan() {
     let target = "127.0.0.1"
@@ -42,7 +42,7 @@ basic_port_scan()
 
 ### Advanced Port Scanner
 
-```javascript
+```sentra
 // Comprehensive port scanner with service detection
 fn advanced_port_scanner(target, port_range_start, port_range_end) {
     log("Advanced scan of " + target + " (ports " + str(port_range_start) + "-" + str(port_range_end) + ")")
@@ -90,7 +90,7 @@ log("Scan completed: " + str(len(scan_results["open_ports"])) + " open ports fou
 
 ### Host Discovery
 
-```javascript
+```sentra
 // Discover active hosts on network
 fn network_discovery(network_cidr) {
     log("Discovering hosts on " + network_cidr + "...")
@@ -122,7 +122,7 @@ fn network_discovery(network_cidr) {
 
 ### SSL Certificate Analysis
 
-```javascript
+```sentra
 // Analyze SSL/TLS configuration
 fn ssl_analysis(hostname, port) {
     log("Analyzing SSL for " + hostname + ":" + str(port))
@@ -170,7 +170,7 @@ for (let site in sites) {
 
 ### Hashing Functions
 
-```javascript
+```sentra
 // Hash data with different algorithms
 fn hash_examples() {
     let data = "Sensitive data to hash"
@@ -195,7 +195,7 @@ hash_examples()
 
 ### Encryption and Decryption
 
-```javascript
+```sentra
 // Symmetric encryption example
 fn encryption_example() {
     let plaintext = "This is confidential information"
@@ -224,7 +224,7 @@ encryption_example()
 
 ### Digital Signatures
 
-```javascript
+```sentra
 // Digital signature example
 fn digital_signature_example() {
     let message = "This message is authentic"
@@ -250,7 +250,7 @@ fn digital_signature_example() {
 
 ### Web Vulnerability Scanner
 
-```javascript
+```sentra
 // Basic web vulnerability scanner
 fn web_vulnerability_scan(target_url) {
     log("Scanning " + target_url + " for vulnerabilities...")
@@ -311,7 +311,7 @@ web_vulnerability_scan("https://httpbin.org")
 
 ### Network Intrusion Detection
 
-```javascript
+```sentra
 // Simple intrusion detection system
 fn intrusion_detection() {
     log("Starting intrusion detection...")
@@ -345,7 +345,7 @@ fn intrusion_detection() {
 
 ### Security Compliance Scanner
 
-```javascript
+```sentra
 // Check system for security compliance
 fn security_compliance_check() {
     log("Running security compliance check...")
@@ -448,7 +448,7 @@ security_compliance_check()
 
 ## Practical Example: Complete Security Assessment
 
-```javascript
+```sentra
 // Comprehensive security assessment tool
 fn security_assessment(target) {
     log("=== Security Assessment of " + target + " ===")

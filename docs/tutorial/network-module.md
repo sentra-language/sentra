@@ -17,7 +17,7 @@ Master Sentra's built-in network programming capabilities for TCP/UDP, HTTP, and
 
 ### TCP Server
 
-```javascript
+```sentra
 // Create a simple TCP echo server
 fn start_tcp_server() {
     let server = socket_listen("TCP", "127.0.0.1", 8080)
@@ -43,7 +43,7 @@ fn start_tcp_server() {
 
 ### TCP Client
 
-```javascript
+```sentra
 // Connect to TCP server
 fn tcp_client_example() {
     let client = socket_create("TCP", "127.0.0.1", 8080)
@@ -64,7 +64,7 @@ tcp_client_example()
 
 ### UDP Communication
 
-```javascript
+```sentra
 // UDP server
 fn udp_server() {
     let server = socket_listen("UDP", "127.0.0.1", 9999)
@@ -99,7 +99,7 @@ udp_client()
 
 ### Basic HTTP Requests
 
-```javascript
+```sentra
 // GET request
 let response = http_get("https://httpbin.org/json")
 log("Status: " + str(response["status_code"]))
@@ -123,7 +123,7 @@ let delete_response = http_delete("https://httpbin.org/delete")
 
 ### Advanced HTTP Operations
 
-```javascript
+```sentra
 // Custom request with full control
 fn advanced_http_request() {
     let custom_response = http_request("PATCH", "https://httpbin.org/patch", {
@@ -151,7 +151,7 @@ fn download_file(url, filename) {
 
 ### Creating Web APIs
 
-```javascript
+```sentra
 // Complete HTTP API server
 fn start_web_api() {
     let server = http_server_create("127.0.0.1", 8080)
@@ -211,7 +211,7 @@ fn start_web_api() {
 
 ### WebSocket Client
 
-```javascript
+```sentra
 // Connect to WebSocket server
 fn websocket_client_example() {
     let conn = ws_connect("wss://echo.websocket.org")
@@ -242,7 +242,7 @@ websocket_client_example()
 
 ### WebSocket Server
 
-```javascript
+```sentra
 // WebSocket chat server
 fn websocket_chat_server() {
     let server = ws_listen("127.0.0.1", 8765)
@@ -294,7 +294,7 @@ fn websocket_chat_server() {
 
 ## Practical Example: Network Monitor
 
-```javascript
+```sentra
 // Network monitoring tool
 fn network_monitor() {
     log("Starting network monitor...")
@@ -358,7 +358,7 @@ network_monitor()
 
 ### DNS Operations
 
-```javascript
+```sentra
 // DNS lookup functions
 fn dns_operations() {
     let domain = "example.com"
@@ -380,7 +380,7 @@ dns_operations()
 
 ### Network Analysis
 
-```javascript
+```sentra
 // Analyze network traffic (simulated)
 fn analyze_network() {
     log("Analyzing network traffic...")

@@ -17,7 +17,7 @@ Learn about Sentra's built-in functions and standard library modules for basic o
 
 ### String Operations
 
-```javascript
+```sentra
 // String manipulation
 let text = "Hello, Sentra!"
 log("Original: " + text)
@@ -40,7 +40,7 @@ log("Rejoined: " + rejoined)
 
 ### Array Operations
 
-```javascript
+```sentra
 // Array creation and manipulation
 let numbers = [1, 2, 3, 4, 5]
 log("Original array: " + str(numbers))
@@ -69,7 +69,7 @@ log("Subset [1:4]: " + str(subset))
 
 ### Math Operations
 
-```javascript
+```sentra
 // Basic math functions
 let x = 16
 let y = 3.7
@@ -87,7 +87,7 @@ log("Random number: " + str(random()))
 
 ### File I/O Operations
 
-```javascript
+```sentra
 // File operations
 let content = "Hello from Sentra!\nThis is a test file."
 
@@ -112,7 +112,7 @@ log("Modified: " + str(stats["modified"]))
 
 ### Type Operations
 
-```javascript
+```sentra
 // Type checking and conversion
 let values = [42, "hello", true, null, [1, 2, 3], {"key": "value"}]
 
@@ -136,7 +136,7 @@ log("Empty string to boolean: " + str(bool("")))
 
 ## Date and Time
 
-```javascript
+```sentra
 // Current timestamp
 let now = time()
 log("Current timestamp: " + str(now))
@@ -151,7 +151,7 @@ log("Done waiting!")
 
 ## Environment and System
 
-```javascript
+```sentra
 // Environment variables
 let path = env("PATH")
 log("PATH variable: " + (path || "Not set"))
@@ -170,7 +170,7 @@ if (debug) {
 
 ## JSON Operations
 
-```javascript
+```sentra
 // JSON parsing and generation
 let data = {
     "name": "Sentra",
@@ -194,7 +194,7 @@ log("Features: " + str(parsed["features"]))
 
 Here's a practical example using multiple standard library functions:
 
-```javascript
+```sentra
 // Log file parser
 fn parse_log_file(filename) {
     if (!file_exists(filename)) {

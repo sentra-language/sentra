@@ -1,27 +1,20 @@
-# Sentra Language Documentation
+# Site settings
 title: "Sentra Documentation"
 description: "Official documentation for the Sentra Programming Language - A security-focused programming language with built-in networking capabilities"
 baseurl: "/sentra"
 url: "https://sentra-language.github.io"
 
-# Theme
-remote_theme: just-the-docs/just-the-docs@v0.7.0
-
-# Jekyll configuration
+# Build settings  
 markdown: kramdown
 highlighter: rouge
-kramdown:
-  input: GFM
-  syntax_highlighter: rouge
-  syntax_highlighter_opts:
-    block:
-      line_numbers: true
-      start_line: 1
+sass:
+  style: compressed
+  sass_dir: _sass
 
-# Permalinks
-permalink: pretty
+# Just the Docs theme
+theme: just-the-docs
 
-# Just the Docs theme settings
+# Theme configuration
 color_scheme: light
 search_enabled: true
 search:
@@ -33,21 +26,34 @@ search:
   rel_url: true
   button: false
 
+# Code highlighting
+kramdown:
+  input: GFM
+  auto_ids: true
+  hard_wrap: false
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: 'highlight'
+    default_lang: javascript
+
+# Navigation
+nav_sort: case_insensitive
+
+# Aux links
+aux_links:
+  "GitHub Repository":
+    - "//github.com/sentra-language/sentra"
+  "Download Latest": 
+    - "//github.com/sentra-language/sentra/releases"
+
+aux_links_new_tab: true
+
+# Footer content
+footer_content: "Copyright &copy; 2025 Sentra Language. Distributed under the <a href=\"https://github.com/sentra-language/sentra/blob/main/LICENSE\">MIT License</a>."
+
 # Back to top link
 back_to_top: true
 back_to_top_text: "Back to top"
-
-# Navigation
-nav_external_links:
-  - title: GitHub Repository
-    url: https://github.com/sentra-language/sentra
-    hide_icon: false
-  - title: Download Latest
-    url: https://github.com/sentra-language/sentra/releases
-    hide_icon: false
-
-# Footer
-footer_content: "Copyright &copy; 2025 Sentra Language. Distributed under the <a href=\"https://github.com/sentra-language/sentra/blob/main/LICENSE\">MIT License</a>."
 
 # GitHub edit links
 gh_edit_link: true
@@ -57,31 +63,24 @@ gh_edit_branch: "main"
 gh_edit_source: docs
 gh_edit_view_mode: "tree"
 
-# Heading anchor links
+# Heading anchors
 heading_anchors: true
 
-# Aux links for header
-aux_links:
-  "GitHub":
-    - "https://github.com/sentra-language/sentra"
-  "Download":
-    - "https://github.com/sentra-language/sentra/releases"
-
-aux_links_new_tab: true
-
-# Exclude from processing
+# Exclude
 exclude:
-  - Gemfile
-  - Gemfile.lock
-  - node_modules/
-  - vendor/
-  - README.md
-  - LICENSE
-  - "*.gemspec"
-  - "*.gem"
-
+  - ".sass-cache/"
+  - ".jekyll-cache/"
+  - "gemfiles/"
+  - "Gemfile"
+  - "Gemfile.lock"
+  - "node_modules/"
+  - "vendor/bundle/"
+  - "vendor/cache/"
+  - "vendor/gems/"
+  - "vendor/ruby/"
+  
 # Plugins
 plugins:
+  - jekyll-feed
   - jekyll-sitemap
   - jekyll-seo-tag
-  - jekyll-include-cache

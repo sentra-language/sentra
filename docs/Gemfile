@@ -1,15 +1,13 @@
 source "https://rubygems.org"
 
-# GitHub Pages compatibility
-gem "github-pages", group: :jekyll_plugins
-
-# Just the Docs theme
-gem "just-the-docs"
+gem "jekyll", "~> 4.3.0"
+gem "just-the-docs", "0.8.2"
 
 # Plugins
 group :jekyll_plugins do
-  gem "jekyll-sitemap"
-  gem "jekyll-seo-tag"
+  gem "jekyll-feed", "~> 0.12"
+  gem "jekyll-sitemap", "~> 1.4"
+  gem "jekyll-seo-tag", "~> 2.8"
   gem "jekyll-include-cache"
 end
 

@@ -1,0 +1,86 @@
+// Custom styles for Sentra documentation
+
+// Code block styling fixes
+.highlight {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  background-color: #f6f8fa;
+  border: 1px solid #e1e4e8;
+}
+
+.highlight pre {
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+}
+
+.highlight code {
+  padding: 0;
+  margin: 0;
+  background-color: transparent;
+  border: none;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+// Inline code styling
+code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  background-color: rgba(175, 184, 193, 0.2);
+  border-radius: 6px;
+}
+
+// Fix navigation button spacing
+.btn {
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+// Ensure proper spacing for tutorial content
+.main-content {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+// Header styling for better hierarchy
+h1 {
+  border-bottom: 2px solid #eaecef;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+h2 {
+  border-bottom: 1px solid #eaecef;
+  padding-bottom: 0.3rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+// Code language labels
+.highlight::before {
+  content: attr(data-lang);
+  display: block;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #586069;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background-color: #e1e4e8;
+  border-radius: 3px 3px 0 0;
+  margin: -0.8rem -1rem 0.5rem -1rem;
+}
+
+// Fix table spacing
+table {
+  margin: 1rem 0;
+}
+
+// Navigation improvements
+.site-nav .nav-list .nav-list-item .nav-list-link {
+  font-size: 0.875rem;
+}
