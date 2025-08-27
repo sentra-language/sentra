@@ -1,5 +1,6 @@
 title: Sentra Documentation
 description: Official documentation for the Sentra Programming Language - A security-focused programming language with built-in networking capabilities
+repository: sentra-language/sentra
 
 # GitHub Pages compatible theme
 remote_theme: just-the-docs/just-the-docs
