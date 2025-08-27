@@ -1,0 +1,34 @@
+// Custom overrides for Sentra documentation
+
+// Ensure code blocks have proper styling
+.highlight {
+  background-color: #f8f8f8;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+  overflow: auto;
+}
+
+// Fix any potential padding issues
+pre code {
+  padding: 0;
+  margin: 0;
+  background-color: transparent;
+  border: none;
+}
+
+// Ensure proper font for code
+code, pre {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+// Inline code styling
+p code, li code {
+  background-color: rgba(175, 184, 193, 0.2);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 85%;
+}
