@@ -7,6 +7,8 @@ Sentra combines the simplicity of Python, the performance of Go, and security fe
 </blockquote>
 </div>
 
+📚 **[Full Documentation](https://sentra-language.github.io)** | 🚀 **[Quick Start](https://sentra-language.github.io/quick-start/)** | 📖 **[Tutorial](https://sentra-language.github.io/tutorial/)** | 🔧 **[API Reference](https://sentra-language.github.io/reference/)**
+
 ## 🎯 Quick Start
 
 # 1. Clone and build Sentra
