@@ -1,8 +1,8 @@
 ---
 layout: default
 title: Project Management
-nav_order: 6
-has_children: false
+parent: Tutorial
+nav_order: 5
 ---
 
 # Project Management with Sentra

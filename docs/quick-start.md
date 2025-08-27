@@ -1,13 +1,8 @@
 ---
 layout: default
-title: "Quick Start Guide"
-description: "Get started with Sentra in 5 minutes"
-sidebar: |
-  ### Quick Navigation
-  - [Installation](#installation)
-  - [Hello World](#hello-world)
-  - [Core Concepts](#core-concepts)
-  - [Security Features](#security-features)
+title: Quick Start
+nav_order: 2
+description: "Get up and running with Sentra in 5 minutes"
   - [Next Steps](#next-steps)
 ---
 

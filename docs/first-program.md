@@ -1,8 +1,8 @@
 ---
 layout: default
 title: Your First Program
-nav_order: 3
-has_children: false
+parent: Tutorial
+nav_order: 2
 ---
 
 # Your First Sentra Program

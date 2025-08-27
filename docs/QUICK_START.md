@@ -1,8 +1,8 @@
 ---
 layout: default
-title: Quick Start Guide
-nav_order: 9
-has_children: false
+title: Quick Reference
+parent: Reference
+nav_order: 3
 ---
 
 # Sentra Quick Start Guide

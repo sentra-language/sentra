@@ -1,8 +1,8 @@
 ---
 layout: default
 title: Network Programming
-nav_order: 5
-has_children: false
+parent: Tutorial
+nav_order: 4
 ---
 
 # Network Programming in Sentra
