@@ -1,0 +1,27 @@
+// TCP Client Test
+log("Starting TCP client test...")
+
+// Wait a moment for server to start
+log("Connecting to server...")
+
+// Connect to server
+let client_id = socket_create("TCP", "127.0.0.1", 8080)
+if (client_id) {
+    log("Connected to server: " + client_id)
+    
+    // Send message
+    let sent = socket_send(client_id, "Hello from client!")
+    if (sent > 0) {
+        log("Sent: " + str(sent) + " bytes")
+        
+        // Receive response
+        let response = socket_receive(client_id, 1024)
+        if (response) {
+            log("Received: " + response)
+        }
+    }
+    
+    socket_close(client_id)
+} else {
+    log("Failed to connect to server")
+}

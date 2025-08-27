@@ -1,0 +1,18 @@
+// WebSocket Server Test
+log("Testing WebSocket server...")
+
+// Create WebSocket server
+let server = ws_listen("127.0.0.1", 8765)
+if (server) {
+    log("WebSocket server created on port 8765")
+    log("Server ID: " + server["id"])
+    log("Note: Server is running but client connections are handled async")
+    
+    // In a real app, you would handle connections in a loop
+    // For now, just demonstrating server creation
+    log("Server created successfully")
+} else {
+    log("Failed to create WebSocket server")
+}
+
+log("WebSocket server test complete")

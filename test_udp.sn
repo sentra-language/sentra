@@ -1,0 +1,25 @@
+// UDP Test
+log("Testing UDP functionality...")
+
+// Create UDP listener
+let server = socket_listen("UDP", "127.0.0.1", 9999)
+if (server) {
+    log("UDP server listening on 127.0.0.1:9999")
+    log("Server ID: " + server)
+    
+    // Create UDP client
+    let client = socket_create("UDP", "127.0.0.1", 9999)
+    if (client) {
+        log("UDP client created: " + client)
+        
+        // Send datagram
+        let sent = socket_send(client, "UDP datagram test")
+        if (sent > 0) {
+            log("Sent " + str(sent) + " bytes via UDP")
+        }
+        
+        socket_close(client)
+    }
+}
+
+log("UDP test complete")

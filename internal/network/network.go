@@ -22,6 +22,7 @@ type NetworkModule struct {
 	PacketBuffer []PacketInfo
 	WebSockets   map[string]*WebSocketConn
 	WSServers    map[string]*WebSocketServer
+	HTTPServers  map[string]*HTTPServer
 	mu           sync.RWMutex
 }
 
@@ -88,6 +89,7 @@ func NewNetworkModule() *NetworkModule {
 		PacketBuffer: make([]PacketInfo, 0, 1000),
 		WebSockets:   make(map[string]*WebSocketConn),
 		WSServers:    make(map[string]*WebSocketServer),
+		HTTPServers:  make(map[string]*HTTPServer),
 	}
 }
 

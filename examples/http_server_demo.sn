@@ -1,0 +1,70 @@
+// HTTP Server Demo
+// Demonstrates HTTP server functionality in Sentra
+
+log("=== Sentra HTTP Server Demo ===")
+log("")
+
+// Create HTTP server
+let server = http_server_create("127.0.0.1", 8080)
+if (server) {
+    log("HTTP server created")
+    log("  ID: " + server["id"])
+    log("  Address: " + server["address"])
+    log("  Port: " + str(server["port"]))
+    
+    // Add routes
+    log("")
+    log("Adding routes...")
+    
+    // Simple GET route
+    http_server_route(server["id"], "GET", "/", fn(req) {
+        return http_response(200, "Welcome to Sentra HTTP Server!", {
+            "Content-Type": "text/plain"
+        })
+    })
+    
+    // JSON API route
+    http_server_route(server["id"], "GET", "/api/status", fn(req) {
+        return http_response(200, "{\"status\":\"running\",\"version\":\"1.0\"}", {
+            "Content-Type": "application/json"
+        })
+    })
+    
+    // Echo route
+    http_server_route(server["id"], "POST", "/echo", fn(req) {
+        return http_response(200, "Echo: " + req["body"], {
+            "Content-Type": "text/plain"
+        })
+    })
+    
+    // Serve static files from current directory
+    http_server_static(server["id"], "/static/", "./")
+    
+    // Start the server
+    log("Starting server on http://127.0.0.1:8080")
+    let started = http_server_start(server["id"])
+    
+    if (started) {
+        log("Server is running!")
+        log("")
+        log("Test with:")
+        log("  curl http://127.0.0.1:8080/")
+        log("  curl http://127.0.0.1:8080/api/status")
+        log("  curl -X POST -d 'Hello' http://127.0.0.1:8080/echo")
+        log("")
+        log("Server will run for 30 seconds...")
+        
+        // Keep server running for demo
+        // In real app, you'd run this indefinitely or until shutdown signal
+        sleep(30000)
+        
+        // Stop server
+        log("Stopping server...")
+        http_server_stop(server["id"])
+    }
+} else {
+    log("Failed to create HTTP server")
+}
+
+log("")
+log("=== Demo Complete ===")

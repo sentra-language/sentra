@@ -1777,6 +1777,8 @@ func (vm *EnhancedVM) registerBuiltins() {
 	
 	// Register HTTP functions  
 	RegisterHTTPFunctions(vm, netMod)
+	// Register HTTP server functions
+	RegisterHTTPServerFunctions(vm, netMod)
 	// Register WebSocket functions
 	RegisterWebSocketFunctions(vm, netMod)
 	threatMod := threat_intel.NewThreatIntelModule()
@@ -2728,7 +2730,7 @@ func (vm *EnhancedVM) registerBuiltins() {
 			Arity: 1,
 			Function: func(args []Value) (Value, error) {
 				socketID := ToString(args[0])
-				err := netMod.CloseSocket(socketID)
+				err := netMod.CloseAny(socketID)
 				return err == nil, err
 			},
 		},

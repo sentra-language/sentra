@@ -1,0 +1,34 @@
+// TCP Server Test
+log("Starting TCP server test...")
+
+// Create a TCP listener on port 8080
+let server_id = socket_listen("TCP", "127.0.0.1", 8080)
+if (server_id) {
+    log("Server listening on 127.0.0.1:8080")
+    log("Server ID: " + server_id)
+    
+    // Accept a connection (this will block)
+    log("Waiting for client connection...")
+    let client_id = socket_accept(server_id)
+    if (client_id) {
+        log("Client connected: " + client_id)
+        
+        // Receive message from client
+        let msg = socket_receive(client_id, 1024)
+        if (msg) {
+            log("Received: " + msg)
+            
+            // Send response
+            let sent = socket_send(client_id, "Hello from server!")
+            if (sent > 0) {
+                log("Sent response: " + str(sent) + " bytes")
+            }
+        }
+        
+        socket_close(client_id)
+    }
+    
+    socket_close(server_id)
+} else {
+    log("Failed to create server")
+}
