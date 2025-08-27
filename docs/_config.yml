@@ -26,6 +26,9 @@ kramdown:
     block:
       line_numbers: false
 
+# Custom CSS
+custom_css: "/assets/css/custom.css"
+
 aux_links:
   "GitHub Repository": "https://github.com/sentra-language/sentra"
   "Download Latest": "https://github.com/sentra-language/sentra/releases"
