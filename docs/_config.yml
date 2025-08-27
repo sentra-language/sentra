@@ -10,9 +10,10 @@ highlighter: rouge
 sass:
   style: compressed
   sass_dir: _sass
+  sourcemap: never
 
 # Just the Docs theme
-theme: just-the-docs
+remote_theme: just-the-docs/just-the-docs@v0.8.2
 
 # Theme configuration
 color_scheme: light

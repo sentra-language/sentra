@@ -1,6 +1,9 @@
 ---
 ---
 
+@import "{{ site.theme }}";
+@import "custom";
+
 // Sentra Documentation Styles
 // Variables
 $primary-color: #2563eb;
