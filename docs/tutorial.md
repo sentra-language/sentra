@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Tutorial
-nav_order: 3
+nav_order: 2
 has_children: true
 permalink: /tutorial/
 ---
@@ -12,6 +12,8 @@ permalink: /tutorial/
 Learn Sentra step by step with hands-on examples and practical exercises. Perfect for beginners and experienced developers new to Sentra.
 {: .fs-6 .fw-300 }
 
+---
+
 ## Learning Path
 
 Follow this recommended learning path to master Sentra:
@@ -20,8 +22,7 @@ Follow this recommended learning path to master Sentra:
 2. **[Your First Program](first-program/)** - Write and run your first Sentra program  
 3. **[Language Basics](language-basics/)** - Variables, data types, and basic operations
 4. **[Network Programming](network-programming/)** - TCP/UDP, HTTP, WebSockets
-5. **[Security Tools](security-tools/)** - Build security applications
-6. **[Project Management](project-management/)** - Create and manage Sentra projects
+5. **[Project Management](project-management/)** - Create and manage Sentra projects
 
 ## What You'll Learn
 
@@ -46,5 +47,7 @@ If you get stuck:
 - Check the [Reference]({{ site.baseurl }}/reference/) section
 - Browse [Examples](https://github.com/sentra-language/sentra/tree/main/examples)
 - Open an [Issue on GitHub](https://github.com/sentra-language/sentra/issues)
+
+---
 
 Ready to start? Begin with [Installation](installation/)!
