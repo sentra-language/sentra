@@ -4,6 +4,7 @@ title: Home
 nav_order: 1
 description: "Sentra is a security-focused programming language with built-in network capabilities and cybersecurity tools"
 permalink: /
+last_modified_date: 2025-08-27
 ---
 
 # Sentra Programming Language

@@ -1,20 +1,30 @@
 title: Sentra Documentation
 description: Official documentation for the Sentra Programming Language - A security-focused programming language with built-in networking capabilities
+
+# GitHub Pages compatible theme
 remote_theme: just-the-docs/just-the-docs
 
+# Site settings
 url: https://sentra-language.github.io
-baseurl: /sentra
+baseurl: "/sentra"
 
-# Enable search
+# Theme configuration
+color_scheme: light
 search_enabled: true
 
 # Syntax highlighting
-highlighter: rouge
 markdown: kramdown
+highlighter: rouge
 kramdown:
+  input: GFM
   syntax_highlighter: rouge
   syntax_highlighter_opts:
+    css_class: 'highlight'
     default_lang: javascript
+    span:
+      line_numbers: false
+    block:
+      line_numbers: false
 
 aux_links:
   "GitHub Repository": "https://github.com/sentra-language/sentra"
