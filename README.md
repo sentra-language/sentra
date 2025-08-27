@@ -73,14 +73,21 @@ sentra test
 - **Array**: Sorting, filtering, mapping, reduction
 - **IO**: File operations, directory management
 - **JSON**: Encoding and decoding
-- **HTTP**: Web requests
 - **Time**: Date/time operations
 - **Regex**: Pattern matching
 - **Security**: Cryptography, hashing, threat detection
-- **Network**: Port scanning, network analysis
 - **Database**: SQL operations
 - **SIEM**: Security event management
 - **ML**: Machine learning for security
+
+### 🌐 Comprehensive Networking
+- **TCP/UDP Sockets**: Full client/server implementation
+- **HTTP Client**: GET, POST, PUT, DELETE, custom requests
+- **HTTP Server**: Routing, middleware, static files
+- **WebSockets**: Client and server with full duplex communication
+- **Network Security**: Port scanning, traffic analysis, SSL/TLS analysis
+- **DNS Operations**: All record types (A, AAAA, MX, TXT, NS, CNAME)
+- **Network Discovery**: Subnet scanning, service detection
 
 ## 🛠️ Sentra CLI - Your Development Companion
 
@@ -163,6 +170,29 @@ try {
 } finally {
     cleanup()
 }
+```
+
+### Network Programming
+```sentra
+// HTTP Server with routing
+let server = http_server_create("0.0.0.0", 8080)
+
+http_server_route(server["id"], "GET", "/api/status", fn(req) {
+    return http_response(200, "{\"status\":\"running\"}", {
+        "Content-Type": "application/json"
+    })
+})
+
+http_server_start(server["id"])
+
+// WebSocket Server
+let ws = ws_listen("127.0.0.1", 8765)
+let client = ws_server_accept(ws["id"], 5)
+ws_server_broadcast(ws["id"], "Welcome everyone!")
+
+// Security scanning
+let results = port_scan("192.168.1.1", 1, 1000, "TCP")
+let hosts = network_scan("192.168.1.0/24")
 ```
 
 ### Modules
