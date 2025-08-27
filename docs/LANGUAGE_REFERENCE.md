@@ -1,8 +1,8 @@
 ---
 layout: default
 title: Language Reference
-nav_order: 7
-has_children: false
+parent: Reference
+nav_order: 1
 ---
 
 # Sentra Language Reference

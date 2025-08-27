@@ -1,8 +1,8 @@
 ---
 layout: default
-title: Standard Library Reference
-nav_order: 8
-has_children: false
+title: Standard Library
+parent: Reference
+nav_order: 2
 ---
 
 # Sentra Standard Library Reference

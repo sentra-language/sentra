@@ -1,8 +1,8 @@
 ---
 layout: default
-title: Data Types
-nav_order: 4
-has_children: false
+title: Language Basics
+parent: Tutorial
+nav_order: 3
 ---
 
 # Data Types and Variables
