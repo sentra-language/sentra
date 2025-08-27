@@ -1,0 +1,147 @@
+// WebSocket Chat Room Demo
+// A simple chat room server using WebSocket
+
+log("=== Sentra Chat Room Server ===")
+log("")
+
+// Configuration
+let SERVER_PORT = 8888
+let MAX_CLIENTS = 10
+let MAX_MESSAGES = 100
+
+// Create WebSocket server
+let server = ws_listen("127.0.0.1", SERVER_PORT)
+
+if (server) {
+    log("Chat room server started on ws://127.0.0.1:" + str(SERVER_PORT))
+    log("Waiting for users to join...")
+    log("")
+    
+    // Chat room state
+    let users = {}        // Map of client ID to username
+    let messageHistory = []
+    let running = true
+    
+    // Helper function to broadcast message to all users
+    fn broadcast_message(sender, message) {
+        let formatted = "[" + sender + "]: " + message
+        push(messageHistory, formatted)
+        
+        // Keep history limited
+        if (len(messageHistory) > MAX_MESSAGES) {
+            shift(messageHistory)
+        }
+        
+        ws_server_broadcast(server["id"], formatted)
+        log(formatted)
+    }
+    
+    // Main server loop
+    while (running) {
+        // Check for new connections
+        let newClient = ws_server_wait_connection(server["id"], 0.5)
+        
+        if (newClient) {
+            let clientID = newClient["id"]
+            
+            // Send welcome and request username
+            ws_server_send_to(server["id"], clientID, 
+                "Welcome to Sentra Chat! Please enter your username:")
+            
+            // Wait for username
+            let username = ws_server_receive_from(server["id"], clientID)
+            if (username) {
+                users[clientID] = username
+                
+                // Send chat history to new user
+                ws_server_send_to(server["id"], clientID, 
+                    "=== Chat History ===")
+                for (let i = 0; i < len(messageHistory); i = i + 1) {
+                    ws_server_send_to(server["id"], clientID, messageHistory[i])
+                }
+                ws_server_send_to(server["id"], clientID, 
+                    "=== End History ===")
+                
+                // Announce new user
+                broadcast_message("System", username + " joined the chat")
+                
+                // Send user list
+                let userList = "Online users: "
+                for (let id in users) {
+                    userList = userList + users[id] + " "
+                }
+                ws_server_broadcast(server["id"], userList)
+            }
+        }
+        
+        // Check for messages from all connected users
+        let allClients = ws_server_get_clients(server["id"])
+        if (allClients) {
+            for (let i = 0; i < len(allClients); i = i + 1) {
+                let clientID = allClients[i]
+                
+                // Only check messages from registered users
+                if (users[clientID]) {
+                    let message = ws_server_receive_from(server["id"], clientID)
+                    
+                    if (message) {
+                        // Handle special commands
+                        if (message == "/quit") {
+                            let username = users[clientID]
+                            delete(users, clientID)
+                            ws_server_disconnect(server["id"], clientID)
+                            broadcast_message("System", username + " left the chat")
+                            
+                        } else if (message == "/shutdown" && users[clientID] == "admin") {
+                            broadcast_message("System", "Server shutting down...")
+                            running = false
+                            
+                        } else if (starts_with(message, "/nick ")) {
+                            let oldName = users[clientID]
+                            let newName = substr(message, 6, len(message))
+                            users[clientID] = newName
+                            broadcast_message("System", oldName + " is now " + newName)
+                            
+                        } else if (message == "/help") {
+                            ws_server_send_to(server["id"], clientID, 
+                                "Commands: /quit, /nick <name>, /help")
+                                
+                        } else {
+                            // Regular message
+                            broadcast_message(users[clientID], message)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Check if we should continue running
+        if (len(users) == 0) {
+            // No users connected, wait a bit
+            sleep(100)
+        }
+    }
+    
+    // Shutdown
+    log("")
+    log("Shutting down chat room...")
+    
+    // Disconnect all users
+    let allClients = ws_server_get_clients(server["id"])
+    if (allClients) {
+        for (let i = 0; i < len(allClients); i = i + 1) {
+            ws_server_send_to(server["id"], allClients[i], 
+                "Server shutting down. Goodbye!")
+            ws_server_disconnect(server["id"], allClients[i])
+        }
+    }
+    
+    ws_server_stop(server["id"])
+    log("Chat room server stopped")
+    
+} else {
+    log("Failed to start chat room server")
+}
+
+log("")
+log("=== Chat Room Closed ===")

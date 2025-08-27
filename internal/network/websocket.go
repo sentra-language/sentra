@@ -23,14 +23,15 @@ type WebSocketConn struct {
 
 // WebSocketServer represents a WebSocket server
 type WebSocketServer struct {
-	ID       string
-	Address  string
-	Port     int
-	Upgrader websocket.Upgrader
-	Handler  http.HandlerFunc
-	Server   *http.Server
-	Clients  map[string]*WebSocketConn
-	mu       sync.RWMutex
+	ID           string
+	Address      string
+	Port         int
+	Upgrader     websocket.Upgrader
+	Handler      http.HandlerFunc
+	Server       *http.Server
+	Clients      map[string]*WebSocketConn
+	NewClients   chan *WebSocketConn  // Channel for new connections
+	mu           sync.RWMutex
 }
 
 // WebSocketMessage represents a WebSocket message
@@ -205,13 +206,14 @@ func (ws *WebSocketConn) readMessages() {
 	}
 }
 
-// WebSocketListen creates a WebSocket server (simplified version)
+// WebSocketListen creates a WebSocket server
 func (n *NetworkModule) WebSocketListen(address string, port int) (*WebSocketServer, error) {
 	server := &WebSocketServer{
-		ID:      fmt.Sprintf("ws_server_%d", time.Now().UnixNano()),
-		Address: address,
-		Port:    port,
-		Clients: make(map[string]*WebSocketConn),
+		ID:         fmt.Sprintf("ws_server_%d", time.Now().UnixNano()),
+		Address:    address,
+		Port:       port,
+		Clients:    make(map[string]*WebSocketConn),
+		NewClients: make(chan *WebSocketConn, 100),
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // Allow all origins for now
@@ -236,6 +238,13 @@ func (n *NetworkModule) WebSocketListen(address string, port int) (*WebSocketSer
 		server.mu.Lock()
 		server.Clients[wsConn.ID] = wsConn
 		server.mu.Unlock()
+		
+		// Send to new clients channel
+		select {
+		case server.NewClients <- wsConn:
+		default:
+			// Channel full, skip
+		}
 		
 		go wsConn.readMessages()
 	}

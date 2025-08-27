@@ -1,0 +1,72 @@
+// WebSocket Client Demo
+// Connects to a WebSocket server and exchanges messages
+
+log("=== Sentra WebSocket Client Demo ===")
+log("")
+
+// Connect to local WebSocket server
+// Make sure to run websocket_server_demo.sn first!
+let server_url = "ws://127.0.0.1:8765"
+
+log("Connecting to " + server_url)
+let conn = ws_connect(server_url)
+
+if (conn) {
+    log("Connected successfully!")
+    log("  Connection ID: " + conn["id"])
+    log("")
+    
+    // Receive welcome message
+    let welcome = ws_receive(conn["id"], 2)
+    if (welcome) {
+        log("Server says: " + welcome)
+    }
+    
+    // Send some messages
+    let messages = [
+        "Hello from Sentra client!",
+        "This is message 2",
+        "Testing WebSocket",
+        "Final message"
+    ]
+    
+    for (let i = 0; i < len(messages); i = i + 1) {
+        let msg = messages[i]
+        log("")
+        log("Sending: " + msg)
+        
+        let sent = ws_send(conn["id"], msg)
+        if (sent) {
+            // Wait for echo response
+            let response = ws_receive(conn["id"], 2)
+            if (response) {
+                log("Server response: " + response)
+            }
+            
+            // Check for broadcast message
+            let broadcast = ws_receive(conn["id"], 1)
+            if (broadcast) {
+                log("Broadcast: " + broadcast)
+            }
+        }
+        
+        // Small delay between messages
+        sleep(1000)
+    }
+    
+    // Send exit command to shut down server
+    log("")
+    log("Sending exit command...")
+    ws_send(conn["id"], "exit")
+    
+    // Close connection
+    ws_close(conn["id"])
+    log("Connection closed")
+    
+} else {
+    log("Failed to connect to WebSocket server")
+    log("Make sure the server is running (run websocket_server_demo.sn first)")
+}
+
+log("")
+log("=== Demo Complete ===")

@@ -1,0 +1,95 @@
+// WebSocket Server Demo
+// Demonstrates full WebSocket server functionality in Sentra
+
+log("=== Sentra WebSocket Server Demo ===")
+log("")
+
+// Create WebSocket server
+let server = ws_listen("127.0.0.1", 8765)
+
+if (server) {
+    log("WebSocket server created successfully")
+    log("  Server ID: " + server["id"])
+    log("  Address: " + server["address"])
+    log("  Port: " + str(server["port"]))
+    log("")
+    log("Server is listening on ws://127.0.0.1:8765")
+    log("")
+    
+    // Keep track of connected clients
+    let clients = []
+    let running = true
+    let messageCount = 0
+    
+    log("Waiting for client connections...")
+    log("(Connect using a WebSocket client or run websocket_client_demo.sn)")
+    log("")
+    
+    // Main server loop
+    while (running && messageCount < 10) {
+        // Check for new connections (non-blocking with timeout)
+        let newClient = ws_server_wait_connection(server["id"], 1)
+        
+        if (newClient) {
+            log("New client connected: " + newClient["id"])
+            push(clients, newClient["id"])
+            
+            // Send welcome message to new client
+            ws_server_send_to(server["id"], newClient["id"], 
+                "Welcome to Sentra WebSocket Server!")
+            
+            // Broadcast to all clients about new connection
+            ws_server_broadcast(server["id"], 
+                "New client joined. Total clients: " + str(len(clients)))
+        }
+        
+        // Check for messages from each client
+        for (let i = 0; i < len(clients); i = i + 1) {
+            let clientID = clients[i]
+            let message = ws_server_receive_from(server["id"], clientID)
+            
+            if (message) {
+                messageCount = messageCount + 1
+                log("Received from " + clientID + ": " + message)
+                
+                // Echo back to sender
+                ws_server_send_to(server["id"], clientID, 
+                    "Echo: " + message)
+                
+                // Broadcast to all other clients
+                ws_server_broadcast(server["id"], 
+                    "Client " + clientID + " says: " + message)
+                
+                // Check for exit command
+                if (message == "exit") {
+                    running = false
+                    log("Exit command received, shutting down...")
+                }
+            }
+        }
+        
+        // Send periodic ping to all clients
+        if (messageCount % 3 == 0) {
+            ws_server_broadcast(server["id"], "PING from server")
+        }
+    }
+    
+    // Graceful shutdown
+    log("")
+    log("Shutting down server...")
+    
+    // Disconnect all clients
+    for (let i = 0; i < len(clients); i = i + 1) {
+        ws_server_disconnect(server["id"], clients[i])
+    }
+    
+    // Stop the server
+    ws_server_stop(server["id"])
+    log("Server stopped")
+    
+} else {
+    log("Failed to create WebSocket server")
+}
+
+log("")
+log("=== Demo Complete ===")
