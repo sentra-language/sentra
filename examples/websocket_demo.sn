@@ -1,0 +1,177 @@
+// WebSocket Demo
+// Demonstrates WebSocket client functionality in Sentra
+
+// WebSocket echo client
+fn test_echo_client() {
+    println("Testing WebSocket echo client...")
+    
+    // Connect to public echo server
+    let conn = ws_connect("wss://echo.websocket.org")
+    
+    if (conn) {
+        println("Connected to:", conn["url"])
+        println("Connection ID:", conn["id"])
+        
+        // Send a message
+        let sent = ws_send(conn["id"], "Hello from Sentra!")
+        if (sent) {
+            println("Message sent successfully")
+            
+            // Receive echo response (5 second timeout)
+            let response = ws_receive(conn["id"], 5)
+            if (response) {
+                println("Received echo:", response)
+            }
+        }
+        
+        // Send binary data
+        let binary_sent = ws_send_binary(conn["id"], "Binary data test")
+        if (binary_sent) {
+            println("Binary data sent")
+        }
+        
+        // Ping the server
+        let ping_ok = ws_ping(conn["id"])
+        if (ping_ok) {
+            println("Ping sent successfully")
+        }
+        
+        // Close connection
+        ws_close(conn["id"])
+        println("Connection closed")
+    }
+    
+    println()
+}
+
+// WebSocket server example
+fn test_websocket_server() {
+    println("Testing WebSocket server...")
+    
+    // Create a WebSocket server
+    let server = ws_listen("127.0.0.1", 8765)
+    
+    if (server) {
+        println("WebSocket server listening on", server["address"], "port", server["port"])
+        println("Server ID:", server["id"])
+        println()
+        
+        // Note: In a real application, you would handle client connections
+        // This is just a demo of server creation
+        
+        println("Server created successfully (demo mode - not accepting connections)")
+    }
+    
+    println()
+}
+
+// Multiple connections test
+fn test_multiple_connections() {
+    println("Testing multiple WebSocket connections...")
+    
+    let connections = []
+    
+    // Create multiple connections
+    for (let i = 0; i < 3; i = i + 1) {
+        let conn = ws_connect("wss://echo.websocket.org")
+        if (conn) {
+            push(connections, conn)
+            println("Created connection", i + 1, "with ID:", conn["id"])
+        }
+    }
+    
+    // Send messages from each connection
+    for (let i = 0; i < len(connections); i = i + 1) {
+        let conn = connections[i]
+        let message = "Message from connection " + str(i + 1)
+        ws_send(conn["id"], message)
+        println("Sent:", message)
+    }
+    
+    // Receive responses
+    for (let i = 0; i < len(connections); i = i + 1) {
+        let conn = connections[i]
+        let response = ws_receive(conn["id"], 2)
+        if (response) {
+            println("Connection", i + 1, "received:", response)
+        }
+    }
+    
+    // Close all connections
+    for (let i = 0; i < len(connections); i = i + 1) {
+        ws_close(connections[i]["id"])
+    }
+    
+    println("All connections closed")
+    println()
+}
+
+// Error handling test
+fn test_error_handling() {
+    println("Testing WebSocket error handling...")
+    
+    try {
+        // Try to connect to invalid URL
+        let conn = ws_connect("ws://invalid-websocket-url-12345.com")
+        println("Connection:", conn)
+    } catch (e) {
+        println("Error caught:", e)
+    }
+    
+    try {
+        // Try to send to non-existent connection
+        ws_send("invalid_connection_id", "test")
+    } catch (e) {
+        println("Send error caught:", e)
+    }
+    
+    println()
+}
+
+// Chat client simulation
+fn simulate_chat_client() {
+    println("Simulating chat client...")
+    
+    let conn = ws_connect("wss://echo.websocket.org")
+    
+    if (conn) {
+        let messages = [
+            "User joined the chat",
+            "Hello everyone!",
+            "How is everyone doing?",
+            "Goodbye!",
+            "User left the chat"
+        ]
+        
+        for (let i = 0; i < len(messages); i = i + 1) {
+            let msg = messages[i]
+            println("[SEND]", msg)
+            ws_send(conn["id"], msg)
+            
+            let response = ws_receive(conn["id"], 1)
+            if (response) {
+                println("[RECV]", response)
+            }
+        }
+        
+        ws_close(conn["id"])
+    }
+    
+    println()
+}
+
+// Main execution
+fn main() {
+    println("=== Sentra WebSocket Demo ===")
+    println()
+    
+    test_echo_client()
+    test_websocket_server()
+    test_multiple_connections()
+    test_error_handling()
+    simulate_chat_client()
+    
+    println("=== Demo Complete ===")
+}
+
+main()

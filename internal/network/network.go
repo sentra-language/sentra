@@ -20,6 +20,8 @@ type NetworkModule struct {
 	Sockets      map[string]*Socket
 	Listeners    map[string]*Listener
 	PacketBuffer []PacketInfo
+	WebSockets   map[string]*WebSocketConn
+	WSServers    map[string]*WebSocketServer
 	mu           sync.RWMutex
 }
 
@@ -84,6 +86,8 @@ func NewNetworkModule() *NetworkModule {
 		Sockets:      make(map[string]*Socket),
 		Listeners:    make(map[string]*Listener),
 		PacketBuffer: make([]PacketInfo, 0, 1000),
+		WebSockets:   make(map[string]*WebSocketConn),
+		WSServers:    make(map[string]*WebSocketServer),
 	}
 }
 

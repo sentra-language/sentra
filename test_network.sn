@@ -1,0 +1,32 @@
+// Simple network test
+log("Testing network functions...")
+
+// Test HTTP GET
+log("HTTP GET test...")
+let response = http_get("https://api.github.com/zen")
+if (response) {
+    log("  Status: " + str(response["status_code"]))
+    log("  Body length: " + str(len(response["body"])))
+} else {
+    log("  HTTP GET failed")
+}
+
+// Test WebSocket
+log("WebSocket test...")
+let conn = ws_connect("wss://echo.websocket.org")
+if (conn) {
+    log("  Connected: " + conn["id"])
+    let sent = ws_send(conn["id"], "test")
+    if (sent) {
+        log("  Message sent")
+        let msg = ws_receive(conn["id"], 2)
+        if (msg) {
+            log("  Echo: " + msg)
+        }
+    }
+    ws_close(conn["id"])
+} else {
+    log("  WebSocket connection failed")
+}
+
+log("Network test complete!")
