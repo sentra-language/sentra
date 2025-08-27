@@ -1,6 +1,8 @@
 ---
 layout: default
-title: Sentra Tutorial
+title: Tutorial
+nav_order: 2
+has_children: true
 permalink: /tutorial/
 ---
 

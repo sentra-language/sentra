@@ -1,7 +1,11 @@
 ---
 layout: home
-title: Sentra Programming Language
+title: Home
+nav_order: 1
+permalink: /
 ---
+
+# Sentra Programming Language
 
 <div class="hero-section">
   <div class="hero-content">
