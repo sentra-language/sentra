@@ -402,10 +402,18 @@ fn analyze_network() {
 
 Now that you understand network programming:
 
-- [Security Module](security-module/) - Security tools and vulnerability scanning
-- [SIEM Module](siem-module/) - Log analysis and threat detection  
-- [Concurrency](concurrency/) - Pools and parallel processing
-- [Real Examples](real-examples/) - Complete applications
+- [Security Module](../security-module/) - Security tools and vulnerability scanning
+- [Project Management](../project-management/) - Managing larger projects
+- [Network Functions Reference](../../reference/language/) - Complete API documentation
+- [Examples on GitHub](https://github.com/sentra-language/sentra/tree/main/examples) - Sample network applications
+
+---
+
+{: .fs-6 .fw-300 }
+With network programming mastered, let's explore Sentra's built-in security tools and vulnerability scanning capabilities.
+
+[← Previous: Standard Library](../standard-library/){: .btn .btn-outline .mr-2 }
+[Next: Security Module →](../security-module/){: .btn .btn-primary }
 
 ---
 

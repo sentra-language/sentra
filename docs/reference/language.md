@@ -6,6 +6,12 @@ nav_order: 1
 ---
 
 # Sentra Language Reference
+{: .fs-9 }
+
+Complete reference for Sentra's syntax, operators, control structures, and language features.
+{: .fs-6 .fw-300 }
+
+---
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -876,8 +882,19 @@ try {
 
 Sentra provides a simple yet powerful programming environment optimized for security tasks. Its built-in security modules, clean syntax, and robust standard library make it an excellent choice for security automation, compliance checking, and defensive security tools.
 
-For more information:
-- [Security Modules Documentation](SECURITY_MODULES.md)
-- [Standard Library Reference](STDLIB_REFERENCE.md)
-- [Examples Directory](../examples/)
-- [Quick Start Guide](QUICK_START.md)
+---
+
+{: .fs-6 .fw-300 }
+For detailed information about built-in functions and modules, check out the Standard Library reference.
+
+[← Back to Reference](../){: .btn .btn-outline .mr-2 }
+[Standard Library Reference →](../stdlib/){: .btn .btn-primary }
+
+---
+
+## Related Documentation
+
+- [Tutorial: Language Basics](../../tutorial/language-basics/) - Learn with examples
+- [Standard Library Reference](../stdlib/) - All built-in functions  
+- [Quick Reference](../quick/) - Cheat sheet for common operations
+- [Examples on GitHub](https://github.com/sentra-language/sentra/tree/main/examples) - Real-world code

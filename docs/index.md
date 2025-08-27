@@ -107,14 +107,9 @@ curl.exe -L https://github.com/sentra-language/sentra/releases/latest/download/s
 
 Ready to start building security tools with Sentra?
 
-**[Begin Tutorial](tutorial/)**{: .btn .btn-green }
-Learn the language step-by-step with hands-on examples
-
-**[Quick Start](quick-start/)**{: .btn .btn-blue } 
-Get up and running in 5 minutes
-
-**[Language Reference](reference/)**{: .btn .btn-purple }
-Complete documentation and API reference
+**[Quick Start Guide](quick-start/)**{: .btn .btn-primary .mr-2 }
+**[Complete Tutorial](tutorial/)**{: .btn .btn-green .mr-2 }
+**[Language Reference](reference/)**{: .btn .btn-outline }
 
 ---
 
