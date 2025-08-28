@@ -1,0 +1,29 @@
+// Simple SQLite test with sql_ prefix
+log("Testing SQL database bindings...")
+
+// Connect to SQLite database
+let connected = sql_connect("test", "sqlite", ":memory:")
+log("Connected: " + str(connected))
+
+// Create table
+let create = sql_execute("test", "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)")
+log("Table created: " + str(create))
+
+// Insert data
+let inserted = sql_execute("test", "INSERT INTO users (name) VALUES (?)", "Alice")
+log("Inserted rows: " + str(inserted))
+
+// Query data
+let users = sql_query("test", "SELECT * FROM users")
+log("Users found: " + str(len(users)))
+if len(users) > 0 {
+    log("First user: " + str(users[0]))
+}
+
+// Query one
+let user = sql_query_one("test", "SELECT * FROM users WHERE name = ?", "Alice")
+log("Found user: " + str(user))
+
+// Close connection
+sql_close("test")
+log("Database test complete!")

@@ -1,0 +1,5 @@
+// Minimal database test
+log("Test 1: Connect")
+let result = db_connect("mydb", "sqlite", ":memory:")
+log("Result: " + str(result))
+log("Test complete")

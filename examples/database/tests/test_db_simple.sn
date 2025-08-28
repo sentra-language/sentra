@@ -1,0 +1,22 @@
+// Simple SQLite test
+log("Testing database bindings...")
+
+// Connect to SQLite database
+let connected = db_connect("test", "sqlite", ":memory:")
+log("Connected: " + str(connected))
+
+// Create table
+let create = db_execute("test", "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)")
+log("Table created")
+
+// Insert data
+let inserted = db_execute("test", "INSERT INTO users (name) VALUES (?)", "Alice")
+log("Inserted rows: " + str(inserted))
+
+// Query data
+let users = db_query("test", "SELECT * FROM users")
+log("Users: " + str(users))
+
+// Close connection
+db_close("test")
+log("Done!")
