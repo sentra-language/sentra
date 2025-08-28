@@ -1,0 +1,9 @@
+// Module with inline for loop
+
+export fn test_inline() {
+    log("Testing inline range in module...")
+    for i in range(0, 3) {
+        log("  i = " + str(i))
+    }
+    return true
+}

@@ -1,0 +1,17 @@
+// Validator-like module
+
+export fn validate_email(email) {
+    log("Validator: validate_email called with: " + email)
+    
+    // Use built-in functions
+    let email_str = str(email)
+    let email_len = len(email_str)
+    
+    log("Validator: Length is " + str(email_len))
+    
+    // Test contains
+    let has_at = contains(email_str, "@")
+    log("Validator: contains @ = " + str(has_at))
+    
+    return has_at
+}

@@ -58,15 +58,17 @@ func (ml *ModuleLoader) LoadFileModule(path string) (*Module, error) {
 	
 	// Need write lock for the rest
 	ml.mu.Lock()
-	defer ml.mu.Unlock()
+	// Note: We manually manage unlock/relock during execution
 	
 	// Check again in case another goroutine loaded it
 	if mod, exists := ml.cache[resolvedPath]; exists {
+		ml.mu.Unlock()
 		return mod, nil
 	}
 	
 	// Check for circular dependencies
 	if ml.loading[resolvedPath] {
+		ml.mu.Unlock()
 		return nil, fmt.Errorf("circular dependency detected: %s", path)
 	}
 	
@@ -77,6 +79,7 @@ func (ml *ModuleLoader) LoadFileModule(path string) (*Module, error) {
 	// Read the file
 	source, err := os.ReadFile(resolvedPath)
 	if err != nil {
+		ml.mu.Unlock()
 		return nil, fmt.Errorf("failed to read module %s: %v", path, err)
 	}
 	
@@ -85,6 +88,7 @@ func (ml *ModuleLoader) LoadFileModule(path string) (*Module, error) {
 	tokens := scanner.ScanTokens()
 	
 	if scanner.HadError() {
+		ml.mu.Unlock()
 		return nil, fmt.Errorf("syntax errors in module %s", path)
 	}
 	
@@ -101,6 +105,7 @@ func (ml *ModuleLoader) LoadFileModule(path string) (*Module, error) {
 	}()
 	
 	if err != nil {
+		ml.mu.Unlock()
 		return nil, err
 	}
 	
@@ -150,11 +155,27 @@ func (ml *ModuleLoader) LoadFileModule(path string) (*Module, error) {
 	if err != nil {
 		// Remove from cache on error
 		delete(ml.cache, resolvedPath)
+		ml.mu.Unlock()
 		return nil, fmt.Errorf("error executing module %s: %v", path, err)
+	}
+	
+	// Store module's globals and global map for function context switching
+	module.Globals = make([]Value, len(moduleVM.globals))
+	copy(module.Globals, moduleVM.globals)
+	module.GlobalMap = make(map[string]int)
+	for k, v := range moduleVM.globalMap {
+		module.GlobalMap[k] = v
+	}
+	
+	for _, value := range module.Exports {
+		if fn, ok := value.(*Function); ok {
+			fn.Module = module
+		}
 	}
 	
 	module.Loaded = true
 	
+	ml.mu.Unlock() // Final unlock
 	return module, nil
 }
 

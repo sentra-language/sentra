@@ -4,7 +4,7 @@ let counter = 0
 
 export fn generate() {
     counter = counter + 1
-    let timestamp = now()
+    let timestamp = time()
     
     // Create unique ID combining timestamp and counter
     return "id_" + str(timestamp) + "_" + str(counter)

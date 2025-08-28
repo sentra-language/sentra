@@ -1,0 +1,12 @@
+// Test export/import mechanism
+
+// Test module
+export fn test_function() {
+    log("Test function called")
+    return "OK"
+}
+
+// Test calling it locally
+log("Testing locally...")
+let result = test_function()
+log("Result: " + result)

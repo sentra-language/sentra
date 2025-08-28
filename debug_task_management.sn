@@ -1,0 +1,25 @@
+// Debug version - find where the error occurs
+
+import "./example-project/src/app.sn" as app
+import "./example-project/config/settings.sn" as config
+
+fn main() {
+    log("================================")
+    log("Task Management System v" + config.VERSION)
+    log("================================")
+    log("")
+    
+    log("DEBUG: About to call app.initialize()")
+    // Initialize application
+    app.initialize()
+    
+    log("DEBUG: app.initialize() completed")
+    
+    // Run the application
+    log("DEBUG: About to call app.run()")
+    app.run()
+    log("DEBUG: app.run() completed")
+}
+
+// Entry point
+main()

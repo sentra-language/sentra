@@ -8,8 +8,8 @@ export fn new(id, title, priority, assigned_to) {
         "priority": priority,  // High, Medium, Low
         "status": "pending",    // pending, in_progress, completed
         "assigned_to": assigned_to,
-        "created_at": now(),
-        "updated_at": now(),
+        "created_at": time(),
+        "updated_at": time(),
         "completed_at": null,
         "tags": [],
         "attachments": []
@@ -22,12 +22,12 @@ export fn validate(task) {
     }
     
     let valid_priorities = ["High", "Medium", "Low"]
-    if !contains(valid_priorities, task["priority"]) {
+    if !array_contains(valid_priorities, task["priority"]) {
         return false
     }
     
     let valid_statuses = ["pending", "in_progress", "completed"]
-    if !contains(valid_statuses, task["status"]) {
+    if !array_contains(valid_statuses, task["status"]) {
         return false
     }
     
@@ -46,7 +46,7 @@ export fn is_high_priority(task) {
     return task["priority"] == "High"
 }
 
-fn contains(arr, value) {
+fn array_contains(arr, value) {
     for item in arr {
         if item == value {
             return true

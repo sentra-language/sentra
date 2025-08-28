@@ -1,0 +1,33 @@
+// Test basic built-in functions
+log("Testing built-ins...")
+
+// Test array operations
+let arr = [1, 2, 3, 4, 5]
+log("Array: " + str(arr))
+log("Array length: " + len(arr))
+
+// Test string operations  
+let text = "hello world"
+log("String: " + text)
+log("String length: " + len(text))
+
+// Test string functions
+log("char_at(text, 0): " + char_at(text, 0))
+log("char_at(text, 6): " + char_at(text, 6))
+log("slice(text, 6): " + slice(text, 6))
+log("contains(text, 'world'): " + str(contains(text, "world")))
+
+// Test range function
+let range_arr = range(0, 5)
+log("Range(0, 5): " + str(range_arr))
+
+// Test time functions
+let now_time = now()
+log("Current time: " + now_time)
+log("Formatted time: " + format_timestamp(now_time))
+
+// Test for-in loop (should work)
+log("For-in array:")
+for item in arr {
+    log("  Item: " + item)
+}

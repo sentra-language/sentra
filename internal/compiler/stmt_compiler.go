@@ -15,6 +15,7 @@ type StmtCompiler struct {
 	locals          []string      // Track local variables in current function
 	localCount      int           // Number of locals
 	parent          *StmtCompiler // Parent compiler for closures
+	knownGlobals    map[string]bool // Known global variables/functions for reference checking
 }
 
 type Function struct {
@@ -27,6 +28,7 @@ type Function struct {
 func NewStmtCompiler() *StmtCompiler {
 	return &StmtCompiler{
 		Chunk: bytecode.NewChunk(),
+		knownGlobals: make(map[string]bool),
 		currentFunction: &Function{
 			Name:   "<script>",
 			Arity:  0,
@@ -39,6 +41,7 @@ func NewStmtCompiler() *StmtCompiler {
 func NewStmtCompilerWithDebug(fileName string) *StmtCompiler {
 	return &StmtCompiler{
 		Chunk: bytecode.NewChunk(),
+		knownGlobals: make(map[string]bool),
 		currentFunction: &Function{
 			Name:   "<script>",
 			Arity:  0,

@@ -1,0 +1,6 @@
+// Test the debug module
+import "./debug_module.sn" as debug
+
+log("Calling debug.test()...")
+let result = debug.test()
+log("Result: " + result)

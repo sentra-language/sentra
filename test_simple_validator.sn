@@ -1,0 +1,39 @@
+// Test simple validator inline
+
+log("Testing validator inline...")
+
+fn is_valid_email(email) {
+    if !email {
+        return false
+    }
+    
+    // Convert to string
+    let email_str = str(email)
+    
+    log("DEBUG: email_str = " + email_str)
+    log("DEBUG: email_str length = " + str(len(email_str)))
+    
+    // Check for @ symbol
+    let at_count = 0
+    let at_pos = -1
+    
+    log("DEBUG: Creating range...")
+    let range_result = range(0, len(email_str))
+    log("DEBUG: Range created: " + str(range_result))
+    
+    for i in range_result {
+        log("DEBUG: Checking index " + str(i))
+        if char_at(email_str, i) == "@" {
+            at_count = at_count + 1
+            at_pos = i
+        }
+    }
+    
+    log("DEBUG: at_count = " + str(at_count))
+    log("DEBUG: at_pos = " + str(at_pos))
+    
+    return at_count == 1
+}
+
+let result = is_valid_email("test@example.com")
+log("Result: " + str(result))

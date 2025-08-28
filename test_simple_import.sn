@@ -1,0 +1,10 @@
+// Test importing simple validator
+
+import "./simple_validator.sn" as validator
+
+log("Testing import...")
+log("About to call validator.is_valid_email...")
+
+let result = validator.is_valid_email("test@example.com")
+
+log("Result: " + str(result))

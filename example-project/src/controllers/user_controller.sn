@@ -10,11 +10,11 @@ let users = []
 
 export fn create_user(username, email, password) {
     // Validate input
-    if !validator.is_valid_email(email) {
+    if !(validator.is_valid_email(email)) {
         throw "Invalid email address"
     }
     
-    if !validator.is_valid_username(username) {
+    if !(validator.is_valid_username(username)) {
         throw "Invalid username"
     }
     
@@ -81,11 +81,12 @@ export fn authenticate(username, password) {
     
     if hash.verify_password(password, user["password_hash"]) {
         // Update last login
-        user["last_login"] = now()
+        user["last_login"] = time()
         
         // Don't return password hash
         let safe_user = {}
-        for key in keys(user) {
+        let user_keys = keys(user)
+        for key in user_keys {
             if key != "password_hash" {
                 safe_user[key] = user[key]
             }
@@ -115,7 +116,7 @@ export fn update_user(id, updates) {
         }
     }
     
-    user["updated_at"] = now()
+    user["updated_at"] = time()
     
     // Update in database
     if db.is_connected() {
@@ -132,7 +133,7 @@ export fn change_password(id, old_password, new_password) {
     }
     
     // Verify old password
-    if !hash.verify_password(old_password, user["password_hash"]) {
+    if !(hash.verify_password(old_password, user["password_hash"])) {
         throw "Invalid current password"
     }
     
@@ -143,7 +144,7 @@ export fn change_password(id, old_password, new_password) {
     
     // Update password
     user["password_hash"] = hash.hash_password(new_password)
-    user["updated_at"] = now()
+    user["updated_at"] = time()
     
     // Save to database
     if db.is_connected() {

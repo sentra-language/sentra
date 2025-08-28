@@ -1,0 +1,11 @@
+// Minimal test - just define and call one function
+log("START")
+
+fn test() {
+    return "HELLO"
+}
+
+log("Function defined, calling it...")
+let result = test()
+log("Result: " + result)
+log("END")

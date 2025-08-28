@@ -1,0 +1,36 @@
+// Test file documenting VM bugs found in module system
+// Bug 1: Negation operator before function calls doesn't work in modules
+// Bug 2: for-in loops with range() return nil instead of numbers in modules
+
+// BUG 1: Negation before function calls
+fn test_function() {
+    return true
+}
+
+// This fails in modules (attempt to call non-function):
+// if !test_function() { ... }
+
+// Workaround - add parentheses:
+// if !(test_function()) { ... }
+
+// BUG 2: for-in loops with range
+fn test_iteration() {
+    let arr = ["a", "b", "c"]
+    let indices = range(0, len(arr))
+    
+    // This fails in modules (i becomes nil):
+    // for i in indices {
+    //     let ch = char_at("test", i)  // Error: expects number, got nil
+    // }
+    
+    // Workaround - use while loop:
+    let i = 0
+    while i < len(arr) {
+        let ch = char_at("test", i)  // Works correctly
+        i = i + 1
+    }
+}
+
+// Both bugs only occur when code is in imported modules
+// They work fine in main execution context
+log("Module system bugs documented - see workarounds above")

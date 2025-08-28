@@ -1,0 +1,7 @@
+// Test importing module that uses contains
+
+import "./test_module_contains.sn" as mod
+
+log("Testing...")
+let result = mod.test_contains()
+log("Final result: " + str(result))

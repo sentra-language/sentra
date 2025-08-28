@@ -1,0 +1,5 @@
+import "./simple_module.sn" as sm
+
+log("Main: Calling module function...")
+let result = sm.callSimple()
+log("Main: Final result: " + result)

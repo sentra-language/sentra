@@ -1,0 +1,11 @@
+// Test range iteration types
+
+let indices = range(0, 3)
+log("Range: " + str(indices))
+
+for i in indices {
+    log("i = " + str(i))
+    log("char_at test with i...")
+    let ch = char_at("hello", i)
+    log("  char = " + ch)
+}

@@ -1,0 +1,6 @@
+// Module A - Bottom level module
+
+export fn function_a() {
+    log("Module A: function_a called")
+    return "A"
+}

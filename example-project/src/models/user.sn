@@ -18,8 +18,8 @@ export fn new(id, username, email, password_hash) {
             "notifications": true,
             "theme": "light"
         },
-        "created_at": now(),
-        "updated_at": now(),
+        "created_at": time(),
+        "updated_at": time(),
         "last_login": null
     }
 }
@@ -59,7 +59,7 @@ export fn is_active(user) {
     return user["status"] == "active"
 }
 
-fn contains(str, substr) {
+fn string_contains(str, substr) {
     // Simple contains implementation
     return index_of(str, substr) >= 0
 }
@@ -70,14 +70,14 @@ fn index_of(str, substr) {
     let sub_len = len(substr)
     
     for i in range(0, str_len - sub_len + 1) {
-        let match = true
+        let found = true
         for j in range(0, sub_len) {
             if str[i + j] != substr[j] {
-                match = false
+                found = false
                 break
             }
         }
-        if match {
+        if found {
             return i
         }
     }

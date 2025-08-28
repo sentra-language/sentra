@@ -1,0 +1,27 @@
+// Test negation with function calls
+
+fn test_func() {
+    log("test_func called")
+    return true
+}
+
+log("Test 1: Direct call")
+let result1 = test_func()
+log("Result: " + str(result1))
+
+log("Test 2: Negated call with parens")
+let result2 = !(test_func())
+log("Result: " + str(result2))
+
+log("Test 3: Store then negate")
+let temp_result = test_func()
+let negated = !temp_result
+log("Negated result: " + str(negated))
+
+log("Test 4: In if statement with temp var")
+let check_result = test_func()
+if !check_result {
+    log("Condition was true (function returned false)")
+} else {
+    log("Condition was false (function returned true)")
+}

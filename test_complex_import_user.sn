@@ -1,0 +1,27 @@
+// User controller-like module
+
+import "./test_complex_import_validator.sn" as validator
+
+export fn create_user(email) {
+    log("User: create_user called")
+    log("User: validator = " + str(validator))
+    
+    // Try to access the function directly
+    log("User: validator.validate_email = " + str(validator.validate_email))
+    log("User: About to validate email")
+    
+    let validate_fn = validator.validate_email
+    log("User: validate_fn = " + str(validate_fn))
+    
+    // Try calling directly on the module
+    let result = validator.validate_email(email)
+    log("User: Direct call result = " + str(result))
+    
+    if !result {
+        log("User: Email invalid")
+        return null
+    }
+    
+    log("User: Email valid")
+    return {"email": email}
+}

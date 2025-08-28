@@ -1,0 +1,15 @@
+// Test validator module directly
+
+import "./example-project/src/utils/validator.sn" as validator
+
+log("Testing validator...")
+
+log("Test 1: is_valid_email")
+let result1 = validator.is_valid_email("test@example.com")
+log("Result: " + str(result1))
+
+log("Test 2: is_valid_username")
+let result2 = validator.is_valid_username("admin")
+log("Result: " + str(result2))
+
+log("All tests completed")

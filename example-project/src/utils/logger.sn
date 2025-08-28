@@ -11,7 +11,7 @@ let LOG_LEVELS = {
 let current_level = LOG_LEVELS["INFO"]
 
 export fn set_level(level) {
-    if has_key(LOG_LEVELS, level) {
+    if LOG_LEVELS[level] != null {
         current_level = LOG_LEVELS[level]
     }
 }
@@ -46,7 +46,7 @@ export fn fatal(message) {
 }
 
 fn log_message(level, message) {
-    let timestamp = format_timestamp(now())
+    let timestamp = format_timestamp(time())
     let output = timestamp + " [" + level + "] " + message
     log(output)
     
@@ -59,11 +59,3 @@ fn format_timestamp(time) {
     return str(time)
 }
 
-fn has_key(map, key) {
-    for k in keys(map) {
-        if k == key {
-            return true
-        }
-    }
-    return false
-}

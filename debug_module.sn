@@ -1,0 +1,21 @@
+// Simple module to test function hoisting
+log("Module starting...")
+
+fn helper() {
+    log("Helper function called")
+    return 42
+}
+
+fn testFunc() {
+    log("testFunc calling helper...")
+    let result = helper()
+    log("helper returned: " + result)
+    return result
+}
+
+export fn test() {
+    log("Exported test function called")
+    return testFunc()
+}
+
+log("Module loaded")

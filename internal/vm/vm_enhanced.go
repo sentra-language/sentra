@@ -43,12 +43,13 @@ type iterState struct {
 // EnhancedCallFrame represents a call frame with proper local storage
 // This implements a hybrid approach where each frame has its own locals
 type EnhancedCallFrame struct {
-	ip         int              // Instruction pointer
-	chunk      *bytecode.Chunk  // Bytecode chunk
-	slotBase   int              // Base of stack for this frame
-	locals     []Value          // Separate storage for local variables
-	localCount int              // Number of locals
-	function   interface{}      // Function being executed (for debugging)
+	ip            int              // Instruction pointer
+	chunk         *bytecode.Chunk  // Bytecode chunk
+	slotBase      int              // Base of stack for this frame
+	locals        []Value          // Separate storage for local variables
+	localCount    int              // Number of locals
+	function      interface{}      // Function being executed (for debugging)
+	restoreGlobals func()          // Function to restore previous global context
 }
 
 // ScopeFrame represents a lexical scope within a function
@@ -173,6 +174,15 @@ func (vm *EnhancedVM) SetFilePath(path string) {
 		dir := filepath.Dir(path)
 		vm.moduleLoader.SetCurrentDirectory(dir)
 	}
+}
+
+// getGlobalNames returns the names of all defined globals for debugging
+func (vm *EnhancedVM) getGlobalNames() []string {
+	names := make([]string, 0, len(vm.globalMap))
+	for name := range vm.globalMap {
+		names = append(names, name)
+	}
+	return names
 }
 
 // precacheConstants converts chunk constants to Values
@@ -310,9 +320,24 @@ func (vm *EnhancedVM) Run() (Value, error) {
 		// Constants and literals
 		case bytecode.OpConstant:
 			constIndex := vm.readByte()
-			// Always use the current frame's constants
-			if int(constIndex) < len(frame.chunk.Constants) {
-				vm.push(frame.chunk.Constants[constIndex])
+			// Use converted constants if available, otherwise raw constants
+			if frame.chunk == vm.chunk && int(constIndex) < len(vm.constCache) {
+				// Use main chunk's converted constants
+				vm.push(vm.constCache[constIndex])
+			} else if int(constIndex) < len(frame.chunk.Constants) {
+				// For function chunks, convert on the fly
+				constVal := frame.chunk.Constants[constIndex]
+				if compilerFn, ok := constVal.(*compiler.Function); ok {
+					// Convert compiler.Function to vm.Function
+					vmFn := &Function{
+						Name:  compilerFn.Name,
+						Arity: compilerFn.Arity,
+						Chunk: compilerFn.Chunk,
+					}
+					vm.push(vmFn)
+				} else {
+					vm.push(constVal)
+				}
 			} else {
 				panic(fmt.Sprintf("constant index %d out of bounds", constIndex))
 			}
@@ -908,6 +933,12 @@ func (vm *EnhancedVM) Run() (Value, error) {
 				result = vm.pop()
 			}
 			vm.stackTop = frame.slotBase
+			
+			// Restore global context if this was a module function
+			if frame.restoreGlobals != nil {
+				frame.restoreGlobals()
+			}
+			
 			vm.frameCount--
 			if vm.frameCount == 0 {
 				return result, nil
@@ -1327,6 +1358,24 @@ func (vm *EnhancedVM) performCall(argCount int) {
 		// Remove the function from stack
 		vm.stackTop--
 		
+		// If this function belongs to a module, switch to module globals
+		var restoreGlobals func()
+		if fn.Module != nil && len(fn.Module.Globals) > 0 {
+			// Save current globals context
+			savedGlobals := vm.globals
+			savedGlobalMap := vm.globalMap
+			
+			// Switch to module globals
+			vm.globals = fn.Module.Globals
+			vm.globalMap = fn.Module.GlobalMap
+			
+			// Create restore function
+			restoreGlobals = func() {
+				vm.globals = savedGlobals
+				vm.globalMap = savedGlobalMap
+			}
+		}
+		
 		// Set up new frame - args are already on the stack
 		if vm.frameCount >= vm.maxFrames {
 			panic("call stack overflow")
@@ -1340,12 +1389,13 @@ func (vm *EnhancedVM) performCall(argCount int) {
 		}
 		
 		vm.frames[vm.frameCount] = EnhancedCallFrame{
-			ip:         0,
-			slotBase:   vm.stackTop - argCount,
-			chunk:      fn.Chunk,
-			locals:     newLocals,
-			localCount: argCount,
-			function:   fn,
+			ip:            0,
+			slotBase:      vm.stackTop - argCount,
+			chunk:         fn.Chunk,
+			locals:        newLocals,
+			localCount:    argCount,
+			function:      fn,
+			restoreGlobals: restoreGlobals,
 		}
 		vm.frameCount++
 		
@@ -1877,6 +1927,8 @@ func (vm *EnhancedVM) registerBuiltins() {
 					return float64(len(v.Items)), nil
 				case string:
 					return float64(len(v)), nil
+				case *String:
+					return float64(len(v.Value)), nil
 				case *siem.Array:
 					return float64(len(v.Elements)), nil
 				case *siem.Map:
@@ -1887,6 +1939,349 @@ func (vm *EnhancedVM) registerBuiltins() {
 					return float64(len(v)), nil
 				default:
 					return nil, fmt.Errorf("len() not supported for type %T", v)
+				}
+			},
+		},
+		"char_at": {
+			Name:  "char_at",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("char_at expects 2 arguments")
+				}
+				
+				var str string
+				switch v := args[0].(type) {
+				case string:
+					str = v
+				case *String:
+					str = v.Value
+				default:
+					return nil, fmt.Errorf("char_at expects string as first argument")
+				}
+				
+				index, ok := args[1].(float64)
+				if !ok {
+					return nil, fmt.Errorf("char_at expects number as second argument")
+				}
+				
+				idx := int(index)
+				if idx < 0 || idx >= len(str) {
+					return nil, nil  // Return null for out of bounds
+				}
+				
+				return string(str[idx]), nil
+			},
+		},
+		"range": {
+			Name:  "range",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("range expects 2 arguments")
+				}
+				
+				start, ok := args[0].(float64)
+				if !ok {
+					return nil, fmt.Errorf("range expects number as first argument")
+				}
+				
+				end, ok := args[1].(float64)
+				if !ok {
+					return nil, fmt.Errorf("range expects number as second argument")
+				}
+				
+				result := &Array{Elements: make([]Value, 0)}
+				for i := int(start); i < int(end); i++ {
+					result.Elements = append(result.Elements, float64(i))
+				}
+				
+				return result, nil
+			},
+		},
+		"slice": {
+			Name:  "slice",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("slice expects 2 arguments")
+				}
+				
+				var str string
+				switch v := args[0].(type) {
+				case string:
+					str = v
+				case *String:
+					str = v.Value
+				default:
+					return nil, fmt.Errorf("slice expects string as first argument")
+				}
+				
+				start, ok := args[1].(float64)
+				if !ok {
+					return nil, fmt.Errorf("slice expects number as second argument")
+				}
+				
+				idx := int(start)
+				if idx < 0 || idx >= len(str) {
+					return "", nil
+				}
+				
+				return str[idx:], nil
+			},
+		},
+		"contains": {
+			Name:  "contains",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("contains expects 2 arguments")
+				}
+				
+				var haystack string
+				switch v := args[0].(type) {
+				case string:
+					haystack = v
+				case *String:
+					haystack = v.Value
+				default:
+					return nil, fmt.Errorf("contains expects string as first argument")
+				}
+				
+				var needle string
+				switch v := args[1].(type) {
+				case string:
+					needle = v
+				case *String:
+					needle = v.Value
+				default:
+					return nil, fmt.Errorf("contains expects string as second argument")
+				}
+				
+				return strings.Contains(haystack, needle), nil
+			},
+		},
+		"keys": {
+			Name:  "keys",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("keys expects 1 argument")
+				}
+				
+				switch v := args[0].(type) {
+				case *Map:
+					result := &Array{Elements: make([]Value, 0)}
+					for key := range v.Items {
+						result.Elements = append(result.Elements, key)
+					}
+					return result, nil
+				default:
+					return nil, fmt.Errorf("keys expects map as argument")
+				}
+			},
+		},
+		"has_key": {
+			Name:  "has_key",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("has_key expects 2 arguments")
+				}
+				
+				switch mapVal := args[0].(type) {
+				case *Map:
+					key, ok := args[1].(string)
+					if !ok {
+						return false, nil
+					}
+					_, exists := mapVal.Items[key]
+					return exists, nil
+				default:
+					return false, nil
+				}
+			},
+		},
+		"char_code": {
+			Name:  "char_code",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("char_code expects 1 argument")
+				}
+				
+				var str string
+				switch v := args[0].(type) {
+				case string:
+					str = v
+				case *String:
+					str = v.Value
+				default:
+					return nil, fmt.Errorf("char_code expects string as argument")
+				}
+				
+				if len(str) == 0 {
+					return float64(0), nil
+				}
+				
+				return float64(str[0]), nil
+			},
+		},
+		// DateTime functions
+		"now": {
+			Name:  "now",
+			Arity: 0,
+			Function: func(args []Value) (Value, error) {
+				return float64(time.Now().Unix()), nil
+			},
+		},
+		"format_timestamp": {
+			Name:  "format_timestamp",
+			Arity: 1,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("format_timestamp expects 1 argument")
+				}
+				
+				timestamp, ok := args[0].(float64)
+				if !ok {
+					return nil, fmt.Errorf("format_timestamp expects number as argument")
+				}
+				
+				t := time.Unix(int64(timestamp), 0)
+				return t.Format("2006-01-02 15:04:05"), nil
+			},
+		},
+		"date_format": {
+			Name:  "date_format",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("date_format expects 2 arguments")
+				}
+				
+				timestamp, ok := args[0].(float64)
+				if !ok {
+					return nil, fmt.Errorf("date_format expects number as first argument")
+				}
+				
+				format, ok := args[1].(string)
+				if !ok {
+					return nil, fmt.Errorf("date_format expects string as second argument")
+				}
+				
+				t := time.Unix(int64(timestamp), 0)
+				return t.Format(format), nil
+			},
+		},
+		"parse_date": {
+			Name:  "parse_date",
+			Arity: 2,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 2 {
+					return nil, fmt.Errorf("parse_date expects 2 arguments")
+				}
+				
+				dateStr, ok := args[0].(string)
+				if !ok {
+					return nil, fmt.Errorf("parse_date expects string as first argument")
+				}
+				
+				format, ok := args[1].(string)
+				if !ok {
+					return nil, fmt.Errorf("parse_date expects string as second argument")
+				}
+				
+				t, err := time.Parse(format, dateStr)
+				if err != nil {
+					return nil, fmt.Errorf("parse_date error: %v", err)
+				}
+				
+				return float64(t.Unix()), nil
+			},
+		},
+		"date_add": {
+			Name:  "date_add",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 3 {
+					return nil, fmt.Errorf("date_add expects 3 arguments")
+				}
+				
+				timestamp, ok := args[0].(float64)
+				if !ok {
+					return nil, fmt.Errorf("date_add expects number as first argument")
+				}
+				
+				amount, ok := args[1].(float64)
+				if !ok {
+					return nil, fmt.Errorf("date_add expects number as second argument")
+				}
+				
+				unit, ok := args[2].(string)
+				if !ok {
+					return nil, fmt.Errorf("date_add expects string as third argument")
+				}
+				
+				t := time.Unix(int64(timestamp), 0)
+				switch unit {
+				case "seconds":
+					t = t.Add(time.Duration(amount) * time.Second)
+				case "minutes":
+					t = t.Add(time.Duration(amount) * time.Minute)
+				case "hours":
+					t = t.Add(time.Duration(amount) * time.Hour)
+				case "days":
+					t = t.AddDate(0, 0, int(amount))
+				case "months":
+					t = t.AddDate(0, int(amount), 0)
+				case "years":
+					t = t.AddDate(int(amount), 0, 0)
+				default:
+					return nil, fmt.Errorf("date_add: unknown unit '%s'", unit)
+				}
+				
+				return float64(t.Unix()), nil
+			},
+		},
+		"date_diff": {
+			Name:  "date_diff",
+			Arity: 3,
+			Function: func(args []Value) (Value, error) {
+				if len(args) != 3 {
+					return nil, fmt.Errorf("date_diff expects 3 arguments")
+				}
+				
+				timestamp1, ok := args[0].(float64)
+				if !ok {
+					return nil, fmt.Errorf("date_diff expects number as first argument")
+				}
+				
+				timestamp2, ok := args[1].(float64)
+				if !ok {
+					return nil, fmt.Errorf("date_diff expects number as second argument")
+				}
+				
+				unit, ok := args[2].(string)
+				if !ok {
+					return nil, fmt.Errorf("date_diff expects string as third argument")
+				}
+				
+				t1 := time.Unix(int64(timestamp1), 0)
+				t2 := time.Unix(int64(timestamp2), 0)
+				diff := t2.Sub(t1)
+				
+				switch unit {
+				case "seconds":
+					return diff.Seconds(), nil
+				case "minutes":
+					return diff.Minutes(), nil
+				case "hours":
+					return diff.Hours(), nil
+				case "days":
+					return diff.Hours() / 24, nil
+				default:
+					return nil, fmt.Errorf("date_diff: unknown unit '%s'", unit)
 				}
 			},
 		},
@@ -1948,23 +2343,6 @@ func (vm *EnhancedVM) registerBuiltins() {
 					return nil, err
 				}
 				return decoded, nil
-			},
-		},
-		"contains": {
-			Name:  "contains",
-			Arity: 2,
-			Function: func(args []Value) (Value, error) {
-				if len(args) != 2 {
-					return nil, fmt.Errorf("contains expects 2 arguments")
-				}
-				text := ToString(args[0])
-				substr := ToString(args[1])
-				for i := 0; i <= len(text)-len(substr); i++ {
-					if text[i:i+len(substr)] == substr {
-						return true, nil
-					}
-				}
-				return false, nil
 			},
 		},
 		"starts_with": {
@@ -2436,56 +2814,6 @@ func (vm *EnhancedVM) registerBuiltins() {
 				fmt.Println("Total: 7 test suites")
 				fmt.Println("Status: SUCCESS")
 				return nil, nil
-			},
-		},
-		"slice": {
-			Name:  "slice",
-			Arity: -1, // Variable arguments
-			Function: func(args []Value) (Value, error) {
-				if len(args) < 1 || len(args) > 3 {
-					return nil, fmt.Errorf("slice expects 1-3 arguments")
-				}
-				arr, ok := args[0].(*Array)
-				if !ok {
-					return nil, fmt.Errorf("slice expects an array")
-				}
-				
-				start := 0
-				end := len(arr.Elements)
-				
-				if len(args) >= 2 {
-					start = int(ToNumber(args[1]))
-					if start < 0 {
-						start = len(arr.Elements) + start
-						if start < 0 {
-							start = 0
-						}
-					}
-				}
-				
-				if len(args) >= 3 {
-					end = int(ToNumber(args[2]))
-					if end < 0 {
-						end = len(arr.Elements) + end
-						if end < 0 {
-							end = 0
-						}
-					}
-				}
-				
-				if start > len(arr.Elements) {
-					start = len(arr.Elements)
-				}
-				if end > len(arr.Elements) {
-					end = len(arr.Elements)
-				}
-				if start > end {
-					start = end
-				}
-				
-				newElements := make([]Value, end-start)
-				copy(newElements, arr.Elements[start:end])
-				return &Array{Elements: newElements}, nil
 			},
 		},
 		"remove": {

@@ -66,11 +66,12 @@ type StringCache struct {
 
 // Module represents an imported module
 type Module struct {
-	Name     string
-	Path     string
-	Exports  map[string]Value
-	Globals  []Value
-	Loaded   bool
+	Name       string
+	Path       string
+	Exports    map[string]Value
+	Globals    []Value
+	GlobalMap  map[string]int // Name to index mapping for globals
+	Loaded     bool
 }
 
 // Error represents a runtime error
