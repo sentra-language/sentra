@@ -1,0 +1,11 @@
+[project]
+name = "test-app"
+version = "1.0.0"
+description = "Command-line tool"
+
+[dependencies]
+system = "1.0.0"
+
+[build]
+main = "main.sn"
+output = "test-app"

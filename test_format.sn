@@ -1,0 +1,16 @@
+fn main() {
+    let x = 5
+    let y = 10
+    if x < y {
+        print("x is less than y")
+    } else {
+        print("x is not less than y")
+    }
+    for     let i = 0; i < 5;  {
+        print(i)
+    }
+    let arr = [1, 2, 3, 4, 5]
+    for item in arr {
+        print(item)
+    }
+}

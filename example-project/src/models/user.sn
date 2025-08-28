@@ -1,0 +1,86 @@
+// User Model - Defines user structure
+
+export fn new(id, username, email, password_hash) {
+    return {
+        "id": id,
+        "username": username,
+        "email": email,
+        "password_hash": password_hash,
+        "role": "user",  // user, admin, moderator
+        "status": "active",  // active, suspended, deleted
+        "profile": {
+            "first_name": "",
+            "last_name": "",
+            "avatar": "",
+            "bio": ""
+        },
+        "settings": {
+            "notifications": true,
+            "theme": "light"
+        },
+        "created_at": now(),
+        "updated_at": now(),
+        "last_login": null
+    }
+}
+
+export fn validate(user) {
+    if !user["username"] || len(user["username"]) < 3 {
+        return false
+    }
+    
+    if !user["email"] || !contains(user["email"], "@") {
+        return false
+    }
+    
+    return true
+}
+
+export fn get_full_name(user) {
+    let first = user["profile"]["first_name"]
+    let last = user["profile"]["last_name"]
+    
+    if first && last {
+        return first + " " + last
+    } else if first {
+        return first
+    } else if last {
+        return last
+    } else {
+        return user["username"]
+    }
+}
+
+export fn is_admin(user) {
+    return user["role"] == "admin"
+}
+
+export fn is_active(user) {
+    return user["status"] == "active"
+}
+
+fn contains(str, substr) {
+    // Simple contains implementation
+    return index_of(str, substr) >= 0
+}
+
+fn index_of(str, substr) {
+    // Find substring in string
+    let str_len = len(str)
+    let sub_len = len(substr)
+    
+    for i in range(0, str_len - sub_len + 1) {
+        let match = true
+        for j in range(0, sub_len) {
+            if str[i + j] != substr[j] {
+                match = false
+                break
+            }
+        }
+        if match {
+            return i
+        }
+    }
+    
+    return -1
+}

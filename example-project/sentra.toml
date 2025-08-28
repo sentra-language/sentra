@@ -1,0 +1,27 @@
+[project]
+name = "task-manager"
+version = "1.0.0"
+description = "Task Management System - Multi-file Sentra project example"
+author = "Sentra Developer"
+
+[dependencies]
+# External dependencies would go here
+# network = "1.0.0"
+# database = "1.0.0"
+
+[build]
+main = "main.sn"
+output = "task-manager"
+include = ["src/**/*.sn", "config/**/*.sn", "lib/**/*.sn"]
+exclude = ["tests/**/*.sn", "*.test.sn"]
+
+[test]
+directory = "tests"
+pattern = "*_test.sn"
+
+[scripts]
+test = "sentra test tests/*_test.sn"
+lint = "sentra lint src/**/*.sn"
+format = "sentra fmt src/**/*.sn"
+dev = "sentra run main.sn --watch"
+build = "sentra build"

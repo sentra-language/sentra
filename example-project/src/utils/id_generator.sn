@@ -1,0 +1,53 @@
+// ID Generator Utility - Generate unique IDs
+
+let counter = 0
+
+export fn generate() {
+    counter = counter + 1
+    let timestamp = now()
+    
+    // Create unique ID combining timestamp and counter
+    return "id_" + str(timestamp) + "_" + str(counter)
+}
+
+export fn generate_uuid() {
+    // Simple UUID v4 style generator (mock implementation)
+    let segments = []
+    
+    // Generate 4 segments
+    push(segments, random_hex(8))
+    push(segments, random_hex(4))
+    push(segments, random_hex(4))
+    push(segments, random_hex(12))
+    
+    return join(segments, "-")
+}
+
+export fn generate_short() {
+    // Generate short ID (6 characters)
+    return random_hex(6)
+}
+
+fn random_hex(length) {
+    let chars = "0123456789abcdef"
+    let result = ""
+    
+    for i in range(0, length) {
+        let index = (counter + i) % len(chars)
+        result = result + chars[index]
+        counter = counter + 1
+    }
+    
+    return result
+}
+
+fn join(arr, separator) {
+    let result = ""
+    for i in range(0, len(arr)) {
+        if i > 0 {
+            result = result + separator
+        }
+        result = result + arr[i]
+    }
+    return result
+}
