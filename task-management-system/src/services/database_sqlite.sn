@@ -1,0 +1,167 @@
+// SQLite Database Service
+// Persistent storage for tasks using SQLite
+
+// Initialize database connection
+export fn init_database() {
+    // Connect to SQLite database
+    let connected = sql_connect("tasks", "sqlite", "tasks.db")
+    if !connected {
+        throw "Failed to connect to database"
+    }
+    
+    // Create tables if they don't exist
+    create_tables()
+    
+    return true
+}
+
+// Create database tables
+fn create_tables() {
+    // Users table
+    sql_execute("tasks", "
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ")
+    
+    // Tasks table
+    sql_execute("tasks", "
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            priority TEXT DEFAULT 'Medium',
+            status TEXT DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ")
+    
+    log("Database tables initialized")
+}
+
+// User operations
+export fn create_user(username, email, password_hash) {
+    let result = sql_execute(
+        "tasks",
+        "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+        username, email, password_hash
+    )
+    return result > 0
+}
+
+export fn get_user(username) {
+    return sql_query_one(
+        "tasks",
+        "SELECT * FROM users WHERE username = ?",
+        username
+    )
+}
+
+export fn get_user_by_email(email) {
+    return sql_query_one(
+        "tasks",
+        "SELECT * FROM users WHERE email = ?",
+        email
+    )
+}
+
+// Task operations
+export fn create_task(user_id, title, description, priority) {
+    let result = sql_execute(
+        "tasks",
+        "INSERT INTO tasks (user_id, title, description, priority) VALUES (?, ?, ?, ?)",
+        user_id, title, description, priority
+    )
+    return result > 0
+}
+
+export fn get_tasks(user_id) {
+    return sql_query(
+        "tasks",
+        "SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC",
+        user_id
+    )
+}
+
+export fn get_task(task_id) {
+    return sql_query_one(
+        "tasks",
+        "SELECT * FROM tasks WHERE id = ?",
+        task_id
+    )
+}
+
+export fn update_task_status(task_id, status) {
+    let result = sql_execute(
+        "tasks",
+        "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        status, task_id
+    )
+    return result > 0
+}
+
+export fn update_task(task_id, title, description, priority) {
+    let result = sql_execute(
+        "tasks",
+        "UPDATE tasks SET title = ?, description = ?, priority = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        title, description, priority, task_id
+    )
+    return result > 0
+}
+
+export fn delete_task(task_id) {
+    let result = sql_execute(
+        "tasks",
+        "DELETE FROM tasks WHERE id = ?",
+        task_id
+    )
+    return result > 0
+}
+
+// Statistics functions
+export fn get_task_stats(user_id) {
+    let total = sql_query_one(
+        "tasks",
+        "SELECT COUNT(*) as count FROM tasks WHERE user_id = ?",
+        user_id
+    )
+    
+    let by_status = sql_query(
+        "tasks",
+        "SELECT status, COUNT(*) as count FROM tasks WHERE user_id = ? GROUP BY status",
+        user_id
+    )
+    
+    let by_priority = sql_query(
+        "tasks",
+        "SELECT priority, COUNT(*) as count FROM tasks WHERE user_id = ? GROUP BY priority",
+        user_id
+    )
+    
+    return {
+        "total": total["count"],
+        "by_status": by_status,
+        "by_priority": by_priority
+    }
+}
+
+// Search tasks
+export fn search_tasks(user_id, keyword) {
+    return sql_query(
+        "tasks",
+        "SELECT * FROM tasks WHERE user_id = ? AND (title LIKE ? OR description LIKE ?) ORDER BY created_at DESC",
+        user_id, "%" + keyword + "%", "%" + keyword + "%"
+    )
+}
+
+// Close database connection
+export fn close_database() {
+    sql_close("tasks")
+}
