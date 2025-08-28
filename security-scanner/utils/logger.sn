@@ -1,0 +1,27 @@
+// Logger Module - Provides logging functionality
+
+// Log levels
+export let DEBUG = 0
+export let INFO = 1
+export let WARN = 2
+export let ERROR = 3
+
+export fn setLevel(level) {
+    // For now, just ignore level setting
+}
+
+export fn debug(message) {
+    log("[DEBUG] " + message)
+}
+
+export fn info(message) {
+    log("[INFO] " + message)
+}
+
+export fn warn(message) {
+    log("[WARN] " + message)
+}
+
+export fn error(message) {
+    log("[ERROR] " + message)
+}

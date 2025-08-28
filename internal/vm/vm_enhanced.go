@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -87,8 +88,10 @@ type EnhancedVM struct {
 	loopCounter map[int]int          // Track hot loops for potential JIT
 	
 	// Module system
-	modules     map[string]*Module
-	currentMod  *Module
+	modules       map[string]*Module
+	currentModule *Module // Current module being executed (for exports)
+	moduleLoader  *ModuleLoader // Module loader for file imports
+	filePath      string // Path to the currently executing file
 	
 	// Error handling
 	tryStack    []TryFrame
@@ -143,6 +146,9 @@ func NewEnhancedVM(chunk *bytecode.Chunk) *EnhancedVM {
 	// Register security functions as built-ins
 	vm.registerBuiltins()
 	
+	// Initialize module loader
+	vm.moduleLoader = NewModuleLoader(vm)
+	
 	// Initialize first frame
 	vm.frames[0] = EnhancedCallFrame{
 		ip:       0,
@@ -157,6 +163,16 @@ func NewEnhancedVM(chunk *bytecode.Chunk) *EnhancedVM {
 	vm.precacheConstants()
 	
 	return vm
+}
+
+// SetFilePath sets the file path for the VM (used for resolving relative imports)
+func (vm *EnhancedVM) SetFilePath(path string) {
+	vm.filePath = path
+	if vm.moduleLoader != nil && path != "" {
+		// Set the directory of the file as the base for relative imports
+		dir := filepath.Dir(path)
+		vm.moduleLoader.SetCurrentDirectory(dir)
+	}
 }
 
 // precacheConstants converts chunk constants to Values
@@ -961,6 +977,24 @@ func (vm *EnhancedVM) Run() (Value, error) {
 			module := vm.loadModule(moduleName)
 			vm.push(module)
 			
+		case bytecode.OpExport:
+			nameIndex := vm.readByte()
+			exportName := frame.chunk.Constants[nameIndex].(string)
+			
+			// Get the value to export (it's on the stack from the compiled statement)
+			// The value should have been pushed by the previous operation
+			if vm.stackTop > 0 {
+				value := vm.peek(0)
+				
+				// If we're in a module context, add to exports
+				if vm.currentModule != nil {
+					vm.currentModule.Exports[exportName] = value
+				}
+			} else {
+				// No value on stack - this shouldn't happen with proper compilation
+				panic(fmt.Sprintf("OpExport: no value on stack to export as '%s'", exportName))
+			}
+			
 		// Concurrency operations
 		case bytecode.OpSpawn:
 			fn := vm.pop()
@@ -1363,6 +1397,22 @@ func (vm *EnhancedVM) performCall(argCount int) {
 
 // Module loading
 func (vm *EnhancedVM) loadModule(name string) Value {
+	// Check if it's a file path (.sn file)
+	if strings.HasSuffix(name, ".sn") || strings.Contains(name, "/") || strings.Contains(name, "\\") {
+		// Load as file module
+		module, err := vm.moduleLoader.LoadFileModule(name)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to load module %s: %v", name, err))
+		}
+		
+		// Convert Module.Exports to Map
+		modMap := &Map{Items: make(map[string]Value), mu: sync.RWMutex{}}
+		for k, v := range module.Exports {
+			modMap.Items[k] = v
+		}
+		return modMap
+	}
+	
 	// Check if already loaded and return as Map
 	if mod, ok := vm.modules[name]; ok {
 		// Convert Module.Exports to Map

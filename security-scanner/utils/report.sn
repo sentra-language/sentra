@@ -1,0 +1,88 @@
+// Report Module - Security report generation and display
+
+import "./logger.sn" as logger
+import "../scanners/vuln_scanner.sn" as vulnScanner
+
+export fn generateReport(target, openPorts, vulnerabilities) {
+    // Calculate risk level inline
+    let riskLevel = "LOW"
+    if len(vulnerabilities) > 0 {
+        let criticalCount = 0
+        let highCount = 0
+        
+        let i = 0
+        while i < len(vulnerabilities) {
+            let severity = vulnScanner.getSeverity(vulnerabilities[i]["vulnerability"])
+            if severity == "CRITICAL" {
+                criticalCount = criticalCount + 1
+            }
+            if severity == "HIGH" {
+                highCount = highCount + 1
+            }
+            i = i + 1
+        }
+        
+        if criticalCount > 0 {
+            riskLevel = "CRITICAL"
+        } else if highCount > 2 {
+            riskLevel = "HIGH"
+        } else if highCount > 0 {
+            riskLevel = "MEDIUM"
+        }
+    }
+    
+    let report = {
+        "target": target,
+        "scanTime": time(),
+        "openPorts": openPorts,
+        "portCount": len(openPorts),
+        "vulnerabilities": vulnerabilities,
+        "vulnCount": len(vulnerabilities),
+        "riskLevel": riskLevel
+    }
+    
+    return report
+}
+
+export fn displayReport(report) {
+    log("")
+    log("Security Scan Report")
+    log("===================")
+    log("Target: " + report["target"])
+    log("Scan Time: " + report["scanTime"])
+    log("Risk Level: " + report["riskLevel"])
+    log("")
+    
+    log("Open Ports (" + report["portCount"] + " found):")
+    log("--------------------")
+    let ports = report["openPorts"]
+    let i = 0
+    while i < len(ports) {
+        log("  - Port " + ports[i])
+        i = i + 1
+    }
+    log("")
+    
+    if report["vulnCount"] > 0 {
+        log("Vulnerabilities (" + report["vulnCount"] + " found):")
+        log("------------------------")
+        let vulns = report["vulnerabilities"]
+        let j = 0
+        while j < len(vulns) {
+            let v = vulns[j]
+            let severity = vulnScanner.getSeverity(v["vulnerability"])
+            log("  [" + severity + "] Port " + v["port"] + " (" + v["service"] + "): " + v["vulnerability"])
+            j = j + 1
+        }
+    } else {
+        log("No vulnerabilities detected.")
+    }
+    log("")
+    log("Scan completed successfully.")
+}
+
+export fn saveToFile(report, filename) {
+    // In a real implementation, this would save to a file
+    logger.info("Report saved to " + filename)
+    return true
+}

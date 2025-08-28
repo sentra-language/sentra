@@ -62,6 +62,12 @@ func (hc *HoistingCompiler) collectFunctionFromStmt(stmt parser.Stmt) {
 		// Store the function declaration
 		hc.functions[s.Name] = s
 		
+	case *parser.ExportStmt:
+		// If exporting a function, collect it
+		if fnStmt, ok := s.Stmt.(*parser.FunctionStmt); ok {
+			hc.functions[fnStmt.Name] = fnStmt
+		}
+		
 	// Note: BlockStmt doesn't exist, statements are in arrays
 		
 	case *parser.IfStmt:
@@ -178,6 +184,28 @@ func (hc *HoistingCompiler) VisitFunctionStmt(stmt *parser.FunctionStmt) interfa
 	// Functions are already compiled in precompileFunctions
 	// Skip them during the main compilation pass
 	return nil
+}
+
+// Override VisitExportStmt to handle exported functions properly
+func (hc *HoistingCompiler) VisitExportStmt(stmt *parser.ExportStmt) interface{} {
+	// If exporting a function that was hoisted, just handle the export
+	if fnStmt, ok := stmt.Stmt.(*parser.FunctionStmt); ok {
+		// The function was already compiled during hoisting
+		// Just get it and export it
+		globalIdx := hc.Chunk.AddConstant(fnStmt.Name)
+		hc.emitOp(bytecode.OpGetGlobal)
+		hc.emitByte(byte(globalIdx))
+		
+		// Export the function
+		nameIdx := hc.Chunk.AddConstant(stmt.Name)
+		hc.emitOp(bytecode.OpExport)
+		hc.emitByte(byte(nameIdx))
+		
+		return nil
+	}
+	
+	// For non-function exports, use the default behavior
+	return hc.StmtCompiler.VisitExportStmt(stmt)
 }
 
 // Override VisitCallExpr to check for hoisted functions

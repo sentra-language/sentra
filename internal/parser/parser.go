@@ -73,6 +73,11 @@ func (p *Parser) statement() Stmt {
 		return p.importStatement()
 	}
 	
+	// Export statement
+	if p.match(lexer.TokenExport) {
+		return p.exportStatement()
+	}
+	
 	// If statement
 	if p.match(lexer.TokenIf) {
 		return p.ifStatement()
@@ -224,6 +229,53 @@ func (p *Parser) importStatement() Stmt {
 	}
 	
 	return &ImportStmt{Path: path, Alias: alias}
+}
+
+func (p *Parser) exportStatement() Stmt {
+	// Export can be followed by:
+	// - fn name() { ... }  -> export function
+	// - let name = value   -> export variable
+	// - const name = value -> export constant
+	
+	if p.match(lexer.TokenFn) {
+		// Export function
+		nameTok := p.consume(lexer.TokenIdent, "Expect function name")
+		name := nameTok.Lexeme
+		
+		p.consume(lexer.TokenLParen, "Expect '(' after function name")
+		params := []string{}
+		if !p.check(lexer.TokenRParen) {
+			for {
+				paramTok := p.consume(lexer.TokenIdent, "Expect parameter name")
+				params = append(params, paramTok.Lexeme)
+				if !p.match(lexer.TokenComma) {
+					break
+				}
+			}
+		}
+		p.consume(lexer.TokenRParen, "Expect ')' after parameters")
+		
+		p.consume(lexer.TokenLBrace, "Expect '{' before function body")
+		body := p.blockStatements()
+		p.consume(lexer.TokenRBrace, "Expect '}' after function body")
+		
+		fnStmt := &FunctionStmt{Name: name, Params: params, Body: body}
+		return &ExportStmt{Name: name, Stmt: fnStmt}
+	}
+	
+	if p.match(lexer.TokenLet) || p.match(lexer.TokenVar) || p.match(lexer.TokenConst) {
+		// Export variable
+		nameTok := p.consume(lexer.TokenIdent, "Expect variable name")
+		name := nameTok.Lexeme
+		
+		p.consume(lexer.TokenEqual, "Expect '=' after variable name in export")
+		expr := p.expression()
+		
+		letStmt := &LetStmt{Name: name, Expr: expr}
+		return &ExportStmt{Name: name, Stmt: letStmt}
+	}
+	
+	panic(p.error("Expect 'fn', 'let', 'var', or 'const' after 'export'"))
 }
 
 func (p *Parser) whileStatement() Stmt {

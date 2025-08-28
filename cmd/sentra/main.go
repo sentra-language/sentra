@@ -164,7 +164,7 @@ func main() {
 		p := parser.NewParserWithSource(tokens, string(fullSource), filename)
 		
 		// Wrap parsing in error handler
-		var stmts []interface{}
+		var stmts []parser.Stmt
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -180,13 +180,11 @@ func main() {
 					}
 				}
 			}()
-			parsed := p.Parse()
-			for _, s := range parsed {
-				stmts = append(stmts, s)
-			}
+			stmts = p.Parse()
 		}()
-		compiler := compiler.NewStmtCompilerWithDebug(filename)
-		chunk := compiler.Compile(stmts)
+		// Use hoisting compiler for proper function hoisting
+		hc := compiler.NewHoistingCompilerWithDebug(filename)
+		chunk := hc.CompileWithHoisting(stmts)
 
 		// Check for optimization flags
 		useFastVM := false
@@ -230,6 +228,7 @@ func main() {
 			result, err = fastVM.OptimizedRun()
 		} else {
 			enhancedVM := vm.NewEnhancedVM(chunk)
+			enhancedVM.SetFilePath(filename)
 			result, err = enhancedVM.Run()
 		}
 		if err != nil {
@@ -626,6 +625,7 @@ func runWithDebugger(args []string) {
 
 	// Create VM and debugger
 	enhancedVM := vm.NewEnhancedVM(chunk)
+	enhancedVM.SetFilePath(filename)
 	debug := debugger.NewDebugger(enhancedVM)
 	
 	// Load source for debugging
@@ -735,6 +735,7 @@ func runTests(args []string) {
 		
 		// Create VM (testing functions are already included in stdlib)
 		enhancedVM := vm.NewEnhancedVM(chunk)
+		enhancedVM.SetFilePath(testFile)
 		
 		// Run the test file
 		_, err = enhancedVM.Run()

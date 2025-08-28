@@ -21,6 +21,7 @@ const (
 	TokenMatch   TokenType = "MATCH"
 	TokenSpawn   TokenType = "SPAWN"
 	TokenImport  TokenType = "IMPORT"
+	TokenExport  TokenType = "EXPORT"
 	TokenChannel TokenType = "CHANNEL"
 	TokenLog     TokenType = "LOG"
 	TokenTry     TokenType = "TRY"
@@ -291,6 +292,8 @@ func (s *Scanner) identifier() {
 		s.addToken(TokenSpawn)
 	case "import":
 		s.addToken(TokenImport)
+	case "export":
+		s.addToken(TokenExport)
 	case "channel":
 		s.addToken(TokenChannel)
 	case "log":

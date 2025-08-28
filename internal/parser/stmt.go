@@ -144,6 +144,16 @@ func (i *ImportStmt) Accept(visitor StmtVisitor) interface{} {
 	return visitor.VisitImportStmt(i)
 }
 
+// ExportStmt represents an export statement.
+type ExportStmt struct {
+	Name string // The name being exported
+	Stmt Stmt   // The statement being exported (function, let, etc.)
+}
+
+func (e *ExportStmt) Accept(visitor StmtVisitor) interface{} {
+	return visitor.VisitExportStmt(e)
+}
+
 // ClassStmt represents a class declaration.
 type ClassStmt struct {
 	Name       string
@@ -208,6 +218,7 @@ type StmtVisitor interface {
 	VisitBreakStmt(stmt *BreakStmt) interface{}
 	VisitContinueStmt(stmt *ContinueStmt) interface{}
 	VisitImportStmt(stmt *ImportStmt) interface{}
+	VisitExportStmt(stmt *ExportStmt) interface{}
 	VisitClassStmt(stmt *ClassStmt) interface{}
 	VisitTryStmt(stmt *TryStmt) interface{}
 	VisitThrowStmt(stmt *ThrowStmt) interface{}

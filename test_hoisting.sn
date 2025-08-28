@@ -1,0 +1,13 @@
+// Test function hoisting
+log("Testing function hoisting...")
+
+// Call function before it's defined
+let result = testFunc(5)
+log("Result: " + result)
+
+// Define function after calling it
+fn testFunc(x) {
+    return x * 2
+}
+
+log("Test completed!")

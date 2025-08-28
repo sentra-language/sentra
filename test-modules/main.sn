@@ -1,0 +1,16 @@
+// Test file imports
+
+import "./math_utils.sn" as math
+
+log("Testing module imports:")
+log("")
+
+log("Using exported functions:")
+log("math.add(5, 3) = " + math.add(5, 3))
+log("math.multiply(4, 7) = " + math.multiply(4, 7))
+log("math.factorial(5) = " + math.factorial(5))
+
+log("")
+log("Using exported constants:")
+log("math.PI = " + math.PI)
+log("math.E = " + math.E)
