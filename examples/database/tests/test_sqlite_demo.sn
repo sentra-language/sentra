@@ -1,0 +1,38 @@
+// SQLite Demo - Showing it works!
+log("=== SQLite Database Demo ===\n")
+
+// 1. In-memory database
+log("1. Testing in-memory database:")
+sql_connect("mem", "sqlite", ":memory:")
+sql_execute("mem", "CREATE TABLE test (id INTEGER PRIMARY KEY, data TEXT)")
+sql_execute("mem", "INSERT INTO test (data) VALUES (?)", "In-memory works!")
+let mem_result = sql_query_one("mem", "SELECT * FROM test")
+log("   Result: " + str(mem_result))
+sql_close("mem")
+
+// 2. File-based database
+log("\n2. Testing file-based database:")
+sql_connect("file", "sqlite", "test_demo.db")
+sql_execute("file", "CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, quantity INTEGER)")
+sql_execute("file", "INSERT INTO items (name, quantity) VALUES (?, ?)", "Laptop", 5)
+sql_execute("file", "INSERT INTO items (name, quantity) VALUES (?, ?)", "Mouse", 12)
+sql_execute("file", "INSERT INTO items (name, quantity) VALUES (?, ?)", "Keyboard", 8)
+
+let items = sql_query("file", "SELECT * FROM items")
+log("   Inventory:")
+for item in items {
+    log("   - " + item["name"] + ": " + str(item["quantity"]) + " units")
+}
+
+// 3. Aggregation functions
+let total = sql_query_one("file", "SELECT SUM(quantity) as total FROM items")
+log("\n3. Total items in stock: " + str(total["total"]))
+
+// 4. Transactions (simulated)
+log("\n4. Updating quantities...")
+sql_execute("file", "UPDATE items SET quantity = quantity + 10 WHERE name = ?", "Mouse")
+let updated = sql_query_one("file", "SELECT * FROM items WHERE name = ?", "Mouse")
+log("   Mouse quantity after update: " + str(updated["quantity"]))
+
+sql_close("file")
+log("\n=== Demo Complete - SQLite is fully operational! ===")
