@@ -1,0 +1,11 @@
+// Main-like module
+
+import "./test_complex_import_user.sn" as user_controller
+
+log("Main: Starting")
+let user = user_controller.create_user("test@example.com")
+if user {
+    log("Main: User created with email: " + user["email"])
+} else {
+    log("Main: User creation failed")
+}

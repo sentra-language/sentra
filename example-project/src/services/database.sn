@@ -11,7 +11,7 @@ export fn connect(url) {
     connection = {
         "url": url,
         "connected": true,
-        "timestamp": now()
+        "timestamp": time()
     }
     
     log("[DB] Connected to: " + url)
@@ -150,11 +150,3 @@ fn matches_filter(doc, filter) {
     return true
 }
 
-fn has_key(map, key) {
-    for k in keys(map) {
-        if k == key {
-            return true
-        }
-    }
-    return false
-}

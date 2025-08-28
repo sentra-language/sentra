@@ -1,0 +1,18 @@
+// Very simple module test
+log("Module: Before function definition")
+
+fn simple() {
+    log("Module: Simple function called")
+    return "OK"
+}
+
+log("Module: After function definition")
+
+export fn callSimple() {
+    log("Module: Export function calling simple()...")
+    let result = simple()
+    log("Module: Result: " + result)
+    return result
+}
+
+log("Module: End")

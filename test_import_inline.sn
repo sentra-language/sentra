@@ -1,0 +1,7 @@
+// Test importing module with inline range
+
+import "./test_module_inline.sn" as mod
+
+log("Calling module function...")
+let result = mod.test_inline()
+log("Result: " + str(result))

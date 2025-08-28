@@ -1,0 +1,8 @@
+// Module C - Top level that imports B
+
+import "./test_nested_import_b.sn" as module_b
+
+log("Module C: Starting test")
+log("Module C: About to call module_b.function_b()")
+let result = module_b.function_b()
+log("Module C: Final result: " + result)

@@ -9,11 +9,11 @@ let tasks = []
 
 export fn create_task(title, priority, user_id) {
     // Validate input
-    if !validator.is_valid_string(title) {
+    if !(validator.is_valid_string(title)) {
         throw "Invalid task title"
     }
     
-    if !validator.is_valid_priority(priority) {
+    if !(validator.is_valid_priority(priority)) {
         throw "Invalid priority: must be High, Medium, or Low"
     }
     
@@ -82,7 +82,7 @@ export fn update_task(id, updates) {
         }
     }
     
-    task["updated_at"] = now()
+    task["updated_at"] = time()
     
     // Update in database
     if db.is_connected() {
@@ -95,7 +95,7 @@ export fn update_task(id, updates) {
 export fn complete_task(id) {
     return update_task(id, {
         "status": "completed",
-        "completed_at": now()
+        "completed_at": time()
     })
 }
 

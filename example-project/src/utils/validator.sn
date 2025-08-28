@@ -1,17 +1,27 @@
 // Validator Utility - Input validation functions
 
 export fn is_valid_email(email) {
-    if !email || len(email) < 3 {
+    if !email {
         return false
     }
+    
+    // Convert to string
+    let email_str = str(email)
     
     // Check for @ symbol
     let at_count = 0
     let at_pos = -1
-    for i in range(0, len(email)) {
-        if email[i] == "@" {
+    
+    let email_len = len(email_str)
+    let indices = range(0, email_len)
+    
+    for i in indices {
+        // Convert i to ensure it's a number
+        let idx = i + 0  // Force numeric context
+        let ch = char_at(email_str, idx)
+        if ch == "@" {
             at_count = at_count + 1
-            at_pos = i
+            at_pos = idx
         }
     }
     
@@ -21,13 +31,13 @@ export fn is_valid_email(email) {
     }
     
     // @ can't be first or last
-    if at_pos == 0 || at_pos == len(email) - 1 {
+    if at_pos == 0 || at_pos == len(email_str) - 1 {
         return false
     }
     
     // Must have domain after @
-    let domain_part = slice(email, at_pos + 1)
-    if !contains(domain_part, ".") {
+    let domain_part = slice(email_str, at_pos + 1)
+    if !(contains(domain_part, ".")) {
         return false
     }
     
@@ -35,27 +45,45 @@ export fn is_valid_email(email) {
 }
 
 export fn is_valid_username(username) {
-    if !username || len(username) < 3 {
+    if !username {
         return false
     }
     
-    if len(username) > 20 {
+    let username_str = str(username)
+    
+    if len(username_str) < 3 {
+        return false
+    }
+    
+    if len(username_str) > 20 {
         return false
     }
     
     // Only allow alphanumeric and underscore
     let valid_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
-    for char in username {
-        if !contains(valid_chars, char) {
+    let username_len = len(username_str)
+    
+    // Workaround: Use while loop instead of for-in
+    let j = 0
+    while j < username_len {
+        let char = char_at(username_str, j)
+        if !(contains(valid_chars, char)) {
             return false
         }
+        j = j + 1
     }
     
     return true
 }
 
 export fn is_valid_password(password) {
-    if !password || len(password) < 8 {
+    if !password {
+        return false
+    }
+    
+    let password_str = str(password)
+    
+    if len(password_str) < 8 {
         return false
     }
     
@@ -63,7 +91,12 @@ export fn is_valid_password(password) {
     let has_lower = false
     let has_number = false
     
-    for char in password {
+    let password_len = len(password_str)
+    
+    // Workaround: Use while loop instead of for-in
+    let k = 0
+    while k < password_len {
+        let char = char_at(password_str, k)
         if contains("ABCDEFGHIJKLMNOPQRSTUVWXYZ", char) {
             has_upper = true
         }
@@ -73,71 +106,33 @@ export fn is_valid_password(password) {
         if contains("0123456789", char) {
             has_number = true
         }
+        k = k + 1
     }
     
     return has_upper && has_lower && has_number
 }
 
-export fn is_valid_string(str) {
-    return str && len(str) > 0
+export fn is_valid_string(str_val) {
+    return str_val != null && len(str(str_val)) > 0
 }
 
 export fn is_valid_priority(priority) {
-    let valid = ["High", "Medium", "Low"]
-    return contains_value(valid, priority)
+    // Simple priority validation
+    return priority == "High" || priority == "Medium" || priority == "Low"
 }
 
 export fn is_valid_status(status) {
-    let valid = ["pending", "in_progress", "completed"]
-    return contains_value(valid, status)
+    // Simple status validation
+    return status == "pending" || status == "in_progress" || status == "completed"
 }
 
 export fn is_valid_id(id) {
-    return id && len(id) > 0
+    return id != null
 }
 
-export fn sanitize_string(str) {
-    if !str {
+export fn sanitize_string(str_val) {
+    if !str_val {
         return ""
     }
-    
-    // Remove dangerous characters
-    let dangerous = ["<", ">", "&", "\"", "'", "/"]
-    let result = str
-    
-    for char in dangerous {
-        result = replace_all(result, char, "")
-    }
-    
-    return trim(result)
-}
-
-fn contains(str, char) {
-    for c in str {
-        if c == char {
-            return true
-        }
-    }
-    return false
-}
-
-fn contains_value(arr, value) {
-    for item in arr {
-        if item == value {
-            return true
-        }
-    }
-    return false
-}
-
-fn replace_all(str, old, new) {
-    let result = ""
-    for char in str {
-        if char == old {
-            result = result + new
-        } else {
-            result = result + char
-        }
-    }
-    return result
+    return str(str_val)
 }

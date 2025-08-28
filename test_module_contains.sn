@@ -1,0 +1,9 @@
+// Test if modules can access built-in functions
+
+export fn test_contains() {
+    log("Testing contains in module...")
+    let text = "hello world"
+    let result = contains(text, "world")
+    log("Result: " + str(result))
+    return result
+}

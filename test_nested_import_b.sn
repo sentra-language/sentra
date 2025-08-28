@@ -1,0 +1,11 @@
+// Module B - Middle level module that imports A
+
+import "./test_nested_import_a.sn" as module_a
+
+export fn function_b() {
+    log("Module B: function_b called")
+    log("Module B: About to call module_a.function_a()")
+    let result = module_a.function_a()
+    log("Module B: Got result from A: " + result)
+    return "B-" + result
+}

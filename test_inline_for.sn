@@ -1,0 +1,8 @@
+// Test inline function calls in for loops
+
+log("Test 1: Inline range in for loop")
+for i in range(0, 3) {
+    log("  i = " + str(i))
+}
+
+log("Test completed")

@@ -1,0 +1,32 @@
+// Simple validator module
+
+export fn is_valid_email(email) {
+    log("DEBUG: is_valid_email called")
+    if !email {
+        log("DEBUG: email is null/false")
+        return false
+    }
+    
+    log("DEBUG: Converting to string...")
+    let email_str = str(email)
+    log("DEBUG: email_str = " + email_str)
+    
+    log("DEBUG: Checking length...")
+    let email_len = len(email_str)
+    log("DEBUG: email_len = " + str(email_len))
+    
+    log("DEBUG: Creating range...")
+    let indices = range(0, email_len)
+    log("DEBUG: Range created")
+    
+    log("DEBUG: Starting loop...")
+    for i in indices {
+        log("DEBUG: Loop iteration " + str(i))
+        log("DEBUG: About to call char_at...")
+        let ch = char_at(email_str, i)
+        log("DEBUG: char_at returned: " + ch)
+    }
+    
+    log("DEBUG: Returning true")
+    return true
+}

@@ -14,8 +14,8 @@ export fn login(username, password) {
         current_session = {
             "user": user,
             "token": generate_token(),
-            "expires_at": now() + 3600,  // 1 hour
-            "created_at": now()
+            "expires_at": time() + 3600,  // 1 hour
+            "created_at": time()
         }
         
         logger.info("[Auth] Login successful for: " + username)
@@ -39,7 +39,7 @@ export fn get_current_user() {
     }
     
     // Check if session expired
-    if current_session["expires_at"] < now() {
+    if current_session["expires_at"] < time() {
         logger.info("[Auth] Session expired")
         current_session = null
         return null
