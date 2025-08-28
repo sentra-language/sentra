@@ -12,6 +12,7 @@ import (
 	"sentra/internal/compiler"
 	"sentra/internal/debugger"
 	"sentra/internal/errors"
+	"sentra/internal/formatter"
 	"sentra/internal/lexer"
 	"sentra/internal/parser"
 	"sentra/internal/packages"
@@ -112,6 +113,11 @@ func main() {
 
 	if args[0] == "lint" && len(args) > 1 {
 		lintCode(args[1])
+		return
+	}
+
+	if args[0] == "doc" {
+		generateDocs(args[1:])
 		return
 	}
 
@@ -404,6 +410,133 @@ func lintCode(filename string) {
 	}
 }
 
+func generateDocs(args []string) {
+	// Parse options
+	outputDir := "./docs"
+	var files []string
+	
+	for i := 0; i < len(args); i++ {
+		if args[i] == "-o" || args[i] == "--output" {
+			if i+1 < len(args) {
+				outputDir = args[i+1]
+				i++ // Skip next arg
+			}
+		} else if strings.HasSuffix(args[i], ".sn") {
+			files = append(files, args[i])
+		}
+	}
+	
+	// If no files specified, find all .sn files
+	if len(files) == 0 {
+		matches, err := filepath.Glob("*.sn")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error finding files: %v\n", err)
+			os.Exit(1)
+		}
+		files = matches
+	}
+	
+	if len(files) == 0 {
+		fmt.Println("No Sentra files found to document")
+		return
+	}
+	
+	// Create output directory
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
+		os.Exit(1)
+	}
+	
+	// Generate documentation for each file
+	for _, file := range files {
+		generateFileDoc(file, outputDir)
+	}
+	
+	// Generate index
+	generateIndexDoc(files, outputDir)
+	
+	fmt.Printf("Documentation generated in %s\n", outputDir)
+}
+
+func generateFileDoc(filename, outputDir string) {
+	source, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading %s: %v\n", filename, err)
+		return
+	}
+	
+	scanner := lexer.NewScannerWithFile(string(source), filename)
+	tokens := scanner.ScanTokens()
+	
+	if scanner.HadError() {
+		fmt.Fprintf(os.Stderr, "Syntax errors in %s, skipping\n", filename)
+		return
+	}
+	
+	p := parser.NewParserWithSource(tokens, string(source), filename)
+	
+	var stmts []parser.Stmt
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "Parse error in %s: %v\n", filename, r)
+			}
+		}()
+		stmts = p.Parse()
+	}()
+	
+	// Extract documentation
+	var doc strings.Builder
+	doc.WriteString("# " + filepath.Base(filename) + "\n\n")
+	
+	// Extract functions
+	var functions []string
+	var walkStmt func(parser.Stmt)
+	
+	walkStmt = func(stmt parser.Stmt) {
+		switch s := stmt.(type) {
+		case *parser.FunctionStmt:
+			sig := fmt.Sprintf("fn %s(%s)", s.Name, strings.Join(s.Params, ", "))
+			functions = append(functions, sig)
+		}
+	}
+	
+	for _, stmt := range stmts {
+		walkStmt(stmt)
+	}
+	
+	if len(functions) > 0 {
+		doc.WriteString("## Functions\n\n")
+		for _, fn := range functions {
+			doc.WriteString("- `" + fn + "`\n")
+		}
+		doc.WriteString("\n")
+	}
+	
+	// Write to file
+	outFile := filepath.Join(outputDir, strings.TrimSuffix(filepath.Base(filename), ".sn") + ".md")
+	if err := os.WriteFile(outFile, []byte(doc.String()), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing doc for %s: %v\n", filename, err)
+	}
+}
+
+func generateIndexDoc(files []string, outputDir string) {
+	var doc strings.Builder
+	doc.WriteString("# Sentra Documentation\n\n")
+	doc.WriteString("## Files\n\n")
+	
+	for _, file := range files {
+		base := filepath.Base(file)
+		mdFile := strings.TrimSuffix(base, ".sn") + ".md"
+		doc.WriteString(fmt.Sprintf("- [%s](%s)\n", base, mdFile))
+	}
+	
+	indexFile := filepath.Join(outputDir, "index.md")
+	if err := os.WriteFile(indexFile, []byte(doc.String()), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing index: %v\n", err)
+	}
+}
+
 func formatCode(filename string) {
 	source, err := os.ReadFile(filename)
 	if err != nil {
@@ -422,6 +555,7 @@ func formatCode(filename string) {
 
 	p := parser.NewParserWithSource(tokens, string(source), filename)
 	
+	var stmts []parser.Stmt
 	func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -429,12 +563,20 @@ func formatCode(filename string) {
 				os.Exit(1)
 			}
 		}()
-		_ = p.Parse() // Just validate
+		stmts = p.Parse()
 	}()
 
-	// TODO: Implement actual formatting
-	// For now, just validate the syntax
-	fmt.Printf("%s: syntax valid (formatting not yet implemented)\n", filename)
+	// Format the code
+	formatter := formatter.NewFormatter()
+	formatted := formatter.Format(stmts)
+	
+	// Write the formatted code back to the file
+	if err := os.WriteFile(filename, []byte(formatted), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing formatted file: %v\n", err)
+		os.Exit(1)
+	}
+	
+	fmt.Printf("%s: formatted successfully\n", filename)
 }
 
 func runWithDebugger(args []string) {

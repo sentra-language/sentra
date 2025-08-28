@@ -1,0 +1,21 @@
+// Task Management System - Main Entry Point
+// Demonstrates real-world Sentra project structure with imports
+
+import "./src/app.sn" as app
+import "./config/settings.sn" as config
+
+fn main() {
+    log("================================")
+    log("Task Management System v" + config.VERSION)
+    log("================================")
+    log("")
+    
+    // Initialize application
+    app.initialize()
+    
+    // Run the application
+    app.run()
+}
+
+// Entry point
+main()

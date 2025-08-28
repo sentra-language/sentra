@@ -1,0 +1,186 @@
+// User Controller - Manages user operations
+
+import "../models/user.sn" as User
+import "../services/database.sn" as db
+import "../utils/validator.sn" as validator
+import "../utils/id_generator.sn" as idgen
+import "../utils/hash.sn" as hash
+
+let users = []
+
+export fn create_user(username, email, password) {
+    // Validate input
+    if !validator.is_valid_email(email) {
+        throw "Invalid email address"
+    }
+    
+    if !validator.is_valid_username(username) {
+        throw "Invalid username"
+    }
+    
+    if len(password) < 8 {
+        throw "Password must be at least 8 characters"
+    }
+    
+    // Check if user exists
+    if get_user_by_username(username) {
+        throw "Username already exists"
+    }
+    
+    // Create new user
+    let user = User.new(
+        idgen.generate(),
+        username,
+        email,
+        hash.hash_password(password)
+    )
+    
+    // Save to database
+    if db.is_connected() {
+        db.save("users", user)
+    }
+    
+    // Add to local cache
+    push(users, user)
+    
+    return user
+}
+
+export fn get_user(id) {
+    for user in users {
+        if user["id"] == id {
+            return user
+        }
+    }
+    return null
+}
+
+export fn get_user_by_username(username) {
+    for user in users {
+        if user["username"] == username {
+            return user
+        }
+    }
+    return null
+}
+
+export fn get_user_by_email(email) {
+    for user in users {
+        if user["email"] == email {
+            return user
+        }
+    }
+    return null
+}
+
+export fn authenticate(username, password) {
+    let user = get_user_by_username(username)
+    if !user {
+        return null
+    }
+    
+    if hash.verify_password(password, user["password_hash"]) {
+        // Update last login
+        user["last_login"] = now()
+        
+        // Don't return password hash
+        let safe_user = {}
+        for key in keys(user) {
+            if key != "password_hash" {
+                safe_user[key] = user[key]
+            }
+        }
+        
+        return safe_user
+    }
+    
+    return null
+}
+
+export fn update_user(id, updates) {
+    let user = get_user(id)
+    if !user {
+        throw "User not found"
+    }
+    
+    // Validate updates
+    if has_key(updates, "email") && !validator.is_valid_email(updates["email"]) {
+        throw "Invalid email address"
+    }
+    
+    // Apply updates
+    for key in keys(updates) {
+        if key != "id" && key != "password_hash" {
+            user[key] = updates[key]
+        }
+    }
+    
+    user["updated_at"] = now()
+    
+    // Update in database
+    if db.is_connected() {
+        db.update("users", id, user)
+    }
+    
+    return user
+}
+
+export fn change_password(id, old_password, new_password) {
+    let user = get_user(id)
+    if !user {
+        throw "User not found"
+    }
+    
+    // Verify old password
+    if !hash.verify_password(old_password, user["password_hash"]) {
+        throw "Invalid current password"
+    }
+    
+    // Validate new password
+    if len(new_password) < 8 {
+        throw "Password must be at least 8 characters"
+    }
+    
+    // Update password
+    user["password_hash"] = hash.hash_password(new_password)
+    user["updated_at"] = now()
+    
+    // Save to database
+    if db.is_connected() {
+        db.update("users", id, user)
+    }
+    
+    return true
+}
+
+export fn delete_user(id) {
+    let index = -1
+    for i in range(0, len(users)) {
+        if users[i]["id"] == id {
+            index = i
+            break
+        }
+    }
+    
+    if index >= 0 {
+        // Remove from database
+        if db.is_connected() {
+            db.delete("users", id)
+        }
+        
+        // Remove from local cache
+        users = slice(users, 0, index) + slice(users, index + 1)
+        return true
+    }
+    
+    return false
+}
+
+export fn load_users() {
+    // Create default admin user if no users exist
+    if len(users) == 0 {
+        create_user("admin", "admin@example.com", "password123")
+    }
+    
+    return users
+}

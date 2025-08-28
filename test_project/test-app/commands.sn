@@ -1,0 +1,42 @@
+// CLI Commands
+
+export fn execute_command(command, args) {
+    match command {
+        "help" => cmd_help(),
+        "version" => cmd_version(),
+        "process" => cmd_process(args),
+        "analyze" => cmd_analyze(args),
+        _ => {
+            throw "Unknown command: " + command
+        }
+    }
+}
+
+fn cmd_help() {
+    log("test-app Help")
+    log("==================")
+    log("")
+    log("This is a CLI tool built with Sentra.")
+    log("Use 'sentra test-app <command>' to run commands.")
+}
+
+fn cmd_version() {
+    log("test-app version 1.0.0")
+}
+
+fn cmd_process(args) {
+    if len(args) == 0 {
+        throw "process requires at least one file argument"
+    }
+    
+    for file in args {
+        log("Processing: " + file)
+        // TODO: Add processing logic
+    }
+}
+
+fn cmd_analyze(args) {
+    log("Analyzing data...")
+    // TODO: Add analysis logic
+    log("Analysis complete")
+}

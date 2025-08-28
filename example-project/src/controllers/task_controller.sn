@@ -1,0 +1,160 @@
+// Task Controller - Manages task operations
+
+import "../models/task.sn" as Task
+import "../services/database.sn" as db
+import "../utils/validator.sn" as validator
+import "../utils/id_generator.sn" as idgen
+
+let tasks = []
+
+export fn create_task(title, priority, user_id) {
+    // Validate input
+    if !validator.is_valid_string(title) {
+        throw "Invalid task title"
+    }
+    
+    if !validator.is_valid_priority(priority) {
+        throw "Invalid priority: must be High, Medium, or Low"
+    }
+    
+    // Create new task
+    let task = Task.new(
+        idgen.generate(),
+        title,
+        priority,
+        user_id
+    )
+    
+    // Save to database
+    if db.is_connected() {
+        db.save("tasks", task)
+    }
+    
+    // Add to local cache
+    push(tasks, task)
+    
+    return task
+}
+
+export fn get_task(id) {
+    for task in tasks {
+        if task["id"] == id {
+            return task
+        }
+    }
+    return null
+}
+
+export fn get_all_tasks() {
+    return tasks
+}
+
+export fn get_pending_tasks() {
+    let pending = []
+    for task in tasks {
+        if task["status"] == "pending" {
+            push(pending, task)
+        }
+    }
+    return pending
+}
+
+export fn get_user_tasks(user_id) {
+    let user_tasks = []
+    for task in tasks {
+        if task["assigned_to"] == user_id {
+            push(user_tasks, task)
+        }
+    }
+    return user_tasks
+}
+
+export fn update_task(id, updates) {
+    let task = get_task(id)
+    if !task {
+        throw "Task not found: " + id
+    }
+    
+    // Apply updates
+    for key in keys(updates) {
+        if key != "id" {  // Don't allow ID changes
+            task[key] = updates[key]
+        }
+    }
+    
+    task["updated_at"] = now()
+    
+    // Update in database
+    if db.is_connected() {
+        db.update("tasks", id, task)
+    }
+    
+    return task
+}
+
+export fn complete_task(id) {
+    return update_task(id, {
+        "status": "completed",
+        "completed_at": now()
+    })
+}
+
+export fn delete_task(id) {
+    let index = -1
+    for i in range(0, len(tasks)) {
+        if tasks[i]["id"] == id {
+            index = i
+            break
+        }
+    }
+    
+    if index >= 0 {
+        // Remove from database
+        if db.is_connected() {
+            db.delete("tasks", id)
+        }
+        
+        // Remove from local cache
+        tasks = slice(tasks, 0, index) + slice(tasks, index + 1)
+        return true
+    }
+    
+    return false
+}
+
+export fn get_statistics() {
+    let stats = {
+        "total": len(tasks),
+        "completed": 0,
+        "pending": 0,
+        "high_priority": 0,
+        "medium_priority": 0,
+        "low_priority": 0
+    }
+    
+    for task in tasks {
+        if task["status"] == "completed" {
+            stats["completed"] = stats["completed"] + 1
+        } else {
+            stats["pending"] = stats["pending"] + 1
+        }
+        
+        if task["priority"] == "High" {
+            stats["high_priority"] = stats["high_priority"] + 1
+        } else if task["priority"] == "Medium" {
+            stats["medium_priority"] = stats["medium_priority"] + 1
+        } else {
+            stats["low_priority"] = stats["low_priority"] + 1
+        }
+    }
+    
+    return stats
+}
+
+export fn load_tasks() {
+    // Load from database or return empty array
+    if db.is_connected() {
+        tasks = db.find_all("tasks")
+    }
+    return tasks
+}

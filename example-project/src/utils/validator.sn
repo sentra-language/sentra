@@ -1,0 +1,143 @@
+// Validator Utility - Input validation functions
+
+export fn is_valid_email(email) {
+    if !email || len(email) < 3 {
+        return false
+    }
+    
+    // Check for @ symbol
+    let at_count = 0
+    let at_pos = -1
+    for i in range(0, len(email)) {
+        if email[i] == "@" {
+            at_count = at_count + 1
+            at_pos = i
+        }
+    }
+    
+    // Must have exactly one @
+    if at_count != 1 {
+        return false
+    }
+    
+    // @ can't be first or last
+    if at_pos == 0 || at_pos == len(email) - 1 {
+        return false
+    }
+    
+    // Must have domain after @
+    let domain_part = slice(email, at_pos + 1)
+    if !contains(domain_part, ".") {
+        return false
+    }
+    
+    return true
+}
+
+export fn is_valid_username(username) {
+    if !username || len(username) < 3 {
+        return false
+    }
+    
+    if len(username) > 20 {
+        return false
+    }
+    
+    // Only allow alphanumeric and underscore
+    let valid_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+    for char in username {
+        if !contains(valid_chars, char) {
+            return false
+        }
+    }
+    
+    return true
+}
+
+export fn is_valid_password(password) {
+    if !password || len(password) < 8 {
+        return false
+    }
+    
+    let has_upper = false
+    let has_lower = false
+    let has_number = false
+    
+    for char in password {
+        if contains("ABCDEFGHIJKLMNOPQRSTUVWXYZ", char) {
+            has_upper = true
+        }
+        if contains("abcdefghijklmnopqrstuvwxyz", char) {
+            has_lower = true
+        }
+        if contains("0123456789", char) {
+            has_number = true
+        }
+    }
+    
+    return has_upper && has_lower && has_number
+}
+
+export fn is_valid_string(str) {
+    return str && len(str) > 0
+}
+
+export fn is_valid_priority(priority) {
+    let valid = ["High", "Medium", "Low"]
+    return contains_value(valid, priority)
+}
+
+export fn is_valid_status(status) {
+    let valid = ["pending", "in_progress", "completed"]
+    return contains_value(valid, status)
+}
+
+export fn is_valid_id(id) {
+    return id && len(id) > 0
+}
+
+export fn sanitize_string(str) {
+    if !str {
+        return ""
+    }
+    
+    // Remove dangerous characters
+    let dangerous = ["<", ">", "&", "\"", "'", "/"]
+    let result = str
+    
+    for char in dangerous {
+        result = replace_all(result, char, "")
+    }
+    
+    return trim(result)
+}
+
+fn contains(str, char) {
+    for c in str {
+        if c == char {
+            return true
+        }
+    }
+    return false
+}
+
+fn contains_value(arr, value) {
+    for item in arr {
+        if item == value {
+            return true
+        }
+    }
+    return false
+}
+
+fn replace_all(str, old, new) {
+    let result = ""
+    for char in str {
+        if char == old {
+            result = result + new
+        } else {
+            result = result + char
+        }
+    }
+    return result
+}

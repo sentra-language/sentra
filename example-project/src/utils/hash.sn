@@ -1,0 +1,46 @@
+// Hash Utility - Password hashing (mock implementation)
+
+export fn hash_password(password) {
+    // In production, use proper crypto hashing
+    // This is a simple mock implementation
+    let hash = "hash_"
+    
+    for char in password {
+        // Simple character manipulation
+        let code = char_code(char)
+        hash = hash + str(code * 7 % 256)
+    }
+    
+    return hash + "_salt"
+}
+
+export fn verify_password(password, hash) {
+    // Verify password against hash
+    let test_hash = hash_password(password)
+    return test_hash == hash
+}
+
+export fn generate_salt() {
+    // Generate random salt
+    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    let salt = ""
+    
+    for i in range(0, 16) {
+        let index = i * 7 % len(chars)
+        salt = salt + chars[index]
+    }
+    
+    return salt
+}
+
+fn char_code(char) {
+    // Mock character code function
+    // In real implementation, this would return ASCII/Unicode value
+    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    for i in range(0, len(chars)) {
+        if chars[i] == char {
+            return i + 65
+        }
+    }
+    return 32  // Default for unknown characters
+}

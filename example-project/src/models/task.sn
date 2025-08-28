@@ -1,0 +1,56 @@
+// Task Model - Defines task structure
+
+export fn new(id, title, priority, assigned_to) {
+    return {
+        "id": id,
+        "title": title,
+        "description": "",
+        "priority": priority,  // High, Medium, Low
+        "status": "pending",    // pending, in_progress, completed
+        "assigned_to": assigned_to,
+        "created_at": now(),
+        "updated_at": now(),
+        "completed_at": null,
+        "tags": [],
+        "attachments": []
+    }
+}
+
+export fn validate(task) {
+    if !task["title"] || len(task["title"]) == 0 {
+        return false
+    }
+    
+    let valid_priorities = ["High", "Medium", "Low"]
+    if !contains(valid_priorities, task["priority"]) {
+        return false
+    }
+    
+    let valid_statuses = ["pending", "in_progress", "completed"]
+    if !contains(valid_statuses, task["status"]) {
+        return false
+    }
+    
+    return true
+}
+
+export fn to_string(task) {
+    return "[" + task["priority"] + "] " + task["title"] + " (" + task["status"] + ")"
+}
+
+export fn is_completed(task) {
+    return task["status"] == "completed"
+}
+
+export fn is_high_priority(task) {
+    return task["priority"] == "High"
+}
+
+fn contains(arr, value) {
+    for item in arr {
+        if item == value {
+            return true
+        }
+    }
+    return false
+}
