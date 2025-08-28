@@ -1,0 +1,149 @@
+// PostgreSQL Database Example
+// Demonstrates PostgreSQL-specific features
+
+// Connection parameters (adjust as needed)
+let host = "localhost"
+let port = 5432
+let user = "postgres"
+let password = "password"
+let dbname = "testdb"
+
+// Build connection string
+let dsn = "host=" + host + 
+         " port=" + str(port) + 
+         " user=" + user + 
+         " password=" + password + 
+         " dbname=" + dbname + 
+         " sslmode=disable"
+
+// Connect to PostgreSQL
+let connected = db_connect("pgdb", "postgres", dsn)
+if !connected {
+    log("Failed to connect to PostgreSQL")
+    log("Make sure PostgreSQL is running and credentials are correct")
+    exit(1)
+}
+
+log("Connected to PostgreSQL database")
+
+// Create products table with PostgreSQL-specific features
+let create_table = "
+    CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        price DECIMAL(10, 2),
+        category VARCHAR(50),
+        in_stock BOOLEAN DEFAULT true,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT NOW()
+    )
+"
+
+db_execute("pgdb", create_table)
+log("Products table created")
+
+// Insert products with JSON metadata
+let products = [
+    ["Laptop", 999.99, "Electronics", true, '{"brand": "TechCo", "warranty": "2 years"}'],
+    ["Coffee Maker", 79.99, "Appliances", true, '{"brand": "BrewMaster", "capacity": "12 cups"}'],
+    ["Book", 15.99, "Books", false, '{"author": "John Doe", "pages": 350}'],
+    ["Headphones", 149.99, "Electronics", true, '{"brand": "AudioPro", "wireless": true}']
+]
+
+for product in products {
+    let affected = db_execute(
+        "pgdb",
+        "INSERT INTO products (name, price, category, in_stock, metadata) 
+         VALUES ($1, $2, $3, $4, $5::jsonb) 
+         ON CONFLICT (id) DO NOTHING",
+        product[0], product[1], product[2], product[3], product[4]
+    )
+    if affected > 0 {
+        log("Inserted product: " + product[0])
+    }
+}
+
+// Query with JSON operations
+log("\n=== Products with Metadata ===")
+let products_with_meta = db_query(
+    "pgdb",
+    "SELECT name, price, metadata->>'brand' as brand FROM products WHERE metadata IS NOT NULL"
+)
+for product in products_with_meta {
+    log(product["name"] + " by " + product["brand"] + " - $" + str(product["price"]))
+}
+
+// Use PostgreSQL-specific aggregation
+log("\n=== Category Statistics ===")
+let stats = db_query(
+    "pgdb",
+    "SELECT category, 
+            COUNT(*) as count,
+            AVG(price) as avg_price,
+            MIN(price) as min_price,
+            MAX(price) as max_price
+     FROM products 
+     GROUP BY category
+     ORDER BY avg_price DESC"
+)
+
+for stat in stats {
+    log("Category: " + stat["category"])
+    log("  Count: " + str(stat["count"]))
+    log("  Avg Price: $" + str(stat["avg_price"]))
+    log("  Price Range: $" + str(stat["min_price"]) + " - $" + str(stat["max_price"]))
+}
+
+// Full-text search (if available)
+log("\n=== Search for Electronics ===")
+let electronics = db_query(
+    "pgdb",
+    "SELECT * FROM products WHERE category ILIKE $1",
+    "%electron%"
+)
+for item in electronics {
+    log("- " + item["name"] + ": $" + str(item["price"]))
+}
+
+// Use window functions
+log("\n=== Price Rankings ===")
+let rankings = db_query(
+    "pgdb",
+    "SELECT name, price, 
+            RANK() OVER (ORDER BY price DESC) as price_rank,
+            PERCENT_RANK() OVER (ORDER BY price) as price_percentile
+     FROM products"
+)
+for item in rankings {
+    log(str(item["price_rank"]) + ". " + item["name"] + 
+        " ($" + str(item["price"]) + ") - " +
+        "Percentile: " + str(item["price_percentile"] * 100) + "%")
+}
+
+// Transaction example
+log("\n=== Transaction Test ===")
+try {
+    // Start transaction (would need proper transaction support in VM)
+    db_execute("pgdb", "BEGIN")
+    
+    // Apply discount
+    db_execute("pgdb", "UPDATE products SET price = price * 0.9 WHERE category = 'Electronics'")
+    log("Applied 10% discount to Electronics")
+    
+    // Check new prices
+    let discounted = db_query("pgdb", "SELECT name, price FROM products WHERE category = 'Electronics'")
+    for item in discounted {
+        log("New price for " + item["name"] + ": $" + str(item["price"]))
+    }
+    
+    // Rollback for demo
+    db_execute("pgdb", "ROLLBACK")
+    log("Transaction rolled back")
+} catch (e) {
+    db_execute("pgdb", "ROLLBACK")
+    log("Error in transaction: " + str(e))
+}
+
+// Clean up
+db_close("pgdb")
+log("\nPostgreSQL connection closed")

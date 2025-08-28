@@ -1,0 +1,94 @@
+// SQLite Database Example
+// Demonstrates basic database operations with SQLite
+
+// Connect to SQLite database (creates file if not exists)
+let connected = db_connect("local", "sqlite", "test.db")
+if !connected {
+    log("Failed to connect to database")
+    exit(1)
+}
+
+log("Connected to SQLite database")
+
+// Create a users table
+let create_table = "
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL,
+        age INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+"
+
+let result = db_execute("local", create_table)
+log("Table created")
+
+// Insert some users
+let users = [
+    ["alice", "alice@example.com", 28],
+    ["bob", "bob@example.com", 35],
+    ["charlie", "charlie@example.com", 42],
+    ["diana", "diana@example.com", 31]
+]
+
+for user in users {
+    let affected = db_execute(
+        "local",
+        "INSERT OR IGNORE INTO users (username, email, age) VALUES (?, ?, ?)",
+        user[0], user[1], user[2]
+    )
+    if affected > 0 {
+        log("Inserted user: " + user[0])
+    }
+}
+
+// Query all users
+log("\n=== All Users ===")
+let all_users = db_query("local", "SELECT * FROM users ORDER BY username")
+for user in all_users {
+    log("ID: " + str(user["id"]) + 
+        ", Username: " + user["username"] + 
+        ", Email: " + user["email"] + 
+        ", Age: " + str(user["age"]))
+}
+
+// Query users over 30
+log("\n=== Users over 30 ===")
+let older_users = db_query("local", "SELECT * FROM users WHERE age > ?", 30)
+for user in older_users {
+    log(user["username"] + " is " + str(user["age"]) + " years old")
+}
+
+// Get single user
+log("\n=== Single User Query ===")
+let alice = db_query_one("local", "SELECT * FROM users WHERE username = ?", "alice")
+if alice {
+    log("Found Alice: " + alice["email"])
+} else {
+    log("Alice not found")
+}
+
+// Update a user's age
+let updated = db_execute(
+    "local",
+    "UPDATE users SET age = ? WHERE username = ?",
+    29, "alice"
+)
+log("\nUpdated " + str(updated) + " rows")
+
+// Verify update
+let alice_updated = db_query_one("local", "SELECT * FROM users WHERE username = ?", "alice")
+log("Alice's new age: " + str(alice_updated["age"]))
+
+// Count users
+let count_result = db_query_one("local", "SELECT COUNT(*) as total FROM users")
+log("\nTotal users: " + str(count_result["total"]))
+
+// Get average age
+let avg_result = db_query_one("local", "SELECT AVG(age) as avg_age FROM users")
+log("Average age: " + str(avg_result["avg_age"]))
+
+// Clean up - close connection
+db_close("local")
+log("\nDatabase connection closed")

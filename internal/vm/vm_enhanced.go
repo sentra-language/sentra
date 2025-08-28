@@ -1883,6 +1883,8 @@ func (vm *EnhancedVM) registerBuiltins() {
 	RegisterWebSocketFunctions(vm, netMod)
 	// Register WebSocket server functions
 	RegisterWebSocketServerFunctions(vm, netMod)
+	// Register database binding functions
+	RegisterDatabaseBindings(vm)
 	threatMod := threat_intel.NewThreatIntelModule()
 	containerMod := container.NewContainerScanner()
 	mlMod := ml.NewMLModule()

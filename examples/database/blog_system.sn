@@ -1,0 +1,411 @@
+// Blog System Database Example
+// A complete blog system with users, posts, comments, and tags
+
+// Initialize SQLite database for simplicity
+let db_file = "blog.db"
+let connected = sql_connect("blog", "sqlite", db_file)
+
+if !connected {
+    log("Failed to initialize blog database")
+    exit(1)
+}
+
+log("=== Blog System Database ===")
+log("Database: " + db_file)
+
+// Create schema
+fn create_schema() {
+    // Users table
+    sql_execute("blog", "
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            bio TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ")
+    
+    // Posts table
+    sql_execute("blog", "
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            content TEXT NOT NULL,
+            published BOOLEAN DEFAULT 0,
+            views INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ")
+    
+    // Comments table
+    sql_execute("blog", "
+        CREATE TABLE IF NOT EXISTS comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            approved BOOLEAN DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (post_id) REFERENCES posts(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ")
+    
+    // Tags table
+    sql_execute("blog", "
+        CREATE TABLE IF NOT EXISTS tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        )
+    ")
+    
+    // Post-Tags junction table
+    sql_execute("blog", "
+        CREATE TABLE IF NOT EXISTS post_tags (
+            post_id INTEGER NOT NULL,
+            tag_id INTEGER NOT NULL,
+            PRIMARY KEY (post_id, tag_id),
+            FOREIGN KEY (post_id) REFERENCES posts(id),
+            FOREIGN KEY (tag_id) REFERENCES tags(id)
+        )
+    ")
+    
+    log("Schema created successfully")
+}
+
+// User management functions
+fn create_user(username, email, password) {
+    // In real app, password would be hashed
+    let hash = "hashed_" + password
+    
+    let result = sql_execute(
+        "blog",
+        "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+        username, email, hash
+    )
+    
+    if result > 0 {
+        log("User created: " + username)
+        return true
+    }
+    return false
+}
+
+fn get_user_by_username(username) {
+    return sql_query_one(
+        "blog",
+        "SELECT id, username, email, bio, created_at FROM users WHERE username = ?",
+        username
+    )
+}
+
+// Post management functions
+fn create_post(user_id, title, content, tags) {
+    // Generate slug from title
+    let slug = str_lower(str_replace(title, " ", "-"))
+    
+    // Insert post
+    let result = sql_execute(
+        "blog",
+        "INSERT INTO posts (user_id, title, slug, content) VALUES (?, ?, ?, ?)",
+        user_id, title, slug, content
+    )
+    
+    if result > 0 {
+        // Get the post ID
+        let post = sql_query_one("blog", "SELECT id FROM posts WHERE slug = ?", slug)
+        
+        if post {
+            // Add tags
+            for tag_name in tags {
+                // Insert or get tag
+                sql_execute(
+                    "blog",
+                    "INSERT OR IGNORE INTO tags (name) VALUES (?)",
+                    tag_name
+                )
+                
+                let tag = sql_query_one("blog", "SELECT id FROM tags WHERE name = ?", tag_name)
+                if tag {
+                    // Link post to tag
+                    sql_execute(
+                        "blog",
+                        "INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)",
+                        post["id"], tag["id"]
+                    )
+                }
+            }
+        }
+        
+        log("Post created: " + title)
+        return true
+    }
+    return false
+}
+
+fn publish_post(post_id) {
+    let result = sql_execute(
+        "blog",
+        "UPDATE posts SET published = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        post_id
+    )
+    return result > 0
+}
+
+fn get_post_by_slug(slug) {
+    // Increment view count
+    sql_execute("blog", "UPDATE posts SET views = views + 1 WHERE slug = ?", slug)
+    
+    // Get post with author info
+    return sql_query_one(
+        "blog",
+        "SELECT p.*, u.username as author 
+         FROM posts p 
+         JOIN users u ON p.user_id = u.id 
+         WHERE p.slug = ?",
+        slug
+    )
+}
+
+fn get_recent_posts(limit) {
+    return sql_query(
+        "blog",
+        "SELECT p.*, u.username as author,
+                (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count
+         FROM posts p
+         JOIN users u ON p.user_id = u.id
+         WHERE p.published = 1
+         ORDER BY p.created_at DESC
+         LIMIT ?",
+        limit
+    )
+}
+
+fn get_post_tags(post_id) {
+    return sql_query(
+        "blog",
+        "SELECT t.name 
+         FROM tags t
+         JOIN post_tags pt ON t.id = pt.tag_id
+         WHERE pt.post_id = ?",
+        post_id
+    )
+}
+
+// Comment functions
+fn add_comment(post_id, user_id, content) {
+    let result = sql_execute(
+        "blog",
+        "INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)",
+        post_id, user_id, content
+    )
+    return result > 0
+}
+
+fn get_post_comments(post_id) {
+    return sql_query(
+        "blog",
+        "SELECT c.*, u.username 
+         FROM comments c
+         JOIN users u ON c.user_id = u.id
+         WHERE c.post_id = ? AND c.approved = 1
+         ORDER BY c.created_at DESC",
+        post_id
+    )
+}
+
+// Analytics functions
+fn get_popular_posts(limit) {
+    return sql_query(
+        "blog",
+        "SELECT title, slug, views 
+         FROM posts 
+         WHERE published = 1 
+         ORDER BY views DESC 
+         LIMIT ?",
+        limit
+    )
+}
+
+fn get_top_tags(limit) {
+    return sql_query(
+        "blog",
+        "SELECT t.name, COUNT(pt.post_id) as post_count
+         FROM tags t
+         JOIN post_tags pt ON t.id = pt.tag_id
+         GROUP BY t.id
+         ORDER BY post_count DESC
+         LIMIT ?",
+        limit
+    )
+}
+
+fn get_user_stats(user_id) {
+    let stats = {}
+    
+    // Post count
+    let post_count = sql_query_one(
+        "blog",
+        "SELECT COUNT(*) as count FROM posts WHERE user_id = ?",
+        user_id
+    )
+    stats["posts"] = post_count["count"]
+    
+    // Comment count
+    let comment_count = sql_query_one(
+        "blog",
+        "SELECT COUNT(*) as count FROM comments WHERE user_id = ?",
+        user_id
+    )
+    stats["comments"] = comment_count["count"]
+    
+    // Total views
+    let views = sql_query_one(
+        "blog",
+        "SELECT SUM(views) as total FROM posts WHERE user_id = ?",
+        user_id
+    )
+    stats["total_views"] = views["total"] || 0
+    
+    return stats
+}
+
+// Demo: Use the blog system
+log("\n=== Setting up Blog System ===")
+create_schema()
+
+// Create users
+log("\n=== Creating Users ===")
+create_user("alice", "alice@blog.com", "secret123")
+create_user("bob", "bob@blog.com", "password456")
+create_user("charlie", "charlie@blog.com", "secure789")
+
+// Get user IDs
+let alice = get_user_by_username("alice")
+let bob = get_user_by_username("bob")
+let charlie = get_user_by_username("charlie")
+
+// Create posts
+log("\n=== Creating Posts ===")
+create_post(
+    alice["id"],
+    "Getting Started with Sentra",
+    "Sentra is a powerful security-focused programming language...",
+    ["programming", "sentra", "tutorial"]
+)
+
+create_post(
+    alice["id"],
+    "Database Bindings in Sentra",
+    "Learn how to use database connections in Sentra...",
+    ["database", "sentra", "sql"]
+)
+
+create_post(
+    bob["id"],
+    "Security Best Practices",
+    "Essential security practices for modern applications...",
+    ["security", "best-practices"]
+)
+
+create_post(
+    charlie["id"],
+    "Building Web APIs",
+    "How to build RESTful APIs with proper authentication...",
+    ["api", "web", "rest"]
+)
+
+// Publish posts
+let posts = sql_query("blog", "SELECT id FROM posts")
+for post in posts {
+    publish_post(post["id"])
+}
+
+// Add comments
+log("\n=== Adding Comments ===")
+let first_post = sql_query_one("blog", "SELECT id FROM posts LIMIT 1")
+if first_post {
+    add_comment(first_post["id"], bob["id"], "Great tutorial! Very helpful.")
+    add_comment(first_post["id"], charlie["id"], "Thanks for sharing this!")
+}
+
+// Simulate some views
+sql_execute("blog", "UPDATE posts SET views = ABS(RANDOM() % 100) + 10")
+
+// Display blog statistics
+log("\n=== Blog Statistics ===")
+
+// Recent posts
+log("\n--- Recent Posts ---")
+let recent = get_recent_posts(5)
+for post in recent {
+    log(post["title"] + " by " + post["author"])
+    log("  Views: " + str(post["views"]) + ", Comments: " + str(post["comment_count"]))
+}
+
+// Popular posts
+log("\n--- Popular Posts ---")
+let popular = get_popular_posts(3)
+for post in popular {
+    log(post["title"] + " (" + str(post["views"]) + " views)")
+}
+
+// Top tags
+log("\n--- Top Tags ---")
+let tags = get_top_tags(5)
+for tag in tags {
+    log("#" + tag["name"] + " (" + str(tag["post_count"]) + " posts)")
+}
+
+// User statistics
+log("\n--- User Statistics ---")
+let users = sql_query("blog", "SELECT id, username FROM users")
+for user in users {
+    let stats = get_user_stats(user["id"])
+    log(user["username"] + ":")
+    log("  Posts: " + str(stats["posts"]))
+    log("  Comments: " + str(stats["comments"])
+    log("  Total Views: " + str(stats["total_views"]))
+}
+
+// Search functionality
+log("\n=== Search Examples ===")
+
+// Search posts by keyword
+let keyword = "security"
+log("\nSearching for: " + keyword)
+let search_results = sql_query(
+    "blog",
+    "SELECT title, slug FROM posts 
+     WHERE (title LIKE ? OR content LIKE ?) AND published = 1",
+    "%" + keyword + "%", "%" + keyword + "%"
+)
+for result in search_results {
+    log("- " + result["title"])
+}
+
+// Find posts by tag
+let tag_name = "sentra"
+log("\nPosts tagged with #" + tag_name + ":")
+let tagged_posts = sql_query(
+    "blog",
+    "SELECT p.title 
+     FROM posts p
+     JOIN post_tags pt ON p.id = pt.post_id
+     JOIN tags t ON pt.tag_id = t.id
+     WHERE t.name = ?",
+    tag_name
+)
+for post in tagged_posts {
+    log("- " + post["title"])
+}
+
+// Clean up
+sql_close("blog")
+log("\n=== Blog System Closed ===")

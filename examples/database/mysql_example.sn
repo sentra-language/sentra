@@ -1,0 +1,214 @@
+// MySQL Database Example
+// Demonstrates MySQL-specific features and operations
+
+// MySQL connection parameters
+let host = "localhost"
+let port = 3306
+let user = "root"
+let password = "password"
+let dbname = "testdb"
+
+// MySQL DSN format: username:password@tcp(host:port)/dbname
+let dsn = user + ":" + password + "@tcp(" + host + ":" + str(port) + ")/" + dbname
+
+// Connect to MySQL
+let connected = db_connect("mysql", "mysql", dsn)
+if !connected {
+    log("Failed to connect to MySQL")
+    log("Make sure MySQL is running and credentials are correct")
+    exit(1)
+}
+
+log("Connected to MySQL database")
+
+// Create customers table with MySQL-specific features
+let create_table = "
+    CREATE TABLE IF NOT EXISTS customers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        first_name VARCHAR(50) NOT NULL,
+        last_name VARCHAR(50) NOT NULL,
+        email VARCHAR(100) UNIQUE,
+        phone VARCHAR(20),
+        loyalty_points INT DEFAULT 0,
+        status ENUM('active', 'inactive', 'suspended') DEFAULT 'active',
+        registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_email (email),
+        INDEX idx_name (last_name, first_name)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+"
+
+db_execute("mysql", create_table)
+log("Customers table created")
+
+// Create orders table
+let create_orders = "
+    CREATE TABLE IF NOT EXISTS orders (
+        order_id INT AUTO_INCREMENT PRIMARY KEY,
+        customer_id INT,
+        order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        total_amount DECIMAL(10, 2),
+        status VARCHAR(20) DEFAULT 'pending',
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB
+"
+
+db_execute("mysql", create_orders)
+log("Orders table created")
+
+// Insert customers
+let customers = [
+    ["John", "Smith", "john.smith@email.com", "555-0101", 100],
+    ["Jane", "Doe", "jane.doe@email.com", "555-0102", 250],
+    ["Bob", "Johnson", "bob.j@email.com", "555-0103", 50],
+    ["Alice", "Williams", "alice.w@email.com", "555-0104", 500],
+    ["Charlie", "Brown", "charlie.b@email.com", "555-0105", 75]
+]
+
+for customer in customers {
+    let affected = db_execute(
+        "mysql",
+        "INSERT IGNORE INTO customers (first_name, last_name, email, phone, loyalty_points) 
+         VALUES (?, ?, ?, ?, ?)",
+        customer[0], customer[1], customer[2], customer[3], customer[4]
+    )
+    if affected > 0 {
+        log("Inserted customer: " + customer[0] + " " + customer[1])
+    }
+}
+
+// Get customer IDs for orders
+let customer_ids = db_query("mysql", "SELECT id FROM customers LIMIT 3")
+
+// Insert some orders
+let order_num = 1
+for cust in customer_ids {
+    let amount = 50.0 + (order_num * 25.5)
+    db_execute(
+        "mysql",
+        "INSERT INTO orders (customer_id, total_amount) VALUES (?, ?)",
+        cust["id"], amount
+    )
+    log("Created order for customer ID: " + str(cust["id"]))
+    order_num = order_num + 1
+}
+
+// MySQL-specific: Use JOIN with GROUP BY
+log("\n=== Customer Order Summary ===")
+let summary = db_query(
+    "mysql",
+    "SELECT 
+        c.first_name,
+        c.last_name,
+        c.loyalty_points,
+        COUNT(o.order_id) as order_count,
+        COALESCE(SUM(o.total_amount), 0) as total_spent
+     FROM customers c
+     LEFT JOIN orders o ON c.id = o.customer_id
+     GROUP BY c.id
+     ORDER BY total_spent DESC"
+)
+
+for row in summary {
+    log(row["first_name"] + " " + row["last_name"])
+    log("  Loyalty Points: " + str(row["loyalty_points"]))
+    log("  Orders: " + str(row["order_count"]))
+    log("  Total Spent: $" + str(row["total_spent"]))
+}
+
+// MySQL-specific: Full-text search (if FULLTEXT index exists)
+log("\n=== Search Customers ===")
+let search_results = db_query(
+    "mysql",
+    "SELECT * FROM customers WHERE email LIKE ? OR last_name LIKE ?",
+    "%smith%", "%smith%"
+)
+for customer in search_results {
+    log("Found: " + customer["first_name"] + " " + customer["last_name"] + 
+        " (" + customer["email"] + ")")
+}
+
+// MySQL-specific: Use CASE statement
+log("\n=== Customer Tiers ===")
+let tiers = db_query(
+    "mysql",
+    "SELECT 
+        first_name,
+        last_name,
+        loyalty_points,
+        CASE 
+            WHEN loyalty_points >= 500 THEN 'Platinum'
+            WHEN loyalty_points >= 200 THEN 'Gold'
+            WHEN loyalty_points >= 100 THEN 'Silver'
+            ELSE 'Bronze'
+        END as tier
+     FROM customers
+     ORDER BY loyalty_points DESC"
+)
+
+for customer in tiers {
+    log(customer["first_name"] + " " + customer["last_name"] + 
+        " - " + customer["tier"] + " (" + str(customer["loyalty_points"]) + " points)")
+}
+
+// MySQL-specific: DATE functions
+log("\n=== Recent Registrations ===")
+let recent = db_query(
+    "mysql",
+    "SELECT 
+        first_name,
+        last_name,
+        registration_date,
+        DATEDIFF(NOW(), registration_date) as days_since_registration
+     FROM customers
+     WHERE registration_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+     ORDER BY registration_date DESC"
+)
+
+for customer in recent {
+    log(customer["first_name"] + " " + customer["last_name"] + 
+        " - Registered " + str(customer["days_since_registration"]) + " days ago")
+}
+
+// MySQL-specific: Get table information
+log("\n=== Database Schema ===")
+let tables = db_query(
+    "mysql",
+    "SELECT 
+        TABLE_NAME,
+        TABLE_ROWS,
+        DATA_LENGTH,
+        INDEX_LENGTH,
+        CREATE_TIME
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = ?",
+    dbname
+)
+
+for table in tables {
+    log("Table: " + table["TABLE_NAME"])
+    log("  Rows: " + str(table["TABLE_ROWS"]))
+    log("  Data Size: " + str(table["DATA_LENGTH"]) + " bytes")
+}
+
+// MySQL-specific: Show indexes
+log("\n=== Indexes ===")
+let indexes = db_query(
+    "mysql",
+    "SELECT DISTINCT
+        TABLE_NAME,
+        INDEX_NAME,
+        COLUMN_NAME
+     FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = ?
+     ORDER BY TABLE_NAME, INDEX_NAME",
+    dbname
+)
+
+for idx in indexes {
+    log("Index " + idx["INDEX_NAME"] + " on " + 
+        idx["TABLE_NAME"] + "." + idx["COLUMN_NAME"])
+}
+
+// Clean up
+db_close("mysql")
+log("\nMySQL connection closed")

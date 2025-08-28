@@ -1,0 +1,73 @@
+// Simple Blog System using SQL bindings
+log("=== Simple Blog System ===")
+
+// Connect to SQLite
+let connected = sql_connect("blog", "sqlite", "simple_blog.db")
+if !connected {
+    log("Failed to connect to database")
+    exit(1)
+}
+
+// Create posts table
+sql_execute("blog", "
+    CREATE TABLE IF NOT EXISTS posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        author TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+")
+
+log("Database initialized")
+
+// Insert some posts
+let posts = [
+    ["Welcome to My Blog", "This is my first post on this new blog!", "Alice"],
+    ["Learning Sentra", "Sentra is an amazing security-focused language", "Bob"],
+    ["Database Bindings", "Today we explore SQL database bindings in Sentra", "Alice"]
+]
+
+for post in posts {
+    let result = sql_execute(
+        "blog",
+        "INSERT INTO posts (title, content, author) VALUES (?, ?, ?)",
+        post[0], post[1], post[2]
+    )
+    if result > 0 {
+        log("Posted: " + post[0])
+    }
+}
+
+// Query all posts
+log("\n=== All Posts ===")
+let all_posts = sql_query("blog", "SELECT * FROM posts ORDER BY created_at DESC")
+for post in all_posts {
+    log("\n" + post["title"] + " by " + post["author"])
+    log("  " + post["content"])
+}
+
+// Count posts by author
+log("\n=== Posts by Author ===")
+let stats = sql_query(
+    "blog",
+    "SELECT author, COUNT(*) as post_count FROM posts GROUP BY author"
+)
+for stat in stats {
+    log(stat["author"] + ": " + str(stat["post_count"]) + " posts")
+}
+
+// Search for specific post
+log("\n=== Search Results ===")
+let search = sql_query(
+    "blog",
+    "SELECT title FROM posts WHERE content LIKE ?",
+    "%security%"
+)
+for result in search {
+    log("Found: " + result["title"])
+}
+
+// Clean up
+sql_close("blog")
+log("\n=== Blog System Closed ===")
