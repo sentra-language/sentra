@@ -1,0 +1,35 @@
+// Task Controller
+
+import "../services/database_sqlite.sn" as db
+
+export fn create_task(user_id, title, description, priority) {
+    return db.create_task(user_id, title, description, priority)
+}
+
+export fn get_all_tasks(user_id) {
+    return db.get_tasks(user_id)
+}
+
+export fn get_task_by_id(task_id) {
+    return db.get_task(task_id)
+}
+
+export fn update_task(task_id, title, description, priority) {
+    return db.update_task(task_id, title, description, priority)
+}
+
+export fn complete_task(task_id) {
+    return db.update_task_status(task_id, "completed")
+}
+
+export fn delete_task(task_id) {
+    return db.delete_task(task_id)
+}
+
+export fn get_statistics(user_id) {
+    return db.get_task_stats(user_id)
+}
+
+export fn search_tasks(user_id, keyword) {
+    return db.search_tasks(user_id, keyword)
+}

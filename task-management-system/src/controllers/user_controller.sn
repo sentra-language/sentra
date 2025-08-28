@@ -1,0 +1,20 @@
+// User Controller
+
+import "../services/database_sqlite.sn" as db
+import "../services/auth.sn" as auth
+
+export fn create_user(username, email, password) {
+    return auth.register(username, email, password)
+}
+
+export fn authenticate(username, password) {
+    return auth.login(username, password)
+}
+
+export fn get_user(username) {
+    return db.get_user(username)
+}
+
+export fn get_user_by_email(email) {
+    return db.get_user_by_email(email)
+}
