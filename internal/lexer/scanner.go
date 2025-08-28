@@ -99,6 +99,7 @@ type Scanner struct {
 	column     int
 	startCol   int // Column where current token started
 	file       string // File path for error reporting
+	hadError   bool   // Track if any errors occurred during scanning
 }
 
 func NewScanner(source string) *Scanner {
@@ -389,7 +390,8 @@ func (s *Scanner) string() {
 	}
 	
 	if s.isAtEnd() {
-		return // Unterminated string; ignore for now
+		s.hadError = true
+		return // Unterminated string
 	}
 	s.advance() // consume closing quote
 	
@@ -437,7 +439,8 @@ func (s *Scanner) templateString() {
 	}
 	
 	if s.isAtEnd() {
-		return // Unterminated string; ignore for now
+		s.hadError = true
+		return // Unterminated string
 	}
 	s.advance() // consume closing backtick
 	
@@ -491,6 +494,10 @@ func (s *Scanner) peekNext() byte {
 
 func (s *Scanner) isAtEnd() bool {
 	return s.current >= len(s.source)
+}
+
+func (s *Scanner) HadError() bool {
+	return s.hadError
 }
 
 func (s *Scanner) sanitize() {
