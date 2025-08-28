@@ -446,6 +446,36 @@ func (c *StmtCompiler) VisitImportStmt(stmt *parser.ImportStmt) interface{} {
 	return nil
 }
 
+func (c *StmtCompiler) VisitExportStmt(stmt *parser.ExportStmt) interface{} {
+	// First compile the statement being exported
+	stmt.Stmt.Accept(c)
+	
+	// For exported functions and variables, we need to get their value
+	switch s := stmt.Stmt.(type) {
+	case *parser.FunctionStmt:
+		// Function was compiled and stored in global
+		// Get it back onto the stack
+		globalIdx := c.Chunk.AddConstant(s.Name)
+		c.Chunk.WriteOp(bytecode.OpGetGlobal)
+		c.Chunk.WriteByte(byte(globalIdx))
+		
+	case *parser.LetStmt:
+		// Variable was compiled and stored in global
+		// Get it back onto the stack
+		globalIdx := c.Chunk.AddConstant(s.Name)
+		c.Chunk.WriteOp(bytecode.OpGetGlobal)
+		c.Chunk.WriteByte(byte(globalIdx))
+	}
+	
+	// Then mark it as exported
+	// This will be used by the module loader to collect exports
+	nameIdx := c.Chunk.AddConstant(stmt.Name)
+	c.Chunk.WriteOp(bytecode.OpExport)
+	c.Chunk.WriteByte(byte(nameIdx))
+	
+	return nil
+}
+
 func (c *StmtCompiler) VisitClassStmt(stmt *parser.ClassStmt) interface{} {
 	// TODO: Implement class compilation
 	return nil

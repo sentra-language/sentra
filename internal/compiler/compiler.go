@@ -312,6 +312,10 @@ func (c *Compiler) VisitImportStmt(stmt *parser.ImportStmt) interface{} {
 	return nil
 }
 
+func (c *Compiler) VisitExportStmt(stmt *parser.ExportStmt) interface{} {
+	return nil
+}
+
 func (c *Compiler) VisitClassStmt(stmt *parser.ClassStmt) interface{} {
 	return nil
 }

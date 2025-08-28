@@ -1,0 +1,19 @@
+// Math utility module
+
+export fn add(a, b) {
+    return a + b
+}
+
+export fn multiply(a, b) {
+    return a * b
+}
+
+export fn factorial(n) {
+    if n <= 1 {
+        return 1
+    }
+    return n * factorial(n - 1)
+}
+
+export let PI = 3.14159
+export let E = 2.71828

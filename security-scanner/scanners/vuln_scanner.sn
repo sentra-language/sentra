@@ -1,0 +1,82 @@
+// Vulnerability Scanner Module - Security vulnerability detection
+
+import "../utils/logger.sn" as logger
+import "./port_scanner.sn" as portScanner
+
+export fn scanForVulns(target, openPorts) {
+    let vulnerabilities = []
+    
+    logger.debug("Checking for vulnerabilities on " + len(openPorts) + " open ports")
+    
+    let i = 0
+    while i < len(openPorts) {
+        let port = openPorts[i]
+        let service = portScanner.getServiceName(port)
+        
+        // Inline vulnerability checking to avoid function call issues
+        let vulns = []
+        
+        if port == 22 {
+            // SSH vulnerabilities
+            if random() > 0.7 {
+                vulns = push(vulns, "Weak SSH cipher detected")
+            }
+        }
+        
+        if port == 80 {
+            // HTTP vulnerabilities
+            vulns = push(vulns, "HTTP service without TLS")
+            if random() > 0.5 {
+                vulns = push(vulns, "Directory listing enabled")
+            }
+        }
+        
+        if port == 443 {
+            // HTTPS vulnerabilities
+            if random() > 0.8 {
+                vulns = push(vulns, "Outdated TLS version")
+            }
+        }
+        
+        if port == 3306 {
+            // MySQL vulnerabilities
+            vulns = push(vulns, "Database port exposed to internet")
+        }
+        
+        if len(vulns) > 0 {
+            let j = 0
+            while j < len(vulns) {
+                vulnerabilities = push(vulnerabilities, {
+                    "port": port,
+                    "service": service,
+                    "vulnerability": vulns[j]
+                })
+                j = j + 1
+            }
+        }
+        i = i + 1
+    }
+    
+    return vulnerabilities
+}
+
+export fn getSeverity(vulnerability) {
+    // Check severity by vulnerability name
+    if vulnerability == "Weak SSH cipher detected" {
+        return "MEDIUM"
+    }
+    if vulnerability == "HTTP service without TLS" {
+        return "HIGH"
+    }
+    if vulnerability == "Directory listing enabled" {
+        return "MEDIUM"
+    }
+    if vulnerability == "Outdated TLS version" {
+        return "HIGH"
+    }
+    if vulnerability == "Database port exposed to internet" {
+        return "CRITICAL"
+    }
+    
+    return "LOW"
+}
