@@ -100,6 +100,16 @@ func main() {
 		return
 	}
 
+	if args[0] == "check" && len(args) > 1 {
+		checkSyntax(args[1])
+		return
+	}
+
+	if args[0] == "fmt" && len(args) > 1 {
+		formatCode(args[1])
+		return
+	}
+
 	if args[0] == "run" && len(args) > 1 {
 		// Filter out optimization flags from file arguments
 		var filename string
@@ -227,6 +237,83 @@ func main() {
 	showUsage()
 }
 
+func checkSyntax(filename string) {
+	source, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Create scanner with file information
+	scanner := lexer.NewScannerWithFile(string(source), filename)
+	tokens := scanner.ScanTokens()
+
+	// Check for lexer errors
+	if scanner.HadError() {
+		fmt.Fprintf(os.Stderr, "Syntax errors found in %s\n", filename)
+		os.Exit(1)
+	}
+
+	// Create parser with source for error reporting
+	p := parser.NewParserWithSource(tokens, string(source), filename)
+	
+	// Try to parse
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if err, ok := r.(*errors.SentraError); ok {
+					fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+					os.Exit(1)
+				} else if err, ok := r.(error); ok {
+					fmt.Fprintf(os.Stderr, "Syntax error: %v\n", err)
+					os.Exit(1)
+				} else {
+					fmt.Fprintf(os.Stderr, "Syntax error: %v\n", r)
+					os.Exit(1)
+				}
+			}
+		}()
+		p.Parse()
+	}()
+
+	// If we get here, syntax is valid
+	fmt.Printf("%s: syntax is valid\n", filename)
+	os.Exit(0)
+}
+
+func formatCode(filename string) {
+	source, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Parse the code first to ensure it's valid
+	scanner := lexer.NewScannerWithFile(string(source), filename)
+	tokens := scanner.ScanTokens()
+	
+	if scanner.HadError() {
+		fmt.Fprintf(os.Stderr, "Cannot format file with syntax errors\n")
+		os.Exit(1)
+	}
+
+	p := parser.NewParserWithSource(tokens, string(source), filename)
+	
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "Cannot format file with syntax errors: %v\n", r)
+				os.Exit(1)
+			}
+		}()
+		_ = p.Parse() // Just validate, don't need the AST yet
+	}()
+
+	// TODO: Implement actual formatting logic
+	// For now, just write the file back unchanged but validated
+	fmt.Printf("%s: formatted (formatting rules not yet implemented)\n", filename)
+}
+
 func runWithDebugger(args []string) {
 	if len(args) == 0 {
 		log.Fatal("Debug command requires a file to debug")
@@ -283,7 +370,7 @@ func runWithDebugger(args []string) {
 	hook := debugger.NewVMDebugHook(debug)
 	enhancedVM.SetDebugHook(hook)
 	
-	fmt.Printf("🐛 Starting Sentra debugger for: %s\n", filename)
+	fmt.Printf("Starting Sentra debugger for: %s\n", filename)
 	fmt.Println("The program will start paused. Type 'help' for commands.")
 	
 	// Start in debug mode
@@ -302,7 +389,7 @@ func runWithDebugger(args []string) {
 	}
 	
 	_ = result
-	fmt.Println("\n🎯 Program execution completed")
+	fmt.Println("\nProgram execution completed")
 }
 
 func runTests(args []string) {
@@ -331,7 +418,7 @@ func runTests(args []string) {
 		}
 	}
 	
-	fmt.Printf("🧪 Running %d test file(s)...\n", len(testFiles))
+	fmt.Printf("Running %d test file(s)...\n", len(testFiles))
 	
 	// Create test runner (not used in simplified version)
 	// config := &testing.TestConfig{
@@ -343,7 +430,7 @@ func runTests(args []string) {
 	
 	// Process each test file
 	for _, testFile := range testFiles {
-		fmt.Printf("\n📄 Loading test file: %s\n", testFile)
+		fmt.Printf("\nLoading test file: %s\n", testFile)
 		
 		source, err := os.ReadFile(testFile)
 		if err != nil {
@@ -394,7 +481,7 @@ func runTests(args []string) {
 	// Run all collected tests
 	// Note: In a full implementation, tests would be collected during VM execution
 	// and then run here. For now, we'll just show the summary.
-	fmt.Println("\n✅ Test execution completed")
+	fmt.Println("\nTest execution completed")
 }
 
 func showUsage() {
@@ -402,6 +489,8 @@ func showUsage() {
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  sentra run <file.sn>       Run a Sentra script")
+	fmt.Println("  sentra check <file.sn>     Check syntax without running")
+	fmt.Println("  sentra fmt <file.sn>       Format Sentra code")
 	fmt.Println("  sentra debug <file.sn>     Debug a Sentra script with breakpoints")
 	fmt.Println("  sentra test [files...]     Run test files (*_test.sn)")
 	fmt.Println("  sentra repl                Start interactive REPL")
@@ -519,15 +608,15 @@ func showVersion() {
 		fmt.Printf("Dev Path: %s\n", devPath)
 	}
 	
-	fmt.Println("Code with Confidence! 🚀")
+	fmt.Println("Code with Confidence!")
 }
 
 func updateSentra() {
-	fmt.Println("🔄 Updating Sentra to latest version...")
+	fmt.Println("Updating Sentra to latest version...")
 	
 	// Check if using dev path
 	if devPath := os.Getenv("SENTRA_DEV_PATH"); devPath != "" {
-		fmt.Printf("📦 Using development version from: %s\n", devPath)
+		fmt.Printf("Using development version from: %s\n", devPath)
 		fmt.Println("Please run 'git pull' in your development directory")
 		return
 	}
@@ -557,7 +646,7 @@ func updateSentra() {
 	}
 	
 	// Update from git
-	fmt.Printf("📥 Fetching latest from: %s\n", installDir)
+	fmt.Printf("Fetching latest from: %s\n", installDir)
 	cmd := exec.Command("git", "pull", "origin", "main")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		fmt.Printf("Error: %s\n", output)
@@ -565,13 +654,13 @@ func updateSentra() {
 	}
 	
 	// Rebuild
-	fmt.Println("🔨 Building new version...")
+	fmt.Println("Building new version...")
 	cmd = exec.Command("go", "build", "-o", "sentra", "./cmd/sentra")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		fmt.Printf("Error: %s\n", output)
 		return
 	}
 	
-	fmt.Println("✅ Successfully updated Sentra!")
+	fmt.Println("Successfully updated Sentra!")
 	showVersion()
 }
