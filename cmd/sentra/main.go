@@ -110,6 +110,11 @@ func main() {
 		return
 	}
 
+	if args[0] == "lint" && len(args) > 1 {
+		lintCode(args[1])
+		return
+	}
+
 	if args[0] == "run" && len(args) > 1 {
 		// Filter out optimization flags from file arguments
 		var filename string
@@ -281,6 +286,124 @@ func checkSyntax(filename string) {
 	os.Exit(0)
 }
 
+func lintCode(filename string) {
+	source, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Parse the code
+	scanner := lexer.NewScannerWithFile(string(source), filename)
+	tokens := scanner.ScanTokens()
+	
+	if scanner.HadError() {
+		fmt.Fprintf(os.Stderr, "Syntax errors found, cannot lint\n")
+		os.Exit(1)
+	}
+
+	p := parser.NewParserWithSource(tokens, string(source), filename)
+	
+	var stmts []parser.Stmt
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "Parse error: %v\n", r)
+				os.Exit(1)
+			}
+		}()
+		stmts = p.Parse()
+	}()
+
+	// Perform linting checks
+	warnings := 0
+	errors := 0
+	
+	// Check for unused variables (simplified)
+	declaredVars := make(map[string]bool)
+	usedVars := make(map[string]bool)
+	
+	// Walk through statements to find declarations and usage
+	var walkStmt func(parser.Stmt)
+	var walkExpr func(parser.Expr)
+	
+	walkExpr = func(expr parser.Expr) {
+		if expr == nil {
+			return
+		}
+		switch e := expr.(type) {
+		case *parser.Variable:
+			usedVars[e.Name] = true
+		case *parser.Binary:
+			walkExpr(e.Left)
+			walkExpr(e.Right)
+		case *parser.CallExpr:
+			walkExpr(e.Callee)
+			for _, arg := range e.Args {
+				walkExpr(arg)
+			}
+		case *parser.Assign:
+			// Assignment uses the variable
+			usedVars[e.Name] = true
+			walkExpr(e.Value)
+		}
+	}
+	
+	walkStmt = func(stmt parser.Stmt) {
+		switch s := stmt.(type) {
+		case *parser.LetStmt:
+			declaredVars[s.Name] = true
+			walkExpr(s.Expr)
+		case *parser.FunctionStmt:
+			// Don't check function names as unused
+			for _, bodyStmt := range s.Body {
+				walkStmt(bodyStmt)
+			}
+		case *parser.ExpressionStmt:
+			walkExpr(s.Expr)
+		case *parser.IfStmt:
+			walkExpr(s.Condition)
+			for _, thenStmt := range s.Then {
+				walkStmt(thenStmt)
+			}
+			for _, elseStmt := range s.Else {
+				walkStmt(elseStmt)
+			}
+		case *parser.WhileStmt:
+			walkExpr(s.Condition)
+			for _, bodyStmt := range s.Body {
+				walkStmt(bodyStmt)
+			}
+		case *parser.ReturnStmt:
+			walkExpr(s.Value)
+		}
+	}
+	
+	for _, stmt := range stmts {
+		walkStmt(stmt)
+	}
+	
+	// Report unused variables
+	for varName := range declaredVars {
+		if !usedVars[varName] && !strings.HasPrefix(varName, "_") {
+			fmt.Printf("Warning: Variable '%s' is declared but never used\n", varName)
+			warnings++
+		}
+	}
+	
+	// Check for other issues
+	// TODO: Add more linting rules
+	
+	if errors > 0 {
+		fmt.Printf("\n%s: %d errors, %d warnings\n", filename, errors, warnings)
+		os.Exit(1)
+	} else if warnings > 0 {
+		fmt.Printf("\n%s: %d warnings\n", filename, warnings)
+	} else {
+		fmt.Printf("%s: no issues found\n", filename)
+	}
+}
+
 func formatCode(filename string) {
 	source, err := os.ReadFile(filename)
 	if err != nil {
@@ -306,12 +429,12 @@ func formatCode(filename string) {
 				os.Exit(1)
 			}
 		}()
-		_ = p.Parse() // Just validate, don't need the AST yet
+		_ = p.Parse() // Just validate
 	}()
 
-	// TODO: Implement actual formatting logic
-	// For now, just write the file back unchanged but validated
-	fmt.Printf("%s: formatted (formatting rules not yet implemented)\n", filename)
+	// TODO: Implement actual formatting
+	// For now, just validate the syntax
+	fmt.Printf("%s: syntax valid (formatting not yet implemented)\n", filename)
 }
 
 func runWithDebugger(args []string) {
@@ -490,6 +613,7 @@ func showUsage() {
 	fmt.Println("Usage:")
 	fmt.Println("  sentra run <file.sn>       Run a Sentra script")
 	fmt.Println("  sentra check <file.sn>     Check syntax without running")
+	fmt.Println("  sentra lint <file.sn>      Check for code quality issues")
 	fmt.Println("  sentra fmt <file.sn>       Format Sentra code")
 	fmt.Println("  sentra debug <file.sn>     Debug a Sentra script with breakpoints")
 	fmt.Println("  sentra test [files...]     Run test files (*_test.sn)")
