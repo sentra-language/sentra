@@ -1,7 +1,0 @@
-// Test validator from same directory
-
-import "./validator.sn" as v
-
-log("Testing validator module...")
-let result = v.is_valid_email("test@example.com")
-log("Result: " + str(result))
