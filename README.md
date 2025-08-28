@@ -78,9 +78,37 @@ sentra test
 - **Time**: Date/time operations
 - **Regex**: Pattern matching
 - **Security**: Cryptography, hashing, threat detection
-- **Database**: SQL operations
+- **Database**: Full SQL database support (SQLite, PostgreSQL, MySQL)
 - **SIEM**: Security event management
 - **ML**: Machine learning for security
+
+### 🗄️ Database Support
+Native database bindings with SQL injection protection:
+- **SQLite**: Pure Go implementation (no CGO required)
+- **PostgreSQL**: Full support with advanced features
+- **MySQL**: Complete MySQL/MariaDB compatibility
+- **Features**:
+  - Connection pooling
+  - Prepared statements
+  - Transaction support
+  - Parameter binding (SQL injection safe)
+  - Type conversion between Sentra and SQL types
+
+```sentra
+// Connect to SQLite database
+sql_connect("mydb", "sqlite", "data.db")
+
+// Execute queries with parameter binding
+sql_execute("mydb", "INSERT INTO users (name, age) VALUES (?, ?)", "Alice", 30)
+
+// Query data
+let users = sql_query("mydb", "SELECT * FROM users WHERE age > ?", 25)
+for user in users {
+    log(user["name"] + ": " + str(user["age"]))
+}
+
+sql_close("mydb")
+```
 
 ### 🌐 Comprehensive Networking
 - **TCP/UDP Sockets**: Full client/server implementation
@@ -330,6 +358,8 @@ See the `examples/` directory for more complex programs:
 - `arrays_and_maps.sn` - Collection operations
 - `advanced_functions.sn` - Closures and higher-order functions
 - `control_flow.sn` - Conditionals and loops
+- `database/simple_blog.sn` - Blog system with SQLite
+- `database/sqlite_example.sn` - SQLite operations demo
 - `modules_example.sn` - Module system usage
 - `error_handling.sn` - Exception handling
 - `algorithms.sn` - Classic algorithms
