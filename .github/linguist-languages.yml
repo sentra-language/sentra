@@ -1,0 +1,22 @@
+# GitHub Linguist language definition for Sentra
+# This file defines how GitHub should recognize and highlight Sentra code
+# To be submitted to https://github.com/github/linguist
+
+Sentra:
+  type: programming
+  color: "#FF6B35"
+  aliases:
+  - sn
+  extensions:
+  - ".sn"
+  - ".sentra"
+  tm_scope: source.sentra
+  ace_mode: javascript
+  codemirror_mode: javascript
+  codemirror_mime_type: text/x-sentra
+  language_id: 999999999
+  interpreters:
+  - sentra
+  filenames:
+  - sentra.mod
+  - sentra.lock
