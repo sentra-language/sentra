@@ -1,0 +1,118 @@
+{
+  "Function": {
+    "prefix": "fn",
+    "body": [
+      "fn ${1:functionName}(${2:params}) {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Function declaration"
+  },
+  "Import": {
+    "prefix": "import",
+    "body": "import \"${1:module}\" as ${2:alias}",
+    "description": "Import statement"
+  },
+  "If Statement": {
+    "prefix": "if",
+    "body": [
+      "if ${1:condition} {",
+      "\t$0",
+      "}"
+    ],
+    "description": "If statement"
+  },
+  "For Loop": {
+    "prefix": "for",
+    "body": [
+      "for ${1:item} in ${2:collection} {",
+      "\t$0",
+      "}"
+    ],
+    "description": "For-in loop"
+  },
+  "While Loop": {
+    "prefix": "while",
+    "body": [
+      "while ${1:condition} {",
+      "\t$0",
+      "}"
+    ],
+    "description": "While loop"
+  },
+  "Try-Catch": {
+    "prefix": "try",
+    "body": [
+      "try {",
+      "\t$1",
+      "} catch (${2:error}) {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Try-catch block"
+  },
+  "Match Statement": {
+    "prefix": "match",
+    "body": [
+      "match ${1:expression} {",
+      "\tcase ${2:value} -> ${3:result}",
+      "\tdefault -> ${0:defaultResult}",
+      "}"
+    ],
+    "description": "Match/switch statement"
+  },
+  "Security Scanner": {
+    "prefix": "scanner",
+    "body": [
+      "let scanner = security.new_scanner({",
+      "\ttimeout: ${1:5000},",
+      "\tports: [${2:80, 443, 22}],",
+      "\tthreads: ${3:10}",
+      "})",
+      "",
+      "let results = scanner.scan(\"${4:target}\")",
+      "$0"
+    ],
+    "description": "Security scanner setup"
+  },
+  "Port Scan": {
+    "prefix": "portscan",
+    "body": [
+      "let open_ports = port_scan(",
+      "\t\"${1:192.168.1.0/24}\",",
+      "\t[${2:22, 80, 443, 3306}],",
+      "\t{timeout: ${3:1000}}",
+      ")"
+    ],
+    "description": "Port scanning"
+  },
+  "HTTP Request": {
+    "prefix": "http",
+    "body": [
+      "let response = http_${1|get,post,put,delete|}(",
+      "\t\"${2:https://api.example.com/endpoint}\",",
+      "\t{",
+      "\t\theaders: {",
+      "\t\t\t\"Content-Type\": \"application/json\"",
+      "\t\t},",
+      "\t\tbody: ${3:data}",
+      "\t}",
+      ")"
+    ],
+    "description": "HTTP request"
+  },
+  "SIEM Log": {
+    "prefix": "siem",
+    "body": [
+      "siem.log({",
+      "\ttimestamp: now(),",
+      "\tevent_type: \"${1:security_event}\",",
+      "\tseverity: \"${2|LOW,MEDIUM,HIGH,CRITICAL|}\",",
+      "\tdetails: {",
+      "\t\t$0",
+      "\t}",
+      "})"
+    ],
+    "description": "SIEM logging"
+  }
+}

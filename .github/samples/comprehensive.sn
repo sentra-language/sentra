@@ -1,0 +1,232 @@
+// Comprehensive Sentra Language Sample
+// Demonstrates all major language features for syntax highlighting
+
+// Import statements
+import "security/scanner" as scanner
+import "network/monitor" as netmon
+import "crypto/hash" as crypto
+import "./utils/logger.sn" as log
+
+// Constants
+const MAX_THREADS = 100
+const API_VERSION = "2.0.0"
+const SECURITY_LEVEL = "HIGH"
+
+// Global variables
+let global_counter = 0
+var is_running = true
+
+// Enums
+enum Status {
+    ACTIVE,
+    INACTIVE,
+    PENDING,
+    ERROR
+}
+
+// Type definitions
+type UserID = string
+type Score = number
+type Callback = fn(data: any) -> void
+
+// Interfaces
+interface Scannable {
+    scan() -> []Threat
+    configure(config: map) -> void
+}
+
+// Classes/Structs
+class SecurityScanner implements Scannable {
+    // Properties
+    private config: map
+    public status: Status
+    
+    // Constructor
+    fn new(config: map) {
+        this.config = config
+        this.status = Status.INACTIVE
+    }
+    
+    // Methods
+    fn scan() -> []Threat {
+        let threats = []
+        
+        // Try-catch block
+        try {
+            let ports = port_scan("192.168.1.0/24", [80, 443, 22, 3389])
+            
+            // For loop with range
+            for port in ports {
+                if port.is_open && !port.is_secure {
+                    threats.push(Threat{
+                        type: "open_port",
+                        severity: calculate_severity(port),
+                        details: port
+                    })
+                }
+            }
+        } catch (error) {
+            log.error("Scan failed: " + error.message)
+            throw error
+        } finally {
+            this.status = Status.INACTIVE
+        }
+        
+        return threats
+    }
+    
+    // Async function
+    async fn scan_async() -> Promise<[]Threat> {
+        this.status = Status.ACTIVE
+        let result = await async_port_scan()
+        this.status = Status.INACTIVE
+        return result
+    }
+}
+
+// Regular functions
+fn calculate_severity(port: Port) -> number {
+    // Ternary operator
+    let base_score = port.is_encrypted ? 5.0 : 8.0
+    
+    // Switch/match statement
+    match port.number {
+        case 22, 3389 -> base_score + 2.0  // SSH, RDP
+        case 445 -> base_score + 3.0       // SMB
+        case 23 -> base_score + 4.0        // Telnet
+        default -> base_score
+    }
+}
+
+// Lambda/arrow functions
+let process_data = (data) => {
+    return data.map((item) => item.value * 2)
+}
+
+// Generic function
+fn filter<T>(items: []T, predicate: fn(T) -> bool) -> []T {
+    let result = []
+    for item in items {
+        if predicate(item) {
+            result.push(item)
+        }
+    }
+    return result
+}
+
+// Main function with various features
+fn main() {
+    // String templates
+    log.info(`Starting security scan at ${now()}`)
+    
+    // Array operations
+    let targets = ["192.168.1.1", "10.0.0.1", "172.16.0.1"]
+    let ports = [22, 80, 443, 3306, 5432]
+    
+    // Map/dictionary operations
+    let config = {
+        "timeout": 5000,
+        "retries": 3,
+        "verbose": true,
+        "threads": 10
+    }
+    
+    // Destructuring
+    let {timeout, retries} = config
+    let [first, ...rest] = targets
+    
+    // Spread operator
+    let all_targets = [...targets, ...["8.8.8.8", "1.1.1.1"]]
+    
+    // Concurrent operations
+    go scan_network(all_targets)
+    spawn monitor_traffic()
+    
+    // Channel operations
+    let ch = channel(10)
+    ch <- "message"
+    let msg = <-ch
+    
+    // Select statement for channels
+    select {
+        case data := <-ch:
+            log.info("Received: " + data)
+        case <-timeout(1000):
+            log.warn("Timeout waiting for data")
+    }
+    
+    // While loop
+    while is_running {
+        // Logical operators
+        if global_counter > 0 && global_counter < MAX_THREADS {
+            global_counter++
+        } else if global_counter >= MAX_THREADS || !is_running {
+            break
+        }
+        
+        // Continue statement
+        if global_counter % 2 == 0 {
+            continue
+        }
+        
+        // Bitwise operations
+        let flags = 0b1010 | 0b0101
+        let masked = flags & 0xFF
+        let shifted = masked << 2
+    }
+    
+    // Regular expressions
+    let pattern = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]+$/
+    let is_email = pattern.test("user@example.com")
+    
+    // JSON operations
+    let json_str = json_encode(config)
+    let parsed = json_decode(json_str)
+    
+    // File operations
+    let content = file_read("config.json")
+    file_write("output.log", content)
+    
+    // Cryptographic operations
+    let hash = sha256("secret_data")
+    let encrypted = aes_encrypt("plain_text", "key")
+    let decrypted = aes_decrypt(encrypted, "key")
+    
+    // Network operations
+    let response = http_get("https://api.example.com/data")
+    let socket = tcp_connect("localhost", 8080)
+    
+    // Database operations (if supported)
+    let db = connect("sqlite://database.db")
+    let users = db.query("SELECT * FROM users WHERE active = ?", [true])
+    
+    // Security-specific operations
+    let vulns = vulnerability_scan("https://target.com")
+    let ssl_info = ssl_analyze("target.com", 443)
+    let threats = threat_detect(network_traffic)
+    
+    // SIEM operations
+    siem.log({
+        timestamp: now(),
+        event_type: "scan_complete",
+        details: {
+            targets: all_targets.len(),
+            vulnerabilities: vulns.len(),
+            duration: elapsed_time()
+        }
+    })
+    
+    // Cleanup
+    defer {
+        log.info("Cleanup completed")
+        close(ch)
+        db.close()
+    }
+}
+
+// Export for module usage
+export {
+    SecurityScanner,
+    calculate_severity,
+    filter
+}
