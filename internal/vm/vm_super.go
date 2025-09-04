@@ -58,7 +58,7 @@ type SuperVM struct {
 
 // NewSuperVM creates the ultimate optimized VM
 func NewSuperVM(chunk *bytecode.Chunk) *SuperVM {
-	enhanced := NewEnhancedVM(chunk)
+	enhanced := NewVM(chunk)
 	super := &SuperVM{
 		EnhancedVM:        enhanced,
 		builtinCache:      make(map[string]*NativeFunction, 100),

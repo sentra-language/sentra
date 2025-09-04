@@ -5,7 +5,7 @@ import (
 )
 
 func TestBlockchainSecurityFunctions(t *testing.T) {
-	vm := NewEnhancedVM(nil)
+	vm := NewVM(nil)
 	
 	t.Run("blockchain_connect", func(t *testing.T) {
 		fn, exists := vm.globalMap["blockchain_connect"]

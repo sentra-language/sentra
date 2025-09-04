@@ -5,7 +5,7 @@ import (
 )
 
 func TestDatabaseSecurityFunctions(t *testing.T) {
-	vm := NewEnhancedVM(nil)
+	vm := NewVM(nil)
 	
 	t.Run("db_connect", func(t *testing.T) {
 		fn, exists := vm.globalMap["db_connect"]

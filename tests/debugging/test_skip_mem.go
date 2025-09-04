@@ -36,7 +36,7 @@ func main() {
 	chunk := c.Compile(stmts)
 
 	// Create basic VM without enhanced modules
-	basicVM := vm.NewEnhancedVM(chunk)
+	basicVM := vm.NewVM(chunk)
 	
 	// Remove memory functions that cause hangs
 	

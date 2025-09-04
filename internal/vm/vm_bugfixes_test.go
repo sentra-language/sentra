@@ -13,7 +13,7 @@ func runVM(code []byte, constants []interface{}) (interface{}, error) {
 		Constants: constants,
 	}
 	
-	vm := NewEnhancedVM(chunk)
+	vm := NewVM(chunk)
 	result, err := vm.Run()
 	return result, err
 }

@@ -40,7 +40,7 @@ func Start() {
 			stmtInterfaces = append(stmtInterfaces, s)
 		}
 		chunk := c.Compile(stmtInterfaces)               // fresh chunk
-		sentraVM.ResetWithChunk(chunk)          // swap chunk
+		sentraVM.Reset(chunk)          // swap chunk
 
 		sentraVM.Run()
 	}

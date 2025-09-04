@@ -14,7 +14,7 @@ type FastVM struct {
 
 // NewFastVM creates a VM with reduced overhead
 func NewFastVM(chunk *bytecode.Chunk) *FastVM {
-	enhanced := NewEnhancedVM(chunk)
+	enhanced := NewVM(chunk)
 	return &FastVM{
 		EnhancedVM: enhanced,
 		skipChecks: true,

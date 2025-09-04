@@ -114,10 +114,10 @@ func (ml *ModuleLoader) LoadFileModule(path string) (*Module, error) {
 	chunk := c.CompileWithHoisting(stmts)
 	
 	// Create a new VM instance for the module (isolated context)
-	moduleVM := NewEnhancedVM(chunk)
+	moduleVM := NewVM(chunk)
 	
 	// Module VM will have access to the same built-in functions
-	// They are registered in registerBuiltins() during NewEnhancedVM
+	// They are registered in registerBuiltins() during NewVM
 	
 	// Set up module loader for nested imports
 	moduleVM.moduleLoader = ml

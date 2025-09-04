@@ -21,7 +21,7 @@ type CachedVM struct {
 
 // NewCachedVM creates a VM with builtin function caching optimization
 func NewCachedVM(chunk *bytecode.Chunk) *CachedVM {
-	enhanced := NewEnhancedVM(chunk)
+	enhanced := NewVM(chunk)
 	cached := &CachedVM{
 		EnhancedVM:   enhanced,
 		builtinCache: make(map[string]*NativeFunction, 100), // Pre-size for ~100 builtins

@@ -33,7 +33,7 @@ func main() {
 		Constants: []interface{}{float64(0), float64(3), float64(1)},
 	}
 
-	vm := vm.NewEnhancedVM(chunk)
+	vm := vm.NewVM(chunk)
 	
 	result, err := vm.Run()
 	if err != nil {

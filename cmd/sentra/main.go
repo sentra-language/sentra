@@ -227,7 +227,7 @@ func main() {
 			fastVM := vm.NewFastVM(chunk)
 			result, err = fastVM.OptimizedRun()
 		} else {
-			enhancedVM := vm.NewEnhancedVM(chunk)
+			enhancedVM := vm.NewVM(chunk)
 			enhancedVM.SetFilePath(filename)
 			result, err = enhancedVM.Run()
 		}
@@ -624,7 +624,7 @@ func runWithDebugger(args []string) {
 	chunk := compiler.Compile(stmts)
 
 	// Create VM and debugger
-	enhancedVM := vm.NewEnhancedVM(chunk)
+	enhancedVM := vm.NewVM(chunk)
 	enhancedVM.SetFilePath(filename)
 	debug := debugger.NewDebugger(enhancedVM)
 	
@@ -734,7 +734,7 @@ func runTests(args []string) {
 		chunk := c.Compile(stmts)
 		
 		// Create VM (testing functions are already included in stdlib)
-		enhancedVM := vm.NewEnhancedVM(chunk)
+		enhancedVM := vm.NewVM(chunk)
 		enhancedVM.SetFilePath(testFile)
 		
 		// Run the test file
