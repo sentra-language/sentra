@@ -5,7 +5,7 @@ import (
 )
 
 func TestIoTSecurityFunctions(t *testing.T) {
-	vm := NewEnhancedVM(nil)
+	vm := NewVM(nil)
 	
 	t.Run("iot_scan_device", func(t *testing.T) {
 		fn, exists := vm.globalMap["iot_scan_device"]

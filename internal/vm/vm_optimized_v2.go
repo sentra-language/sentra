@@ -24,7 +24,7 @@ type OptimizedVM struct {
 
 // NewOptimizedVM creates a VM with targeted performance optimizations
 func NewOptimizedVM(chunk *bytecode.Chunk) *OptimizedVM {
-	enhanced := NewEnhancedVM(chunk)
+	enhanced := NewVM(chunk)
 	optimized := &OptimizedVM{
 		EnhancedVM:   enhanced,
 		builtinCache: make(map[string]*NativeFunction),

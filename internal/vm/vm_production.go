@@ -16,7 +16,7 @@ type ProductionVM struct {
 
 // NewProductionVM creates a speed-optimized VM
 func NewProductionVM(chunk *bytecode.Chunk) *ProductionVM {
-	enhanced := NewEnhancedVM(chunk)
+	enhanced := NewVM(chunk)
 	return &ProductionVM{
 		EnhancedVM:     enhanced,
 		fastArithmetic: true,

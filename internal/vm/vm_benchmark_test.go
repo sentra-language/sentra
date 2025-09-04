@@ -36,7 +36,7 @@ func BenchmarkVMArithmetic(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		vm.Run()
 	}
 }
@@ -52,7 +52,7 @@ func BenchmarkFunctionCall(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		vm.Run()
 	}
 }
@@ -70,7 +70,7 @@ func BenchmarkWhileLoop(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		vm.Run()
 	}
 }
@@ -83,7 +83,7 @@ func BenchmarkVMArrayCreation(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		vm.Run()
 	}
 }
@@ -100,7 +100,7 @@ func BenchmarkMapCreation(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		vm.Run()
 	}
 }
@@ -115,7 +115,7 @@ func BenchmarkStringConcat(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		vm.Run()
 	}
 }
@@ -133,7 +133,7 @@ func BenchmarkIfStatement(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		vm.Run()
 	}
 }

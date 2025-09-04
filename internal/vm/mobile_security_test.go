@@ -5,7 +5,7 @@ import (
 )
 
 func TestMobileSecurityFunctions(t *testing.T) {
-	vm := NewEnhancedVM(nil)
+	vm := NewVM(nil)
 	
 	t.Run("mobile_scan_device", func(t *testing.T) {
 		fn, exists := vm.globalMap["mobile_scan_device"]

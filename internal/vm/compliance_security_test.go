@@ -5,7 +5,7 @@ import (
 )
 
 func TestComplianceFrameworkFunctions(t *testing.T) {
-	vm := NewEnhancedVM(nil)
+	vm := NewVM(nil)
 	
 	t.Run("compliance_assess_framework", func(t *testing.T) {
 		fn, exists := vm.globalMap["compliance_assess_framework"]

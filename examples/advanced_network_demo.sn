@@ -16,15 +16,15 @@ let traffic_result = {
 log("• Total packets: " + traffic_result["total_packets"])
 log("• Total bytes: " + traffic_result["total_bytes"])
 log("• Time range: " + traffic_result["time_range"])
-log("• Protocols detected: " + traffic_result["protocol_stats"].length + " types")
-log("• Suspicious IPs: " + traffic_result["suspicious_ips"].length)
-log("• Alerts generated: " + traffic_result["alerts"].length)
+log("• Protocols detected: " + len(traffic_result["protocol_stats"]) + " types")
+log("• Suspicious IPs: " + len(traffic_result["suspicious_ips"]))
+log("• Alerts generated: " + len(traffic_result["alerts"]))
 
 // Mock intrusion detection
 log("\n🔍 Network Intrusion Detection...")
 let intrusion_alerts = []
-log("• Alerts detected: " + intrusion_alerts.length)
-if intrusion_alerts.length > 0 {
+log("• Alerts detected: " + len(intrusion_alerts))
+if len(intrusion_alerts) > 0 {
     let alert = intrusion_alerts[0]
     log("• Latest alert type: " + alert["alert_type"])
     log("• Severity: " + alert["severity"])
@@ -34,10 +34,10 @@ if intrusion_alerts.length > 0 {
 // Use standard port scanning
 log("\n🔎 Advanced Port Scanning...")
 let scan_results = port_scan("127.0.0.1", 80, 85, "TCP")
-log("• Ports scanned: " + scan_results.length)
+log("• Ports scanned: " + len(scan_results))
 let open_ports = 0
 let i = 0
-while i < scan_results.length {
+while i < len(scan_results) {
     if scan_results[i]["state"] == "open" {
         open_ports = open_ports + 1
     }
@@ -59,8 +59,8 @@ log("• Host: " + ssl_result["host"])
 log("• SSL Version: " + ssl_result["ssl_version"])
 log("• Cipher Suite: " + ssl_result["cipher_suite"])
 log("• Security Grade: " + ssl_result["grade"])
-log("• Security issues: " + ssl_result["security_issues"].length)
-log("• Recommendations: " + ssl_result["recommendations"].length)
+log("• Security issues: " + len(ssl_result["security_issues"]))
+log("• Recommendations: " + len(ssl_result["recommendations"]))
 
 // Mock network topology discovery
 log("\n🗺️ Network Topology Discovery...")
@@ -75,12 +75,12 @@ let topology = {
     "gateways": ["192.168.1.1"]
 }
 log("• Discovery timestamp: " + topology["timestamp"])
-log("• Network nodes found: " + topology["nodes"].length)
-log("• Network links: " + topology["links"].length)
-log("• Subnets: " + topology["subnets"].length)
-log("• Gateways: " + topology["gateways"].length)
+log("• Network nodes found: " + len(topology["nodes"]))
+log("• Network links: " + len(topology["links"]))
+log("• Subnets: " + len(topology["subnets"]))
+log("• Gateways: " + len(topology["gateways"]))
 
-if topology["nodes"].length > 0 {
+if len(topology["nodes"]) > 0 {
     let node_ip = topology["nodes"][0]
     log("• Sample node IP: " + node_ip)
     log("• Sample node type: router")

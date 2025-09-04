@@ -88,7 +88,7 @@ func TestArithmetic(t *testing.T) {
 				Constants: tt.constants,
 			}
 
-			vm := NewEnhancedVM(chunk)
+			vm := NewVM(chunk)
 			result, err := vm.Run()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -117,7 +117,7 @@ func TestArrayOperations(t *testing.T) {
 			},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -149,7 +149,7 @@ func TestArrayOperations(t *testing.T) {
 			},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -175,7 +175,7 @@ func TestArrayOperations(t *testing.T) {
 			},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -204,7 +204,7 @@ func TestMapOperations(t *testing.T) {
 			},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -237,7 +237,7 @@ func TestMapOperations(t *testing.T) {
 			},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -272,7 +272,7 @@ func TestStringOperations(t *testing.T) {
 			},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -300,7 +300,7 @@ func TestStringOperations(t *testing.T) {
 			},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -378,7 +378,7 @@ func TestComparisons(t *testing.T) {
 				Constants: []interface{}{float64(42), float64(24)},
 			}
 
-			vm := NewEnhancedVM(chunk)
+			vm := NewVM(chunk)
 			result, err := vm.Run()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -404,7 +404,7 @@ func TestLogicalOperations(t *testing.T) {
 			Constants: []interface{}{true, false},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -426,7 +426,7 @@ func TestLogicalOperations(t *testing.T) {
 			Constants: []interface{}{false, true},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -447,7 +447,7 @@ func TestLogicalOperations(t *testing.T) {
 			Constants: []interface{}{true},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -474,7 +474,7 @@ func TestControlFlow(t *testing.T) {
 			Constants: []interface{}{false, float64(10), float64(20)},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -514,7 +514,7 @@ func TestErrorHandling(t *testing.T) {
 			},
 		}
 
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		result, err := vm.Run()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -551,7 +551,7 @@ func TestTypeOperations(t *testing.T) {
 					Constants: []interface{}{tt.value},
 				}
 
-				vm := NewEnhancedVM(chunk)
+				vm := NewVM(chunk)
 				result, err := vm.Run()
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -583,7 +583,7 @@ func BenchmarkArithmetic(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		vm.Run()
 	}
 }
@@ -606,7 +606,7 @@ func BenchmarkArrayCreation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		vm.Run()
 	}
 }
@@ -630,7 +630,7 @@ func BenchmarkMapOperations(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vm := NewEnhancedVM(chunk)
+		vm := NewVM(chunk)
 		vm.Run()
 	}
 }

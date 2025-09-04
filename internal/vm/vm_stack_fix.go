@@ -15,7 +15,7 @@ type StackFixVM struct {
 
 // NewStackFixVM creates a VM with proper stack management
 func NewStackFixVM(chunk *bytecode.Chunk) *StackFixVM {
-	enhanced := NewEnhancedVM(chunk)
+	enhanced := NewVM(chunk)
 	
 	// Increase stack size for heavy workloads
 	enhanced.maxStackSize = 262144 // 4x larger
@@ -70,7 +70,7 @@ type NoGCVM struct {
 
 // NewNoGCVM creates a VM that minimizes GC pressure
 func NewNoGCVM(chunk *bytecode.Chunk) *NoGCVM {
-	enhanced := NewEnhancedVM(chunk)
+	enhanced := NewVM(chunk)
 	
 	vm := &NoGCVM{
 		EnhancedVM: enhanced,

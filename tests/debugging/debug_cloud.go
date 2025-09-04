@@ -42,7 +42,7 @@ func main() {
 		fmt.Printf("%d: %T = %v\n", i, chunk.Constants[i], chunk.Constants[i])
 	}
 	
-	vm := vm.NewEnhancedVM(chunk)
+	vm := vm.NewVM(chunk)
 	_, err := vm.Run()
 	if err != nil {
 		fmt.Printf("\nError: %v\n", err)

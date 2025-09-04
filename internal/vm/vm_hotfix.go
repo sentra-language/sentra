@@ -16,7 +16,7 @@ type HotfixVM struct {
 
 // NewHotfixVM creates a VM with targeted performance hotfix
 func NewHotfixVM(chunk *bytecode.Chunk) *HotfixVM {
-	enhanced := NewEnhancedVM(chunk)
+	enhanced := NewVM(chunk)
 	
 	hotfix := &HotfixVM{
 		EnhancedVM:     enhanced,
