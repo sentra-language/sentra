@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sentra/cmd/sentra/commands"
+	"sentra/internal/commands"
 	"sentra/internal/compiler"
 	"sentra/internal/debugger"
 	"sentra/internal/errors"
