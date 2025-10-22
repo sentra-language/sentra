@@ -33,3 +33,6 @@ Thumbs.db
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Lua language reference (not tracked)
+lua-language/

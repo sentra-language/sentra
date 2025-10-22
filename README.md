@@ -69,7 +69,7 @@ sentra test
 - **Logical operators** (&&, ||, !)
 
 ### 📚 Standard Library
-70+ built-in functions across multiple modules:
+141+ built-in functions across multiple modules:
 - **Math**: Trigonometry, random numbers, mathematical constants
 - **String**: Manipulation, splitting, joining, pattern matching
 - **Array**: Sorting, filtering, mapping, reduction
@@ -79,8 +79,15 @@ sentra test
 - **Regex**: Pattern matching
 - **Security**: Cryptography, hashing, threat detection
 - **Database**: Full SQL database support (SQLite, PostgreSQL, MySQL)
-- **SIEM**: Security event management
-- **ML**: Machine learning for security
+- **Data Science**: NumPy/Pandas-like operations (27 functions)
+- **Network Infrastructure**: Firewall, proxy, IDS, monitoring (44 functions)
+  - Firewall management (8 functions)
+  - HTTP/HTTPS proxy (6 functions)
+  - Reverse proxy with load balancing (5 functions)
+  - Intrusion Detection System (7 functions)
+  - Network monitoring (8 functions)
+  - Packet capture (5 functions)
+  - Port scanning and discovery (5 functions)
 
 ### 🗄️ Database Support
 Native database bindings with SQL injection protection:
@@ -110,14 +117,19 @@ for user in users {
 sql_close("mydb")
 ```
 
-### 🌐 Comprehensive Networking
+### 🌐 Comprehensive Networking & Security
 - **TCP/UDP Sockets**: Full client/server implementation
 - **HTTP Client**: GET, POST, PUT, DELETE, custom requests
 - **HTTP Server**: Routing, middleware, static files
 - **WebSockets**: Client and server with full duplex communication
-- **Network Security**: Port scanning, traffic analysis, SSL/TLS analysis
+- **Firewall Management**: Create rules, block/allow IPs, traffic statistics
+- **HTTP/HTTPS Proxy**: Forward proxy with filtering, caching, and logging
+- **Reverse Proxy**: Load balancing (round-robin, least connections)
+- **Intrusion Detection System (IDS)**: Threat detection with automated responses
+- **Network Monitoring**: Real-time bandwidth, protocol analysis, flow tracking
+- **Packet Capture**: pcap-style packet capture and analysis
+- **Port Scanning**: Network discovery, service identification, vulnerability scanning
 - **DNS Operations**: All record types (A, AAAA, MX, TXT, NS, CNAME)
-- **Network Discovery**: Subnet scanning, service detection
 
 ## 🛠️ Sentra CLI - Your Development Companion
 

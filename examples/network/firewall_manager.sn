@@ -1,0 +1,244 @@
+// Firewall Manager Example
+// Demonstrates firewall rule management, IP blocking/allowing, and statistics
+
+log("===========================================")
+log("  Sentra Firewall Manager")
+log("===========================================")
+log("")
+
+// Initialize firewall
+log("[1/5] Initializing firewall...")
+
+// Set default policies
+firewall_set_default_policy("INPUT", "ACCEPT")
+firewall_set_default_policy("OUTPUT", "ACCEPT")
+firewall_set_default_policy("FORWARD", "DROP")
+
+log("Default policies set:")
+log("  INPUT: ACCEPT")
+log("  OUTPUT: ACCEPT")
+log("  FORWARD: DROP")
+log("")
+
+// Create basic firewall rules
+log("[2/5] Creating firewall rules...")
+log("")
+
+// Allow SSH from trusted network
+let ssh_rule = firewall_create_rule(
+    "INPUT",           // chain
+    "tcp",             // protocol
+    "192.168.1.0/24",  // source IP
+    "any",             // destination IP
+    "any",             // source port
+    "22",              // destination port (SSH)
+    "ACCEPT"           // action
+)
+
+if ssh_rule != null {
+    log("Created SSH rule: " + ssh_rule.id)
+    log("  Allow SSH from 192.168.1.0/24")
+}
+
+// Allow HTTP and HTTPS from anywhere
+let http_rule = firewall_create_rule(
+    "INPUT",
+    "tcp",
+    "any",
+    "any",
+    "any",
+    "80",
+    "ACCEPT"
+)
+
+let https_rule = firewall_create_rule(
+    "INPUT",
+    "tcp",
+    "any",
+    "any",
+    "any",
+    "443",
+    "ACCEPT"
+)
+
+if http_rule != null and https_rule != null {
+    log("Created HTTP/HTTPS rules")
+    log("  HTTP: " + http_rule.id)
+    log("  HTTPS: " + https_rule.id)
+}
+
+// Block known malicious IPs
+log("")
+log("Blocking known malicious IP addresses...")
+
+let malicious_ips = [
+    "10.0.0.1",
+    "10.0.0.2",
+    "10.0.0.3",
+    "192.168.100.50",
+    "172.16.0.100"
+]
+
+for ip in malicious_ips {
+    let block_rule = firewall_block_ip(ip)
+    if block_rule != null {
+        log("  Blocked: " + ip + " (" + block_rule.id + ")")
+    }
+}
+
+// Block entire subnet
+let subnet_rule = firewall_create_rule(
+    "INPUT",
+    "all",
+    "10.0.0.0/8",   // Block entire 10.x.x.x range
+    "any",
+    "any",
+    "any",
+    "DROP"
+)
+
+if subnet_rule != null {
+    log("  Blocked subnet: 10.0.0.0/8 (" + subnet_rule.id + ")")
+}
+
+log("")
+
+// Whitelist trusted IPs
+log("[3/5] Whitelisting trusted IP addresses...")
+
+let trusted_ips = [
+    "192.168.1.100",
+    "192.168.1.101",
+    "192.168.1.200"
+]
+
+for ip in trusted_ips {
+    let allow_rule = firewall_allow_ip(ip)
+    if allow_rule != null {
+        log("  Allowed: " + ip + " (" + allow_rule.id + ")")
+    }
+}
+
+log("")
+
+// Display all rules
+log("[4/5] Listing all firewall rules...")
+log("")
+
+let all_rules = firewall_list_rules()
+log("Total rules: " + str(len(all_rules)))
+log("")
+
+log("Active Firewall Rules:")
+log("----------------------------------------------------------------")
+
+for rule in all_rules {
+    let rule_desc = "[" + rule.chain + "] "
+
+    if rule.src_ip != "any" {
+        rule_desc = rule_desc + rule.src_ip
+    } else {
+        rule_desc = rule_desc + "*"
+    }
+
+    rule_desc = rule_desc + " -> "
+
+    if rule.dst_ip != "any" {
+        rule_desc = rule_desc + rule.dst_ip
+    } else {
+        rule_desc = rule_desc + "*"
+    }
+
+    if rule.dst_port != "any" {
+        rule_desc = rule_desc + ":" + rule.dst_port
+    }
+
+    rule_desc = rule_desc + " (" + rule.protocol + ") => " + rule.action
+
+    log(rule_desc)
+    log("  ID: " + rule.id)
+    log("")
+}
+
+// Display statistics
+log("[5/5] Firewall statistics...")
+log("")
+
+let stats = firewall_get_stats()
+
+log("Firewall Statistics:")
+log("  Total rules: " + str(stats.rules_count))
+log("  Packets blocked: " + str(stats.packets_blocked))
+log("  Packets allowed: " + str(stats.packets_allowed))
+log("  Last update: " + str(stats.last_update))
+
+log("")
+
+// Calculate block rate
+if stats.packets_blocked + stats.packets_allowed > 0 {
+    let total_packets = stats.packets_blocked + stats.packets_allowed
+    let block_rate = stats.packets_blocked * 100 / total_packets
+    log("  Block rate: " + str(block_rate) + "%")
+}
+
+log("")
+
+// Interactive firewall management
+log("=================== FIREWALL MANAGER ===================")
+log("")
+log("Firewall is now active with " + str(len(all_rules)) + " rules.")
+log("")
+log("Available commands:")
+log("  - Block IP: firewall_block_ip(ip)")
+log("  - Allow IP: firewall_allow_ip(ip)")
+log("  - List rules: firewall_list_rules()")
+log("  - Get stats: firewall_get_stats()")
+log("  - Clear all: firewall_clear_rules()")
+log("")
+
+// Simulate traffic monitoring
+log("Monitoring traffic for 30 seconds...")
+log("")
+
+let monitoring_iterations = 6
+let iteration = 0
+
+while iteration < monitoring_iterations {
+    sleep(5)
+
+    let current_stats = firewall_get_stats()
+
+    log("[" + str(iteration + 1) + "/" + str(monitoring_iterations) + "] Statistics update:")
+    log("  Packets blocked: " + str(current_stats.packets_blocked))
+    log("  Packets allowed: " + str(current_stats.packets_allowed))
+
+    // Check if any new threats detected
+    if current_stats.packets_blocked > stats.packets_blocked {
+        let new_blocks = current_stats.packets_blocked - stats.packets_blocked
+        log("  NEW: " + str(new_blocks) + " packets blocked in last interval")
+    }
+
+    log("")
+
+    iteration = iteration + 1
+}
+
+// Cleanup option
+log("========================================================")
+log("")
+log("Monitoring complete.")
+log("")
+log("Would you like to:")
+log("  1. Keep firewall rules active")
+log("  2. Clear all rules (default)")
+log("")
+
+// For this example, we'll clear the rules
+log("Clearing all firewall rules...")
+firewall_clear_rules()
+
+let final_stats = firewall_get_stats()
+log("Rules after cleanup: " + str(final_stats.rules_count))
+
+log("")
+log("Firewall manager exited.")

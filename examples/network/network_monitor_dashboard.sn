@@ -1,0 +1,254 @@
+// Network Monitoring Dashboard Example
+// Real-time network traffic monitoring with bandwidth analysis, protocol distribution, and flow tracking
+
+log("===========================================")
+log("  Sentra Network Monitor Dashboard")
+log("===========================================")
+log("")
+
+// Start monitoring
+log("[1/3] Starting network monitor...")
+let monitor = network_start_monitor("eth0")
+
+if monitor == null {
+    log("ERROR: Failed to start network monitor")
+} else {
+    log("Monitor started: " + monitor.id)
+    log("Interface: " + monitor.interface)
+    log("")
+
+    // Start packet capture for detailed analysis
+    log("[2/3] Starting packet capture...")
+    let capture = capture_start("eth0", "")
+
+    if capture == null {
+        log("ERROR: Failed to start packet capture")
+    } else {
+        log("Capture started: " + capture.id)
+        log("")
+
+        // Monitoring dashboard loop
+        log("[3/3] Launching real-time dashboard...")
+        log("")
+        log("Press Ctrl+C to stop monitoring...")
+        log("")
+
+        let iterations = 20  // Run for about 2 minutes (20 iterations * 6 seconds)
+        let iteration = 0
+
+        while iteration < iterations {
+            // Clear previous output (visual separator)
+            log("")
+            log("================================================================")
+            log("       NETWORK TRAFFIC MONITOR DASHBOARD")
+            log("       " + str(time_now()))
+            log("================================================================")
+            log("")
+
+            // Bandwidth statistics
+            let bw = network_get_bandwidth(monitor.id)
+
+            log("[BANDWIDTH USAGE]")
+            log("  Download: " + str(bw.rx_mbps) + " Mbps (" + str(bw.rx_bytes) + " bytes)")
+            log("  Upload:   " + str(bw.tx_mbps) + " Mbps (" + str(bw.tx_bytes) + " bytes)")
+            log("  RX Packets: " + str(bw.rx_packets))
+            log("  TX Packets: " + str(bw.tx_packets))
+
+            // Calculate total throughput
+            let total_mbps = bw.rx_mbps + bw.tx_mbps
+            log("  Total Throughput: " + str(total_mbps) + " Mbps")
+
+            log("")
+
+            // Protocol distribution
+            let protocols = network_get_protocols(monitor.id)
+
+            log("[PROTOCOL DISTRIBUTION]")
+
+            let total_protocol_packets = protocols.TCP + protocols.UDP + protocols.ICMP
+
+            if total_protocol_packets > 0 {
+                let tcp_pct = protocols.TCP * 100 / total_protocol_packets
+                let udp_pct = protocols.UDP * 100 / total_protocol_packets
+                let icmp_pct = protocols.ICMP * 100 / total_protocol_packets
+
+                log("  TCP:  " + str(protocols.TCP) + " packets (" + str(tcp_pct) + "%)")
+                log("  UDP:  " + str(protocols.UDP) + " packets (" + str(udp_pct) + "%)")
+                log("  ICMP: " + str(protocols.ICMP) + " packets (" + str(icmp_pct) + "%)")
+
+                // Visual bar chart
+                log("")
+                log("  Visual Distribution:")
+                log("  TCP  [" + repeat_char("=", tcp_pct / 2) + repeat_char(" ", 50 - tcp_pct / 2) + "]")
+                log("  UDP  [" + repeat_char("=", udp_pct / 2) + repeat_char(" ", 50 - udp_pct / 2) + "]")
+                log("  ICMP [" + repeat_char("=", icmp_pct / 2) + repeat_char(" ", 50 - icmp_pct / 2) + "]")
+            } else {
+                log("  No traffic detected")
+            }
+
+            log("")
+
+            // Top bandwidth consumers
+            log("[TOP BANDWIDTH CONSUMERS]")
+
+            let talkers = network_get_top_talkers(monitor.id, 5)
+
+            if len(talkers) > 0 {
+                let rank = 1
+                for flow in talkers {
+                    log("  " + str(rank) + ". " + flow.src_ip + ":" + str(flow.src_port) +
+                        " -> " + flow.dst_ip + ":" + str(flow.dst_port))
+                    log("     Protocol: " + flow.protocol +
+                        ", Bytes: " + str(flow.bytes) +
+                        " (" + str(flow.bytes / 1024) + " KB)")
+                    rank = rank + 1
+                }
+            } else {
+                log("  No active flows detected")
+            }
+
+            log("")
+
+            // Active connections
+            let connections = network_get_connections(monitor.id)
+            log("[ACTIVE CONNECTIONS]: " + str(len(connections)))
+
+            log("")
+
+            // Recent packets
+            log("[RECENT PACKETS]")
+
+            let recent_packets = capture_get_packets(capture.id, 5)
+
+            if len(recent_packets) > 0 {
+                for packet in recent_packets {
+                    log("  " + packet.src_ip + ":" + str(packet.src_port) +
+                        " -> " + packet.dst_ip + ":" + str(packet.dst_port) +
+                        " [" + packet.protocol + "] " + str(packet.length) + " bytes")
+                }
+            } else {
+                log("  No packets captured yet")
+            }
+
+            log("")
+
+            // Network flows with filters
+            log("[ACTIVE FLOWS]")
+
+            let flows = network_get_flows(monitor.id, {})
+            log("  Total flows: " + str(len(flows)))
+
+            // Count flows by protocol
+            let tcp_flows = 0
+            let udp_flows = 0
+            let other_flows = 0
+
+            for flow in flows {
+                if flow.protocol == "TCP" {
+                    tcp_flows = tcp_flows + 1
+                } else if flow.protocol == "UDP" {
+                    udp_flows = udp_flows + 1
+                } else {
+                    other_flows = other_flows + 1
+                }
+            }
+
+            log("  TCP flows: " + str(tcp_flows))
+            log("  UDP flows: " + str(udp_flows))
+            log("  Other flows: " + str(other_flows))
+
+            log("")
+
+            // Health indicators
+            log("[SYSTEM HEALTH]")
+
+            // Check for anomalies
+            if total_mbps > 100 {
+                log("  WARNING: High bandwidth usage detected!")
+            } else if total_mbps > 50 {
+                log("  NOTICE: Moderate bandwidth usage")
+            } else {
+                log("  OK: Normal bandwidth usage")
+            }
+
+            if len(talkers) > 10 {
+                log("  WARNING: High number of active flows")
+            }
+
+            if protocols.TCP > protocols.UDP * 10 {
+                log("  NOTICE: TCP-heavy traffic pattern")
+            }
+
+            log("")
+            log("================================================================")
+            log("Iteration: " + str(iteration + 1) + "/" + str(iterations))
+            log("Next update in 6 seconds...")
+
+            // Wait before next update
+            sleep(6)
+            iteration = iteration + 1
+        }
+
+        log("")
+        log("=================== MONITORING COMPLETE ===================")
+        log("")
+
+        // Final statistics
+        let final_bw = network_get_bandwidth(monitor.id)
+        let final_protocols = network_get_protocols(monitor.id)
+
+        log("Session Summary:")
+        log("  Total data received: " + str(final_bw.rx_bytes) + " bytes (" +
+            str(final_bw.rx_bytes / 1024 / 1024) + " MB)")
+        log("  Total data transmitted: " + str(final_bw.tx_bytes) + " bytes (" +
+            str(final_bw.tx_bytes / 1024 / 1024) + " MB)")
+        log("  Total RX packets: " + str(final_bw.rx_packets))
+        log("  Total TX packets: " + str(final_bw.tx_packets))
+        log("")
+        log("  TCP packets: " + str(final_protocols.TCP))
+        log("  UDP packets: " + str(final_protocols.UDP))
+        log("  ICMP packets: " + str(final_protocols.ICMP))
+
+        log("")
+
+        // Export captured data
+        log("Exporting captured data...")
+        let pcap_file = "network_capture_" + str(time_now()) + ".pcap"
+        capture_save_pcap(capture.id, pcap_file)
+        log("PCAP file saved: " + pcap_file)
+
+        log("")
+
+        // Export network flows
+        let export_result = network_export_pcap(monitor.id, "flows_" + str(time_now()) + ".pcap")
+        if export_result == null {
+            log("Flow data exported successfully")
+        }
+
+        log("")
+
+        // Cleanup
+        log("Stopping capture...")
+        capture_stop(capture.id)
+
+        log("Stopping monitor...")
+        network_stop_monitor(monitor.id)
+
+        log("")
+        log("===========================================================")
+        log("")
+        log("Network monitoring session complete.")
+        log("Captured data available for analysis.")
+    }
+}
+
+// Helper function to repeat a character
+fn repeat_char(char, count) {
+    let result = ""
+    let i = 0
+    while i < count {
+        result = result + char
+        i = i + 1
+    }
+    return result
+}

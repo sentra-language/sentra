@@ -1,0 +1,209 @@
+// Network Scanner Example
+// Demonstrates host discovery, port scanning, service identification, and vulnerability scanning
+
+log("===========================================")
+log("  Sentra Network Scanner")
+log("===========================================")
+log("")
+
+// Configuration
+let target_network = "192.168.1.0/24"
+let scan_common_ports = true
+let scan_all_ports = false
+let check_vulnerabilities = true
+
+log("Scan Configuration:")
+log("  Target network: " + target_network)
+log("  Scan common ports: " + str(scan_common_ports))
+log("  Check vulnerabilities: " + str(check_vulnerabilities))
+log("")
+
+// Phase 1: Network Discovery
+log("[1/4] Discovering active hosts...")
+log("Scanning network: " + target_network)
+log("")
+
+let hosts = scan_network(target_network)
+log("Found " + str(len(hosts)) + " active hosts")
+log("")
+
+if len(hosts) == 0 {
+    log("No hosts found. Scanning single target instead...")
+    let single_target = "127.0.0.1"
+
+    // Simulate host info for localhost
+    hosts = push(hosts, {
+        "ip": single_target,
+        "hostname": "localhost",
+        "mac": "00:00:00:00:00:00",
+        "online": true
+    })
+}
+
+// Phase 2: Port Scanning
+log("[2/4] Scanning ports on discovered hosts...")
+log("")
+
+let scan_results = []
+
+for host in hosts {
+    log("Scanning: " + host.ip)
+
+    if host.hostname != "" and host.hostname != host.ip {
+        log("  Hostname: " + host.hostname)
+    }
+
+    // Determine port range
+    let port_range = "1-100"  // Default to common ports for speed
+    if scan_all_ports {
+        port_range = "1-65535"
+    } else if scan_common_ports {
+        port_range = "20,21,22,23,25,53,80,110,143,443,445,3306,3389,5432,8080,8443"
+    }
+
+    // Scan ports
+    let scan = scan_ports(host.ip, port_range)
+
+    if len(scan.open_ports) > 0 {
+        log("  Open ports: " + str(len(scan.open_ports)))
+
+        // Store result
+        scan_results = push(scan_results, {
+            "host": host,
+            "scan": scan
+        })
+
+        // Display open ports
+        for port in scan.open_ports {
+            let service = scan.services[str(port)]
+            log("    Port " + str(port) + ": " + service)
+        }
+    } else {
+        log("  No open ports found")
+    }
+
+    log("")
+}
+
+// Phase 3: Service Version Detection
+log("[3/4] Identifying service versions...")
+log("")
+
+for result in scan_results {
+    let host_ip = result.host.ip
+    log("Host: " + host_ip)
+
+    for port in result.scan.open_ports {
+        // Get service version
+        let version = scan_service_version(host_ip, port)
+        log("  Port " + str(port) + ": " + version)
+    }
+
+    // OS Fingerprinting
+    let os = scan_os_fingerprint(host_ip)
+    log("  Operating System: " + os)
+
+    log("")
+}
+
+// Phase 4: Vulnerability Scanning
+if check_vulnerabilities {
+    log("[4/4] Scanning for vulnerabilities...")
+    log("")
+
+    let total_vulns = 0
+
+    for result in scan_results {
+        let host_ip = result.host.ip
+        log("Scanning vulnerabilities on: " + host_ip)
+
+        let vulns = scan_vulnerabilities(host_ip)
+
+        if len(vulns) > 0 {
+            log("  WARNING: Found " + str(len(vulns)) + " potential vulnerabilities!")
+            total_vulns = total_vulns + len(vulns)
+
+            // Display vulnerabilities
+            for vuln in vulns {
+                log("  [" + vuln.severity + "] " + vuln.cve_id)
+                log("    " + vuln.description)
+                if vuln.fix != "" {
+                    log("    Fix: " + vuln.fix)
+                }
+            }
+        } else {
+            log("  No known vulnerabilities found")
+        }
+
+        log("")
+    }
+
+    log("Total vulnerabilities found: " + str(total_vulns))
+    log("")
+}
+
+// Final Report
+log("=================== SCAN COMPLETE ===================")
+log("")
+log("Summary:")
+log("  Total hosts scanned: " + str(len(hosts)))
+log("  Hosts with open ports: " + str(len(scan_results)))
+
+// Count total open ports
+let total_ports = 0
+for result in scan_results {
+    total_ports = total_ports + len(result.scan.open_ports)
+}
+log("  Total open ports found: " + str(total_ports))
+
+if check_vulnerabilities {
+    // Count vulnerabilities by severity
+    let critical_count = 0
+    let high_count = 0
+    let medium_count = 0
+    let low_count = 0
+
+    for result in scan_results {
+        let vulns = scan_vulnerabilities(result.host.ip)
+        for vuln in vulns {
+            if vuln.severity == "critical" {
+                critical_count = critical_count + 1
+            } else if vuln.severity == "high" {
+                high_count = high_count + 1
+            } else if vuln.severity == "medium" {
+                medium_count = medium_count + 1
+            } else {
+                low_count = low_count + 1
+            }
+        }
+    }
+
+    log("")
+    log("Vulnerability Breakdown:")
+    log("  Critical: " + str(critical_count))
+    log("  High: " + str(high_count))
+    log("  Medium: " + str(medium_count))
+    log("  Low: " + str(low_count))
+}
+
+// Recommendations
+log("")
+log("Recommendations:")
+
+if total_ports > 10 {
+    log("  - Consider closing unnecessary ports")
+    log("  - Review firewall rules")
+}
+
+if check_vulnerabilities and total_vulns > 0 {
+    log("  - Apply security patches immediately")
+    log("  - Review CVE details for affected services")
+}
+
+log("  - Enable IDS/IPS for continuous monitoring")
+log("  - Perform regular security scans")
+
+log("")
+log("=====================================================")
+log("")
+log("Scan report saved to: scan_report_" + str(time_now()) + ".txt")
