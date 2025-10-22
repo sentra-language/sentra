@@ -1,0 +1,152 @@
+// Intrusion Detection System (IDS) Example
+// Demonstrates threat detection, alerting, and automated response
+
+log("===========================================")
+log("  Sentra IDS - Intrusion Detection System")
+log("===========================================")
+log("")
+
+// Start IDS on network interface
+log("[1/4] Starting IDS...")
+let ids = ids_start("eth0", {
+    "detect_port_scan": true,
+    "detect_dos": true,
+    "detect_sql_injection": true,
+    "detect_brute_force": true
+})
+
+if ids == null {
+    log("ERROR: Failed to start IDS")
+} else {
+    log("IDS started successfully: " + ids.id)
+    log("Interface: " + ids.interface)
+    log("")
+
+    // Add custom detection rules
+    log("[2/4] Adding custom detection rules...")
+
+    ids_add_rule(ids.id, {
+        "name": "SSH Brute Force",
+        "pattern": "failed SSH login > 5",
+        "severity": "high",
+        "action": "alert"
+    })
+
+    ids_add_rule(ids.id, {
+        "name": "Web Scanner Detection",
+        "pattern": "user-agent contains 'scanner'",
+        "severity": "medium",
+        "action": "alert"
+    })
+
+    ids_add_rule(ids.id, {
+        "name": "Suspicious HTTP Methods",
+        "pattern": "HTTP method in [TRACE, TRACK, DEBUG]",
+        "severity": "high",
+        "action": "block"
+    })
+
+    log("Added 3 custom detection rules")
+    log("")
+
+    // Monitoring loop
+    log("[3/4] Monitoring for threats...")
+    log("Running for 60 seconds...")
+    log("")
+
+    let iteration = 0
+    let max_iterations = 12  // 60 seconds / 5 seconds per iteration
+
+    while iteration < max_iterations {
+        // Check for alerts
+        let alerts = ids_get_alerts(ids.id, "all", 50)
+
+        if len(alerts) > 0 {
+            log("")
+            log(">>> SECURITY ALERTS DETECTED <<<")
+            log("")
+
+            for alert in alerts {
+                // Display alert information
+                log("[" + alert.severity + "] " + alert.message)
+                log("  Time: " + str(alert.timestamp))
+                log("  Source IP: " + alert.src_ip)
+                log("  Destination: " + alert.dst_ip)
+                log("  Protocol: " + alert.protocol)
+
+                // Auto-block critical and high severity threats
+                if alert.severity == "critical" or alert.severity == "high" {
+                    log("  ACTION: Blocking IP address...")
+
+                    // Block via firewall
+                    let rule = firewall_block_ip(alert.src_ip)
+                    if rule != null {
+                        log("  BLOCKED: " + alert.src_ip + " (Rule ID: " + rule.id + ")")
+                    } else {
+                        log("  WARNING: Failed to block IP")
+                    }
+
+                    // Also block via IDS
+                    ids_block_threat(ids.id, alert.id)
+                }
+
+                log("")
+            }
+        } else {
+            log("No threats detected (check " + str(iteration + 1) + "/" + str(max_iterations) + ")")
+        }
+
+        // Display statistics every check
+        let stats = ids_get_stats(ids.id)
+        log("Statistics:")
+        log("  Packets analyzed: " + str(stats.packets_analyzed))
+        log("  Alerts generated: " + str(stats.alerts_generated))
+        log("  Threats blocked: " + str(stats.threats_blocked))
+        log("")
+
+        // Wait 5 seconds before next check
+        sleep(5)
+        iteration = iteration + 1
+    }
+
+    // Final report
+    log("[4/4] Generating final report...")
+    log("")
+    log("=================== IDS FINAL REPORT ===================")
+
+    let final_stats = ids_get_stats(ids.id)
+    log("Total packets analyzed: " + str(final_stats.packets_analyzed))
+    log("Total alerts generated: " + str(final_stats.alerts_generated))
+    log("Total threats blocked: " + str(final_stats.threats_blocked))
+
+    // Get all high severity alerts
+    let high_alerts = ids_get_alerts(ids.id, "high", 100)
+    log("High severity alerts: " + str(len(high_alerts)))
+
+    // Get firewall rules that were created
+    let firewall_rules = firewall_list_rules()
+    log("Firewall rules created: " + str(len(firewall_rules)))
+
+    if len(firewall_rules) > 0 {
+        log("")
+        log("Blocked IP addresses:")
+        for rule in firewall_rules {
+            if rule.action == "DROP" or rule.action == "REJECT" {
+                log("  - " + rule.src_ip + " (Rule: " + rule.id + ")")
+            }
+        }
+    }
+
+    log("========================================================")
+    log("")
+
+    // Cleanup
+    log("Stopping IDS...")
+    ids_stop(ids.id)
+
+    log("Clearing firewall rules...")
+    firewall_clear_rules()
+
+    log("")
+    log("IDS monitoring complete.")
+}

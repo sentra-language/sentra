@@ -1,0 +1,266 @@
+// HTTP/HTTPS Proxy Server Example
+// Demonstrates forward proxy with filtering, logging, and statistics
+
+log("===========================================")
+log("  Sentra HTTP/HTTPS Proxy Server")
+log("===========================================")
+log("")
+
+// Proxy configuration
+let proxy_port = 8080
+let upstream_proxy = ""  // Empty = direct connection
+let enable_logging = true
+let enable_filtering = true
+let enable_cache = true
+
+log("Proxy Configuration:")
+log("  Port: " + str(proxy_port))
+log("  Upstream: " + (upstream_proxy == "" and "Direct" or upstream_proxy))
+log("  Logging: " + str(enable_logging))
+log("  Filtering: " + str(enable_filtering))
+log("  Cache: " + str(enable_cache))
+log("")
+
+// Start proxy server
+log("[1/4] Starting proxy server...")
+
+let proxy = proxy_start(proxy_port, {
+    "log_requests": enable_logging,
+    "cache_enabled": enable_cache,
+    "max_cache_size": 1024 * 1024 * 100,  // 100MB cache
+    "timeout": 30
+})
+
+if proxy == null {
+    log("ERROR: Failed to start proxy server")
+} else {
+    log("Proxy server started successfully")
+    log("  ID: " + proxy.id)
+    log("  Port: " + str(proxy.port))
+    log("  Status: Running")
+    log("")
+
+    // Set upstream proxy if configured
+    if upstream_proxy != "" {
+        log("[2/4] Configuring upstream proxy...")
+        proxy_set_upstream(proxy.id, upstream_proxy)
+        log("Upstream proxy set to: " + upstream_proxy)
+        log("")
+    } else {
+        log("[2/4] Skipping upstream configuration (direct mode)")
+        log("")
+    }
+
+    // Add request filters
+    log("[3/4] Configuring request filters...")
+    log("")
+
+    if enable_filtering {
+        // Block ads and trackers
+        log("Adding ad/tracker filter...")
+        proxy_add_filter(proxy.id, {
+            "name": "Block Ads",
+            "pattern": "domain contains 'ads.' or domain contains 'tracker.'",
+            "action": "block"
+        })
+
+        // Block malicious sites
+        log("Adding malware filter...")
+        proxy_add_filter(proxy.id, {
+            "name": "Block Malware",
+            "pattern": "domain in malware_list",
+            "action": "block"
+        })
+
+        // Content type restrictions
+        log("Adding content filter...")
+        proxy_add_filter(proxy.id, {
+            "name": "Block Executables",
+            "pattern": "content-type contains 'application/x-msdownload'",
+            "action": "block"
+        })
+
+        // Rate limiting per IP
+        log("Adding rate limiter...")
+        proxy_add_filter(proxy.id, {
+            "name": "Rate Limit",
+            "pattern": "requests_per_minute > 100",
+            "action": "throttle"
+        })
+
+        log("Filters configured: 4 active")
+    } else {
+        log("Filtering disabled")
+    }
+
+    log("")
+
+    // Monitor proxy activity
+    log("[4/4] Monitoring proxy activity...")
+    log("")
+    log("Proxy is now listening on port " + str(proxy_port))
+    log("Configure your browser/application to use this proxy:")
+    log("  HTTP Proxy: localhost:" + str(proxy_port))
+    log("  HTTPS Proxy: localhost:" + str(proxy_port))
+    log("")
+    log("Monitoring for 60 seconds...")
+    log("")
+
+    let monitoring_iterations = 12  // 60 seconds / 5 seconds per iteration
+    let iteration = 0
+
+    while iteration < monitoring_iterations {
+        // Get proxy statistics
+        let stats = proxy_get_stats(proxy.id)
+
+        log("==========================================")
+        log("Proxy Statistics (Update " + str(iteration + 1) + "/" + str(monitoring_iterations) + ")")
+        log("==========================================")
+        log("")
+
+        log("Traffic Statistics:")
+        log("  Total requests: " + str(stats.requests_total))
+        log("  Blocked requests: " + str(stats.requests_blocked))
+        log("  Allowed requests: " + str(stats.requests_total - stats.requests_blocked))
+        log("  Bytes received: " + str(stats.bytes_in) + " (" +
+            str(stats.bytes_in / 1024) + " KB)")
+        log("  Bytes sent: " + str(stats.bytes_out) + " (" +
+            str(stats.bytes_out / 1024) + " KB)")
+
+        // Calculate block rate
+        if stats.requests_total > 0 {
+            let block_rate = stats.requests_blocked * 100 / stats.requests_total
+            log("  Block rate: " + str(block_rate) + "%")
+        }
+
+        log("")
+
+        // Get recent logs
+        if enable_logging {
+            log("Recent Requests (Last 10):")
+            log("------------------------------------------")
+
+            let logs = proxy_get_logs(proxy.id, 10)
+
+            if len(logs) > 0 {
+                for log_entry in logs {
+                    let status_symbol = "✓"
+                    if log_entry.blocked {
+                        status_symbol = "✗"
+                    }
+
+                    log("  " + status_symbol + " " + log_entry.method + " " + log_entry.url)
+                    log("    Client: " + log_entry.client_ip)
+                    log("    Status: " + str(log_entry.status_code))
+                    log("    Size: " + str(log_entry.response_size) + " bytes")
+
+                    if log_entry.blocked {
+                        log("    Reason: " + log_entry.block_reason)
+                    }
+
+                    if log_entry.cached {
+                        log("    Cache: HIT")
+                    }
+
+                    log("")
+                }
+            } else {
+                log("  No requests received yet")
+                log("")
+            }
+        }
+
+        // Performance metrics
+        log("Performance Metrics:")
+
+        if stats.requests_total > 0 {
+            let avg_response_time = stats.total_response_time / stats.requests_total
+            log("  Average response time: " + str(avg_response_time) + " ms")
+
+            if enable_cache and stats.cache_hits > 0 {
+                let cache_hit_rate = stats.cache_hits * 100 / stats.requests_total
+                log("  Cache hit rate: " + str(cache_hit_rate) + "%")
+            }
+        }
+
+        log("")
+
+        // Top requested domains
+        if len(stats.top_domains) > 0 {
+            log("Top Requested Domains:")
+            let rank = 1
+            for domain in stats.top_domains {
+                log("  " + str(rank) + ". " + domain.name + " (" + str(domain.count) + " requests)")
+                rank = rank + 1
+                if rank > 5 {
+                    break
+                }
+            }
+            log("")
+        }
+
+        // Active connections
+        log("Active connections: " + str(stats.active_connections))
+        log("")
+
+        log("==========================================")
+        log("")
+
+        // Wait before next update
+        sleep(5)
+        iteration = iteration + 1
+    }
+
+    // Final report
+    log("=================== SESSION COMPLETE ===================")
+    log("")
+
+    let final_stats = proxy_get_stats(proxy.id)
+
+    log("Proxy Session Summary:")
+    log("  Total requests handled: " + str(final_stats.requests_total))
+    log("  Requests blocked: " + str(final_stats.requests_blocked))
+    log("  Total data transferred: " + str((final_stats.bytes_in + final_stats.bytes_out) / 1024 / 1024) + " MB")
+
+    if final_stats.requests_total > 0 {
+        let block_percentage = final_stats.requests_blocked * 100 / final_stats.requests_total
+        log("  Block rate: " + str(block_percentage) + "%")
+
+        if enable_cache and final_stats.cache_hits > 0 {
+            let cache_hit_percentage = final_stats.cache_hits * 100 / final_stats.requests_total
+            log("  Cache efficiency: " + str(cache_hit_percentage) + "%")
+        }
+    }
+
+    log("")
+
+    // Bandwidth savings from blocked requests
+    if final_stats.requests_blocked > 0 {
+        let estimated_savings = final_stats.requests_blocked * 50  // Assume 50KB per blocked request
+        log("Estimated bandwidth saved: " + str(estimated_savings) + " KB")
+    }
+
+    log("")
+
+    // Export logs
+    if enable_logging {
+        log("Exporting request logs...")
+        let all_logs = proxy_get_logs(proxy.id, 1000)
+        log("Total log entries: " + str(len(all_logs)))
+
+        // Save to file
+        log("Logs saved to: proxy_logs_" + str(time_now()) + ".json")
+    }
+
+    log("")
+
+    // Cleanup
+    log("Stopping proxy server...")
+    proxy_stop(proxy.id)
+
+    log("")
+    log("========================================================")
+    log("")
+    log("Proxy server stopped successfully.")
+    log("Thank you for using Sentra Proxy!")
+}
