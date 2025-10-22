@@ -131,6 +131,44 @@ sql_close("mydb")
 - **Port Scanning**: Network discovery, service identification, vulnerability scanning
 - **DNS Operations**: All record types (A, AAAA, MX, TXT, NS, CNAME)
 
+### 🌟 Web Frameworks
+
+#### Hillock - Production Web Framework
+
+[**Hillock**](https://github.com/sentra-language/hillock) is a high-performance web framework for Sentra, built on Phase 3 Network Infrastructure:
+
+```sentra
+import "hillock_v2.sn" as hillock
+
+hillock.hillock_init()
+
+// Middleware
+hillock.hillock_use(hillock.middleware_logger())
+hillock.hillock_use(hillock.middleware_cors())
+
+// Routes
+hillock.hillock_get("/", fn(req, res) {
+    res.body = "<h1>Hello, Hillock!</h1>"
+})
+
+hillock.hillock_get("/api/users/:id", fn(req, res) {
+    res.headers["Content-Type"] = "application/json"
+    res.body = json_encode({"id": req.params.id})
+})
+
+hillock.hillock_listen(8080)
+```
+
+**Features:**
+- Express.js-inspired API
+- Real TCP server implementation
+- Pattern-based routing with parameters
+- Middleware chain system
+- Built-in network monitoring
+- JSON support out of the box
+
+[Get Started with Hillock →](https://github.com/sentra-language/hillock)
+
 ## 🛠️ Sentra CLI - Your Development Companion
 
 The Sentra CLI is your primary interface for developing, testing, and deploying Sentra applications. It's designed to make your development workflow smooth and enjoyable.
