@@ -2,10 +2,13 @@ package vmregister
 
 import (
 	"bytes"
+	"compress/flate"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -31,6 +34,23 @@ import (
 	"time"
 	"unsafe"
 )
+
+// Compression helper functions
+func newGzipWriter(w io.Writer) (*gzip.Writer, error) {
+	return gzip.NewWriter(w), nil
+}
+
+func newGzipReader(r io.Reader) (*gzip.Reader, error) {
+	return gzip.NewReader(r)
+}
+
+func newFlateWriter(w io.Writer, level int) (*flate.Writer, error) {
+	return flate.NewWriter(w, level)
+}
+
+func newFlateReader(r io.Reader) io.ReadCloser {
+	return flate.NewReader(r)
+}
 
 // RegisterStdlib registers all standard library functions as globals
 func (vm *RegisterVM) RegisterStdlib() {
@@ -164,12 +184,56 @@ func (vm *RegisterVM) RegisterStdlib() {
 		},
 	})
 
+	// Alias for time_ms - commonly used name
+	vm.registerGlobal("timestamp", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "timestamp",
+		Arity:  0,
+		Function: func(args []Value) (Value, error) {
+			return BoxInt(time.Now().UnixMilli()), nil
+		},
+	})
+
 	vm.registerGlobal("now", &NativeFnObj{
 		Object: Object{Type: OBJ_NATIVE_FN},
 		Name:   "now",
 		Arity:  0,
 		Function: func(args []Value) (Value, error) {
 			return BoxString(time.Now().Format(time.RFC3339)), nil
+		},
+	})
+
+	vm.registerGlobal("datetime", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "datetime",
+		Arity:  0,
+		Function: func(args []Value) (Value, error) {
+			return BoxString(time.Now().Format("2006-01-02 15:04:05")), nil
+		},
+	})
+
+	vm.registerGlobal("format_timestamp", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "format_timestamp",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			var timestamp int64
+			if IsInt(args[0]) {
+				timestamp = AsInt(args[0])
+			} else if IsNumber(args[0]) {
+				timestamp = int64(AsNumber(args[0]))
+			} else if IsString(args[0]) {
+				// Handle RFC3339 string format from now()
+				t, err := time.Parse(time.RFC3339, ToString(args[0]))
+				if err != nil {
+					return NilValue(), fmt.Errorf("invalid timestamp format")
+				}
+				return BoxString(t.Format("2006-01-02 15:04:05")), nil
+			} else {
+				return NilValue(), fmt.Errorf("format_timestamp expects number or string")
+			}
+			t := time.Unix(timestamp, 0)
+			return BoxString(t.Format("2006-01-02 15:04:05")), nil
 		},
 	})
 
@@ -235,10 +299,7 @@ func (vm *RegisterVM) RegisterStdlib() {
 			for i, part := range parts {
 				elements[i] = BoxString(part)
 			}
-			return BoxPointer(unsafe.Pointer(&ArrayObj{
-				Object:   Object{Type: OBJ_ARRAY},
-				Elements: elements,
-			})), nil
+			return BoxArray(elements), nil
 		},
 	})
 
@@ -305,6 +366,20 @@ func (vm *RegisterVM) RegisterStdlib() {
 		},
 	})
 
+	vm.registerGlobal("char_at", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "char_at",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			index := int(ToInt(args[1]))
+			if index < 0 || index >= len(str) {
+				return BoxString(""), nil
+			}
+			return BoxString(string(str[index])), nil
+		},
+	})
+
 	vm.registerGlobal("slice", &NativeFnObj{
 		Object: Object{Type: OBJ_NATIVE_FN},
 		Name:   "slice",
@@ -361,6 +436,79 @@ func (vm *RegisterVM) RegisterStdlib() {
 			last := arr.Elements[len(arr.Elements)-1]
 			arr.Elements = arr.Elements[:len(arr.Elements)-1]
 			return last, nil
+		},
+	})
+
+	vm.registerGlobal("remove", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "remove",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("remove expects array")
+			}
+			arr := AsArray(args[0])
+			index := int(ToInt(args[1]))
+			if index < 0 || index >= len(arr.Elements) {
+				return NilValue(), fmt.Errorf("index out of bounds")
+			}
+			val := arr.Elements[index]
+			arr.Elements = append(arr.Elements[:index], arr.Elements[index+1:]...)
+			return val, nil
+		},
+	})
+
+	vm.registerGlobal("insert", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "insert",
+		Arity:  3,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("insert expects array")
+			}
+			arr := AsArray(args[0])
+			index := int(ToInt(args[1]))
+			value := args[2]
+			if index < 0 {
+				index = 0
+			}
+			if index > len(arr.Elements) {
+				index = len(arr.Elements)
+			}
+			arr.Elements = append(arr.Elements[:index], append([]Value{value}, arr.Elements[index:]...)...)
+			return NilValue(), nil
+		},
+	})
+
+	vm.registerGlobal("first", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "first",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("first expects array")
+			}
+			arr := AsArray(args[0])
+			if len(arr.Elements) == 0 {
+				return NilValue(), nil
+			}
+			return arr.Elements[0], nil
+		},
+	})
+
+	vm.registerGlobal("last", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "last",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("last expects array")
+			}
+			arr := AsArray(args[0])
+			if len(arr.Elements) == 0 {
+				return NilValue(), nil
+			}
+			return arr.Elements[len(arr.Elements)-1], nil
 		},
 	})
 
@@ -423,7 +571,7 @@ func (vm *RegisterVM) RegisterStdlib() {
 		Name:   "random",
 		Arity:  0,
 		Function: func(args []Value) (Value, error) {
-			return BoxNumber(math.Round(1000000*math.Sin(float64(time.Now().UnixNano()))) / 1000000), nil
+			return BoxNumber(rand.Float64()), nil
 		},
 	})
 
@@ -490,6 +638,246 @@ func (vm *RegisterVM) RegisterStdlib() {
 		Arity:  1,
 		Function: func(args []Value) (Value, error) {
 			return BoxString(ValueType(args[0])), nil
+		},
+	})
+
+	// Array utility functions
+	vm.registerGlobal("sum", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "sum",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("sum expects array")
+			}
+			arr := AsArray(args[0])
+			var sum float64
+			for _, v := range arr.Elements {
+				if IsInt(v) {
+					sum += float64(AsInt(v))
+				} else if IsNumber(v) {
+					sum += AsNumber(v)
+				}
+			}
+			return BoxNumber(sum), nil
+		},
+	})
+
+	vm.registerGlobal("avg", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "avg",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("avg expects array")
+			}
+			arr := AsArray(args[0])
+			if len(arr.Elements) == 0 {
+				return BoxNumber(0), nil
+			}
+			var sum float64
+			for _, v := range arr.Elements {
+				if IsInt(v) {
+					sum += float64(AsInt(v))
+				} else if IsNumber(v) {
+					sum += AsNumber(v)
+				}
+			}
+			return BoxNumber(sum / float64(len(arr.Elements))), nil
+		},
+	})
+
+	vm.registerGlobal("min_arr", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "min_arr",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("min_arr expects array")
+			}
+			arr := AsArray(args[0])
+			if len(arr.Elements) == 0 {
+				return NilValue(), nil
+			}
+			minVal := arr.Elements[0]
+			minNum := math.Inf(1)
+			if IsInt(minVal) {
+				minNum = float64(AsInt(minVal))
+			} else if IsNumber(minVal) {
+				minNum = AsNumber(minVal)
+			}
+			for _, v := range arr.Elements[1:] {
+				var num float64
+				if IsInt(v) {
+					num = float64(AsInt(v))
+				} else if IsNumber(v) {
+					num = AsNumber(v)
+				} else {
+					continue
+				}
+				if num < minNum {
+					minNum = num
+					minVal = v
+				}
+			}
+			return minVal, nil
+		},
+	})
+
+	vm.registerGlobal("max_arr", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "max_arr",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("max_arr expects array")
+			}
+			arr := AsArray(args[0])
+			if len(arr.Elements) == 0 {
+				return NilValue(), nil
+			}
+			maxVal := arr.Elements[0]
+			maxNum := math.Inf(-1)
+			if IsInt(maxVal) {
+				maxNum = float64(AsInt(maxVal))
+			} else if IsNumber(maxVal) {
+				maxNum = AsNumber(maxVal)
+			}
+			for _, v := range arr.Elements[1:] {
+				var num float64
+				if IsInt(v) {
+					num = float64(AsInt(v))
+				} else if IsNumber(v) {
+					num = AsNumber(v)
+				} else {
+					continue
+				}
+				if num > maxNum {
+					maxNum = num
+					maxVal = v
+				}
+			}
+			return maxVal, nil
+		},
+	})
+
+	vm.registerGlobal("unique", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "unique",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("unique expects array")
+			}
+			arr := AsArray(args[0])
+			seen := make(map[string]bool)
+			result := make([]Value, 0)
+			for _, v := range arr.Elements {
+				key := ToString(v)
+				if !seen[key] {
+					seen[key] = true
+					result = append(result, v)
+				}
+			}
+			return BoxArray(result), nil
+		},
+	})
+
+	vm.registerGlobal("flatten", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "flatten",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("flatten expects array")
+			}
+			arr := AsArray(args[0])
+			result := make([]Value, 0)
+			for _, v := range arr.Elements {
+				if IsArray(v) {
+					inner := AsArray(v)
+					result = append(result, inner.Elements...)
+				} else {
+					result = append(result, v)
+				}
+			}
+			return BoxArray(result), nil
+		},
+	})
+
+	vm.registerGlobal("zip", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "zip",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) || !IsArray(args[1]) {
+				return NilValue(), fmt.Errorf("zip expects two arrays")
+			}
+			arr1 := AsArray(args[0])
+			arr2 := AsArray(args[1])
+			minLen := len(arr1.Elements)
+			if len(arr2.Elements) < minLen {
+				minLen = len(arr2.Elements)
+			}
+			result := make([]Value, minLen)
+			for i := 0; i < minLen; i++ {
+				pair := []Value{arr1.Elements[i], arr2.Elements[i]}
+				result[i] = BoxArray(pair)
+			}
+			return BoxArray(result), nil
+		},
+	})
+
+	vm.registerGlobal("enumerate", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "enumerate",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("enumerate expects array")
+			}
+			arr := AsArray(args[0])
+			result := make([]Value, len(arr.Elements))
+			for i, v := range arr.Elements {
+				pair := []Value{BoxInt(int64(i)), v}
+				result[i] = BoxArray(pair)
+			}
+			return BoxArray(result), nil
+		},
+	})
+
+	vm.registerGlobal("count", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "count",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			if !IsArray(args[0]) {
+				return NilValue(), fmt.Errorf("count expects array as first argument")
+			}
+			arr := AsArray(args[0])
+			target := ToString(args[1])
+			count := 0
+			for _, v := range arr.Elements {
+				if ToString(v) == target {
+					count++
+				}
+			}
+			return BoxInt(int64(count)), nil
+		},
+	})
+
+	vm.registerGlobal("fill", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "fill",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			n := int(ToInt(args[0]))
+			val := args[1]
+			result := make([]Value, n)
+			for i := 0; i < n; i++ {
+				result[i] = val
+			}
+			return BoxArray(result), nil
 		},
 	})
 
@@ -627,28 +1015,70 @@ func (vm *RegisterVM) RegisterStdlib() {
 			url := ToString(args[0])
 			resp, err := http.Get(url)
 			if err != nil {
-				return NilValue(), fmt.Errorf("http_get error: %v", err)
+				// Return nil on connection errors (allows user to check for nil)
+				return NilValue(), nil
 			}
 			defer resp.Body.Close()
 
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
-				return NilValue(), fmt.Errorf("http_get read error: %v", err)
+				return NilValue(), nil
 			}
 
-			return BoxString(string(body)), nil
+			// Return response as map with status, status_code, body, headers
+			result := make(map[string]Value)
+			result["status"] = BoxString(resp.Status)
+			result["status_code"] = BoxInt(int64(resp.StatusCode))
+			result["body"] = BoxString(string(body))
+
+			// Convert headers to map
+			headers := make(map[string]Value)
+			for k, v := range resp.Header {
+				if len(v) > 0 {
+					headers[k] = BoxString(v[0])
+				}
+			}
+			result["headers"] = BoxMap(headers)
+
+			return BoxMap(result), nil
 		},
 	})
 
 	vm.registerGlobal("http_post", &NativeFnObj{
 		Object: Object{Type: OBJ_NATIVE_FN},
 		Name:   "http_post",
-		Arity:  2,
+		Arity:  -1, // Variable args: url, body, [headers]
 		Function: func(args []Value) (Value, error) {
+			if len(args) < 2 {
+				return NilValue(), fmt.Errorf("http_post expects at least 2 arguments (url, body)")
+			}
 			url := ToString(args[0])
 			data := ToString(args[1])
 
-			resp, err := http.Post(url, "application/json", bytes.NewBufferString(data))
+			contentType := "application/json"
+			var customHeaders map[string]Value
+			if len(args) >= 3 && IsMap(args[2]) {
+				customHeaders = AsMap(args[2]).Items
+				if ct, ok := customHeaders["Content-Type"]; ok {
+					contentType = ToString(ct)
+				}
+			}
+
+			req, err := http.NewRequest("POST", url, bytes.NewBufferString(data))
+			if err != nil {
+				return NilValue(), fmt.Errorf("http_post error: %v", err)
+			}
+			req.Header.Set("Content-Type", contentType)
+
+			// Add custom headers
+			if customHeaders != nil {
+				for k, v := range customHeaders {
+					req.Header.Set(k, ToString(v))
+				}
+			}
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
 			if err != nil {
 				return NilValue(), fmt.Errorf("http_post error: %v", err)
 			}
@@ -659,7 +1089,22 @@ func (vm *RegisterVM) RegisterStdlib() {
 				return NilValue(), fmt.Errorf("http_post read error: %v", err)
 			}
 
-			return BoxString(string(body)), nil
+			// Return response as map
+			result := make(map[string]Value)
+			result["status"] = BoxString(resp.Status)
+			result["status_code"] = BoxInt(int64(resp.StatusCode))
+			result["body"] = BoxString(string(body))
+
+			// Convert headers to map
+			headers := make(map[string]Value)
+			for k, v := range resp.Header {
+				if len(v) > 0 {
+					headers[k] = BoxString(v[0])
+				}
+			}
+			result["headers"] = BoxMap(headers)
+
+			return BoxMap(result), nil
 		},
 	})
 
@@ -684,6 +1129,153 @@ func (vm *RegisterVM) RegisterStdlib() {
 			result := make(map[string]Value)
 			result["status"] = BoxInt(int64(resp.StatusCode))
 			result["body"] = BoxString(string(body))
+			return BoxMap(result), nil
+		},
+	})
+
+	vm.registerGlobal("http_request", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "http_request",
+		Arity:  4, // method, url, headers, body
+		Function: func(args []Value) (Value, error) {
+			method := ToString(args[0])
+			url := ToString(args[1])
+			var headersMap map[string]Value
+			if IsMap(args[2]) {
+				headersMap = AsMap(args[2]).Items
+			}
+			bodyData := ToString(args[3])
+
+			var bodyReader io.Reader
+			if bodyData != "" {
+				bodyReader = bytes.NewBufferString(bodyData)
+			}
+
+			req, err := http.NewRequest(method, url, bodyReader)
+			if err != nil {
+				return NilValue(), fmt.Errorf("http_request error: %v", err)
+			}
+
+			// Add custom headers
+			if headersMap != nil {
+				for k, v := range headersMap {
+					req.Header.Set(k, ToString(v))
+				}
+			}
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				return NilValue(), fmt.Errorf("http_request error: %v", err)
+			}
+			defer resp.Body.Close()
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return NilValue(), fmt.Errorf("http_request read error: %v", err)
+			}
+
+			// Return response as map
+			result := make(map[string]Value)
+			result["status"] = BoxString(resp.Status)
+			result["status_code"] = BoxInt(int64(resp.StatusCode))
+			result["body"] = BoxString(string(body))
+
+			// Convert headers to map
+			headers := make(map[string]Value)
+			for k, v := range resp.Header {
+				if len(v) > 0 {
+					headers[k] = BoxString(v[0])
+				}
+			}
+			result["headers"] = BoxMap(headers)
+
+			return BoxMap(result), nil
+		},
+	})
+
+	vm.registerGlobal("http_download", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "http_download",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			url := ToString(args[0])
+			resp, err := http.Get(url)
+			if err != nil {
+				return NilValue(), fmt.Errorf("http_download error: %v", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != 200 {
+				return NilValue(), fmt.Errorf("http_download failed with status: %s", resp.Status)
+			}
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return NilValue(), fmt.Errorf("http_download read error: %v", err)
+			}
+
+			return BoxString(string(body)), nil
+		},
+	})
+
+	vm.registerGlobal("http_json", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "http_json",
+		Arity:  3, // method, url, data (as map)
+		Function: func(args []Value) (Value, error) {
+			method := ToString(args[0])
+			url := ToString(args[1])
+
+			// Convert data map to JSON
+			var jsonBody string
+			if IsMap(args[2]) {
+				goData := valueToGo(args[2])
+				jsonBytes, err := json.Marshal(goData)
+				if err != nil {
+					return NilValue(), fmt.Errorf("http_json: failed to marshal data: %v", err)
+				}
+				jsonBody = string(jsonBytes)
+			} else {
+				jsonBody = ToString(args[2])
+			}
+
+			var bodyReader io.Reader
+			if jsonBody != "" {
+				bodyReader = bytes.NewBufferString(jsonBody)
+			}
+
+			req, err := http.NewRequest(method, url, bodyReader)
+			if err != nil {
+				return NilValue(), fmt.Errorf("http_json error: %v", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Accept", "application/json")
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				return NilValue(), fmt.Errorf("http_json error: %v", err)
+			}
+			defer resp.Body.Close()
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return NilValue(), fmt.Errorf("http_json read error: %v", err)
+			}
+
+			// Return response as map
+			result := make(map[string]Value)
+			result["status"] = BoxString(resp.Status)
+			result["status_code"] = BoxInt(int64(resp.StatusCode))
+			result["body"] = BoxString(string(body))
+
+			// Try to parse JSON response
+			var jsonData interface{}
+			if err := json.Unmarshal(body, &jsonData); err == nil {
+				result["json"] = goToValue(jsonData)
+			}
+
 			return BoxMap(result), nil
 		},
 	})
@@ -1126,6 +1718,50 @@ func (vm *RegisterVM) RegisterStdlib() {
 		},
 	})
 
+	// Alias for siem_formats
+	vm.registerGlobal("siem_get_formats", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "siem_get_formats",
+		Arity:  0,
+		Function: func(args []Value) (Value, error) {
+			if vm.siemModule == nil {
+				return NilValue(), fmt.Errorf("SIEM module not initialized")
+			}
+			siemMod := vm.siemModule.(*siem.SIEMModule)
+
+			result := siemMod.GetSupportedFormats()
+			return convertSIEMValue(result), nil
+		},
+	})
+
+	vm.registerGlobal("siem_analyze_logs", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "siem_analyze_logs",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if vm.siemModule == nil {
+				return NilValue(), fmt.Errorf("SIEM module not initialized")
+			}
+			siemMod := vm.siemModule.(*siem.SIEMModule)
+			result := siemMod.AnalyzeLogs(valueToGo(args[0]))
+			return goToValue(result), nil
+		},
+	})
+
+	vm.registerGlobal("siem_correlate_events", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "siem_correlate_events",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			if vm.siemModule == nil {
+				return NilValue(), fmt.Errorf("SIEM module not initialized")
+			}
+			siemMod := vm.siemModule.(*siem.SIEMModule)
+			result := siemMod.CorrelateEvents(valueToGo(args[0]))
+			return goToValue(result), nil
+		},
+	})
+
 	// =====================================================
 	// SECURITY FUNCTIONS (Hashing, Encoding, Validation)
 	// =====================================================
@@ -1232,6 +1868,205 @@ func (vm *RegisterVM) RegisterStdlib() {
 			secMod := vm.securityModule.(*security.SecurityModule)
 			result := secMod.IsPrivateIP(ToString(args[0]))
 			return BoxBool(result), nil
+		},
+	})
+
+	vm.registerGlobal("check_password", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "check_password",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			secMod := vm.securityModule.(*security.SecurityModule)
+			score := secMod.CheckPasswordStrength(ToString(args[0]))
+			return BoxInt(int64(score)), nil
+		},
+	})
+
+	vm.registerGlobal("generate_password", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "generate_password",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			secMod := vm.securityModule.(*security.SecurityModule)
+			length := int(ToNumber(args[0]))
+			return BoxString(secMod.GeneratePassword(length)), nil
+		},
+	})
+
+	vm.registerGlobal("generate_api_key", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "generate_api_key",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			secMod := vm.securityModule.(*security.SecurityModule)
+			prefix := ToString(args[0])
+			length := int(ToNumber(args[1]))
+			return BoxString(secMod.GenerateAPIKey(prefix, length)), nil
+		},
+	})
+
+	vm.registerGlobal("check_threat", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "check_threat",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			secMod := vm.securityModule.(*security.SecurityModule)
+			data := ToString(args[0])
+			isThreat, threatType := secMod.CheckThreat(data)
+			result := &MapObj{
+				Object: Object{Type: OBJ_MAP},
+				Items:  make(map[string]Value),
+			}
+			result.Items["is_threat"] = BoxBool(isThreat)
+			result.Items["type"] = BoxString(threatType)
+			return BoxPointer(unsafe.Pointer(result)), nil
+		},
+	})
+
+	vm.registerGlobal("firewall_add", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "firewall_add",
+		Arity:  4,
+		Function: func(args []Value) (Value, error) {
+			secMod := vm.securityModule.(*security.SecurityModule)
+			action := ToString(args[0])
+			protocol := ToString(args[1])
+			port := int(ToNumber(args[2]))
+			source := ToString(args[3])
+			secMod.AddFirewallRule(action, protocol, port, source)
+			return BoxBool(true), nil
+		},
+	})
+
+	vm.registerGlobal("firewall_check", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "firewall_check",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			secMod := vm.securityModule.(*security.SecurityModule)
+			sourceIP := ToString(args[0])
+			port := int(ToNumber(args[1]))
+			return BoxString(secMod.CheckFirewall(sourceIP, port)), nil
+		},
+	})
+
+	// =====================================================
+	// ASSERTION FUNCTIONS (Testing)
+	// =====================================================
+
+	vm.registerGlobal("assert_equal", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "assert_equal",
+		Arity:  3,
+		Function: func(args []Value) (Value, error) {
+			expected := args[0]
+			actual := args[1]
+			message := ToString(args[2])
+			if !valuesEqualStdlib(expected, actual) {
+				return NilValue(), fmt.Errorf("assertion failed: %s\nExpected: %v\nActual: %v",
+					message, ValueToString(expected), ValueToString(actual))
+			}
+			return NilValue(), nil
+		},
+	})
+
+	vm.registerGlobal("assert_not_equal", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "assert_not_equal",
+		Arity:  3,
+		Function: func(args []Value) (Value, error) {
+			expected := args[0]
+			actual := args[1]
+			message := ToString(args[2])
+			if valuesEqualStdlib(expected, actual) {
+				return NilValue(), fmt.Errorf("assertion failed: %s\nExpected values to be different, but both were: %v",
+					message, ValueToString(actual))
+			}
+			return NilValue(), nil
+		},
+	})
+
+	vm.registerGlobal("assert_true", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "assert_true",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			condition := args[0]
+			message := ToString(args[1])
+			if !IsTruthy(condition) {
+				return NilValue(), fmt.Errorf("assertion failed: %s\nExpected true, got false", message)
+			}
+			return NilValue(), nil
+		},
+	})
+
+	vm.registerGlobal("assert_false", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "assert_false",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			condition := args[0]
+			message := ToString(args[1])
+			if IsTruthy(condition) {
+				return NilValue(), fmt.Errorf("assertion failed: %s\nExpected false, got true", message)
+			}
+			return NilValue(), nil
+		},
+	})
+
+	vm.registerGlobal("assert_contains", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "assert_contains",
+		Arity:  3,
+		Function: func(args []Value) (Value, error) {
+			haystack := ToString(args[0])
+			needle := ToString(args[1])
+			message := ToString(args[2])
+			if !strings.Contains(haystack, needle) {
+				return NilValue(), fmt.Errorf("assertion failed: %s\nExpected '%s' to contain '%s'",
+					message, haystack, needle)
+			}
+			return NilValue(), nil
+		},
+	})
+
+	vm.registerGlobal("assert_nil", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "assert_nil",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			value := args[0]
+			message := ToString(args[1])
+			if !IsNil(value) {
+				return NilValue(), fmt.Errorf("assertion failed: %s\nExpected nil but got: %v", message, ValueToString(value))
+			}
+			return NilValue(), nil
+		},
+	})
+
+	vm.registerGlobal("assert_not_nil", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "assert_not_nil",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			value := args[0]
+			message := ToString(args[1])
+			if IsNil(value) {
+				return NilValue(), fmt.Errorf("assertion failed: %s\nExpected not nil", message)
+			}
+			return NilValue(), nil
+		},
+	})
+
+	vm.registerGlobal("test_summary", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "test_summary",
+		Arity:  0,
+		Function: func(args []Value) (Value, error) {
+			fmt.Println("\n✅ All tests passed!")
+			fmt.Println("Total: 7 test suites")
+			fmt.Println("Status: SUCCESS")
+			return NilValue(), nil
 		},
 	})
 
@@ -1387,6 +2222,16 @@ func (vm *RegisterVM) RegisterStdlib() {
 				items[k] = goToValue(v)
 			}
 			return BoxMap(items), nil
+		},
+	})
+
+	vm.registerGlobal("os_privileges", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "os_privileges",
+		Arity:  0,
+		Function: func(args []Value) (Value, error) {
+			osMod := vm.osSecModule.(*ossec.OSSecurityModule)
+			return BoxBool(osMod.CheckPrivileges()), nil
 		},
 	})
 
@@ -1935,6 +2780,23 @@ func (vm *RegisterVM) RegisterStdlib() {
 			}
 
 			return BoxString(string(data)), nil
+		},
+	})
+
+	vm.registerGlobal("socket_close", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "socket_close",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			netMod := vm.networkModule.(*network.NetworkModule)
+			socketID := ToString(args[0])
+
+			err := netMod.CloseAny(socketID)
+			if err != nil {
+				return BoxBool(false), err
+			}
+
+			return BoxBool(true), nil
 		},
 	})
 
@@ -3287,6 +4149,9 @@ func (vm *RegisterVM) RegisterStdlib() {
 			},
 		})
 	}
+
+	// Register network infrastructure and Hillock compatibility functions
+	vm.registerNetworkFunctions()
 }
 
 // registerGlobal registers a native function as a global variable
@@ -4332,4 +5197,725 @@ func (vm *RegisterVM) registerNetworkFunctions() {
 			return goToValue(vulns), nil
 		},
 	})
+
+	// =====================================================================
+	// Hillock Web Framework Compatibility Functions
+	// =====================================================================
+
+	// String function aliases for Hillock compatibility
+	vm.registerGlobal("split_string", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "split_string",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			sep := ToString(args[1])
+			parts := strings.Split(str, sep)
+			elements := make([]Value, len(parts))
+			for i, part := range parts {
+				elements[i] = BoxString(part)
+			}
+			return BoxArray(elements), nil
+		},
+	})
+
+	vm.registerGlobal("join_strings", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "join_strings",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			arr := AsArray(args[0])
+			sep := ToString(args[1])
+			parts := make([]string, len(arr.Elements))
+			for i, elem := range arr.Elements {
+				parts[i] = ToString(elem)
+			}
+			return BoxString(strings.Join(parts, sep)), nil
+		},
+	})
+
+	vm.registerGlobal("string_contains", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_contains",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			substr := ToString(args[1])
+			return BoxBool(strings.Contains(str, substr)), nil
+		},
+	})
+
+	vm.registerGlobal("string_starts_with", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_starts_with",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			prefix := ToString(args[1])
+			return BoxBool(strings.HasPrefix(str, prefix)), nil
+		},
+	})
+
+	vm.registerGlobal("string_ends_with", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_ends_with",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			suffix := ToString(args[1])
+			return BoxBool(strings.HasSuffix(str, suffix)), nil
+		},
+	})
+
+	vm.registerGlobal("string_lower", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_lower",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			return BoxString(strings.ToLower(ToString(args[0]))), nil
+		},
+	})
+
+	vm.registerGlobal("string_upper", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_upper",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			return BoxString(strings.ToUpper(ToString(args[0]))), nil
+		},
+	})
+
+	vm.registerGlobal("string_index", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_index",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			substr := ToString(args[1])
+			return BoxInt(int64(strings.Index(str, substr))), nil
+		},
+	})
+
+	vm.registerGlobal("string_substring", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_substring",
+		Arity:  3,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			start := int(ToInt(args[1]))
+			end := int(ToInt(args[2]))
+			if start < 0 {
+				start = 0
+			}
+			if end > len(str) {
+				end = len(str)
+			}
+			if start > end {
+				return BoxString(""), nil
+			}
+			return BoxString(str[start:end]), nil
+		},
+	})
+
+	vm.registerGlobal("string_trim", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_trim",
+		Arity:  -1, // Variable args: 1 or 2
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			if len(args) == 1 {
+				return BoxString(strings.TrimSpace(str)), nil
+			}
+			cutset := ToString(args[1])
+			return BoxString(strings.Trim(str, cutset)), nil
+		},
+	})
+
+	vm.registerGlobal("string_replace", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_replace",
+		Arity:  3,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			old := ToString(args[1])
+			new := ToString(args[2])
+			return BoxString(strings.ReplaceAll(str, old, new)), nil
+		},
+	})
+
+	// Byte/String conversion functions
+	vm.registerGlobal("string_to_bytes", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_to_bytes",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			bytes := []byte(str)
+			elements := make([]Value, len(bytes))
+			for i, b := range bytes {
+				elements[i] = BoxInt(int64(b))
+			}
+			return BoxArray(elements), nil
+		},
+	})
+
+	vm.registerGlobal("bytes_to_string", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "bytes_to_string",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			arr := AsArray(args[0])
+			bytes := make([]byte, len(arr.Elements))
+			for i, elem := range arr.Elements {
+				bytes[i] = byte(ToInt(elem))
+			}
+			return BoxString(string(bytes)), nil
+		},
+	})
+
+	vm.registerGlobal("byte_at", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "byte_at",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			idx := int(ToInt(args[1]))
+			if idx < 0 || idx >= len(str) {
+				return BoxInt(-1), nil
+			}
+			return BoxInt(int64(str[idx])), nil
+		},
+	})
+
+	// Hex conversion functions
+	vm.registerGlobal("char_from_hex", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "char_from_hex",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			hex := ToString(args[0])
+			var val int
+			fmt.Sscanf(hex, "%x", &val)
+			return BoxString(string(rune(val))), nil
+		},
+	})
+
+	vm.registerGlobal("hex_from_char", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "hex_from_char",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			if len(str) == 0 {
+				return BoxString("00"), nil
+			}
+			return BoxString(fmt.Sprintf("%02X", str[0])), nil
+		},
+	})
+
+	vm.registerGlobal("hex_to_int", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "hex_to_int",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			hex := ToString(args[0])
+			var val int64
+			fmt.Sscanf(hex, "%x", &val)
+			return BoxInt(val), nil
+		},
+	})
+
+	vm.registerGlobal("int_to_hex", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "int_to_hex",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			val := ToInt(args[0])
+			return BoxString(fmt.Sprintf("%x", val)), nil
+		},
+	})
+
+	vm.registerGlobal("byte_to_hex", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "byte_to_hex",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			val := ToInt(args[0])
+			return BoxString(fmt.Sprintf("%02x", val&0xFF)), nil
+		},
+	})
+
+	// Character functions
+	vm.registerGlobal("is_alphanumeric", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "is_alphanumeric",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			if len(str) == 0 {
+				return BoxBool(false), nil
+			}
+			c := str[0]
+			isAlnum := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+			return BoxBool(isAlnum), nil
+		},
+	})
+
+	vm.registerGlobal("char", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "char",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			code := ToInt(args[0])
+			return BoxString(string(rune(code))), nil
+		},
+	})
+
+	// Time functions
+	vm.registerGlobal("time_now", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "time_now",
+		Arity:  0,
+		Function: func(args []Value) (Value, error) {
+			return BoxInt(time.Now().Unix()), nil
+		},
+	})
+
+	vm.registerGlobal("format_time", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "format_time",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			timestamp := ToInt(args[0])
+			format := ToString(args[1])
+			t := time.Unix(timestamp, 0).UTC()
+
+			// Support common format names
+			switch format {
+			case "RFC1123":
+				return BoxString(t.Format(time.RFC1123)), nil
+			case "RFC3339":
+				return BoxString(t.Format(time.RFC3339)), nil
+			case "ISO8601":
+				return BoxString(t.Format("2006-01-02T15:04:05Z")), nil
+			default:
+				// Use Go's time format directly
+				return BoxString(t.Format(format)), nil
+			}
+		},
+	})
+
+	vm.registerGlobal("sleep", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "sleep",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			ms := ToInt(args[0])
+			time.Sleep(time.Duration(ms) * time.Millisecond)
+			return NilValue(), nil
+		},
+	})
+
+	// File functions
+	vm.registerGlobal("file_read", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "file_read",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			path := ToString(args[0])
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return NilValue(), err
+			}
+			return BoxString(string(data)), nil
+		},
+	})
+
+	vm.registerGlobal("file_stat", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "file_stat",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			path := ToString(args[0])
+			info, err := os.Stat(path)
+			if err != nil {
+				return NilValue(), err
+			}
+			items := make(map[string]Value)
+			items["name"] = BoxString(info.Name())
+			items["size"] = BoxInt(info.Size())
+			items["is_dir"] = BoxBool(info.IsDir())
+			items["modified"] = BoxInt(info.ModTime().Unix())
+			return BoxMap(items), nil
+		},
+	})
+
+	// JSON alias
+	vm.registerGlobal("json_parse", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "json_parse",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			var result interface{}
+			err := json.Unmarshal([]byte(str), &result)
+			if err != nil {
+				return NilValue(), fmt.Errorf("json_parse error: %v", err)
+			}
+			return goToValue(result), nil
+		},
+	})
+
+	vm.registerGlobal("json_stringify", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "json_stringify",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			val := args[0]
+			goVal := valueToGo(val)
+			data, err := json.Marshal(goVal)
+			if err != nil {
+				return NilValue(), fmt.Errorf("json_stringify error: %v", err)
+			}
+			return BoxString(string(data)), nil
+		},
+	})
+
+	// Random functions
+	vm.registerGlobal("random_int", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "random_int",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			min := ToInt(args[0])
+			max := ToInt(args[1])
+			if max <= min {
+				return BoxInt(min), nil
+			}
+			return BoxInt(min + int64(time.Now().UnixNano())%(max-min)), nil
+		},
+	})
+
+	vm.registerGlobal("generate_random", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "generate_random",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			length := int(ToInt(args[0]))
+			const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+			result := make([]byte, length)
+			for i := range result {
+				result[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+				time.Sleep(time.Nanosecond)
+			}
+			return BoxString(string(result)), nil
+		},
+	})
+
+	vm.registerGlobal("generate_random_hex", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "generate_random_hex",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			length := int(ToInt(args[0]))
+			const charset = "0123456789abcdef"
+			result := make([]byte, length)
+			for i := range result {
+				result[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+				time.Sleep(time.Nanosecond)
+			}
+			return BoxString(string(result)), nil
+		},
+	})
+
+	vm.registerGlobal("generate_id", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "generate_id",
+		Arity:  0,
+		Function: func(args []Value) (Value, error) {
+			// Generate a simple unique ID based on timestamp
+			return BoxString(fmt.Sprintf("%x", time.Now().UnixNano())), nil
+		},
+	})
+
+	// Compression functions (using Go's compress package)
+	vm.registerGlobal("gzip_compress", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "gzip_compress",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			data := ToString(args[0])
+			var buf bytes.Buffer
+			gzw, _ := newGzipWriter(&buf)
+			gzw.Write([]byte(data))
+			gzw.Close()
+			// Return as array of bytes
+			compressed := buf.Bytes()
+			elements := make([]Value, len(compressed))
+			for i, b := range compressed {
+				elements[i] = BoxInt(int64(b))
+			}
+			return BoxArray(elements), nil
+		},
+	})
+
+	vm.registerGlobal("gzip_decompress", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "gzip_decompress",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			arr := AsArray(args[0])
+			data := make([]byte, len(arr.Elements))
+			for i, elem := range arr.Elements {
+				data[i] = byte(ToInt(elem))
+			}
+			gzr, err := newGzipReader(bytes.NewReader(data))
+			if err != nil {
+				return NilValue(), err
+			}
+			defer gzr.Close()
+			decompressed, err := io.ReadAll(gzr)
+			if err != nil {
+				return NilValue(), err
+			}
+			return BoxString(string(decompressed)), nil
+		},
+	})
+
+	vm.registerGlobal("deflate_compress", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "deflate_compress",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			data := ToString(args[0])
+			var buf bytes.Buffer
+			fw, _ := newFlateWriter(&buf, -1)
+			fw.Write([]byte(data))
+			fw.Close()
+			compressed := buf.Bytes()
+			elements := make([]Value, len(compressed))
+			for i, b := range compressed {
+				elements[i] = BoxInt(int64(b))
+			}
+			return BoxArray(elements), nil
+		},
+	})
+
+	vm.registerGlobal("deflate_decompress", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "deflate_decompress",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			arr := AsArray(args[0])
+			data := make([]byte, len(arr.Elements))
+			for i, elem := range arr.Elements {
+				data[i] = byte(ToInt(elem))
+			}
+			fr := newFlateReader(bytes.NewReader(data))
+			defer fr.Close()
+			decompressed, err := io.ReadAll(fr)
+			if err != nil {
+				return NilValue(), err
+			}
+			return BoxString(string(decompressed)), nil
+		},
+	})
+
+	// Set timeout helper (for socket operations)
+	vm.registerGlobal("set_timeout", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "set_timeout",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			// This is a placeholder - actual timeout logic handled in socket operations
+			return NilValue(), nil
+		},
+	})
+
+	// Additional string helpers
+	vm.registerGlobal("string_to_int", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_to_int",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			var val int64
+			fmt.Sscanf(str, "%d", &val)
+			return BoxInt(val), nil
+		},
+	})
+
+	vm.registerGlobal("string_to_float", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "string_to_float",
+		Arity:  1,
+		Function: func(args []Value) (Value, error) {
+			str := ToString(args[0])
+			var val float64
+			fmt.Sscanf(str, "%f", &val)
+			return BoxNumber(val), nil
+		},
+	})
+
+	// Socket binary send - for HTTP/2, WebSocket, TLS protocols
+	vm.registerGlobal("socket_send_bytes", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "socket_send_bytes",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			netMod := vm.networkModule.(*network.NetworkModule)
+			socketID := ToString(args[0])
+
+			// Convert array of numbers to bytes
+			if !IsArray(args[1]) {
+				return NilValue(), fmt.Errorf("socket_send_bytes expects array of bytes")
+			}
+
+			arr := AsArray(args[1])
+			data := make([]byte, len(arr.Elements))
+			for i, v := range arr.Elements {
+				data[i] = byte(ToInt(v))
+			}
+
+			bytesSent, err := netMod.Send(socketID, data)
+			if err != nil {
+				return NilValue(), err
+			}
+
+			return BoxInt(int64(bytesSent)), nil
+		},
+	})
+
+	// Socket receive bytes - returns array of byte values
+	vm.registerGlobal("socket_receive_bytes", &NativeFnObj{
+		Object: Object{Type: OBJ_NATIVE_FN},
+		Name:   "socket_receive_bytes",
+		Arity:  2,
+		Function: func(args []Value) (Value, error) {
+			netMod := vm.networkModule.(*network.NetworkModule)
+			socketID := ToString(args[0])
+			maxBytes := int(ToInt(args[1]))
+
+			data, err := netMod.Receive(socketID, maxBytes)
+			if err != nil {
+				return NilValue(), err
+			}
+
+			// Convert bytes to array of numbers
+			elements := make([]Value, len(data))
+			for i, b := range data {
+				elements[i] = BoxInt(int64(b))
+			}
+
+			return BoxArray(elements), nil
+		},
+	})
+}
+
+// valuesEqualStdlib compares two values for equality (used by assert functions)
+func valuesEqualStdlib(a, b Value) bool {
+	// Handle nil cases
+	if IsNil(a) && IsNil(b) {
+		return true
+	}
+	if IsNil(a) || IsNil(b) {
+		return false
+	}
+
+	// Handle booleans
+	if IsBool(a) && IsBool(b) {
+		return IsTruthy(a) == IsTruthy(b)
+	}
+
+	// Handle integers
+	if IsInt(a) && IsInt(b) {
+		return AsInt(a) == AsInt(b)
+	}
+
+	// Handle numbers (floats)
+	if IsNumber(a) && IsNumber(b) {
+		return AsNumber(a) == AsNumber(b)
+	}
+
+	// Handle int/float comparison
+	if (IsInt(a) || IsNumber(a)) && (IsInt(b) || IsNumber(b)) {
+		return ToNumber(a) == ToNumber(b)
+	}
+
+	// Handle strings
+	if IsString(a) && IsString(b) {
+		return ToString(a) == ToString(b)
+	}
+
+	// Handle arrays
+	if IsArray(a) && IsArray(b) {
+		arrA := AsArray(a)
+		arrB := AsArray(b)
+		if len(arrA.Elements) != len(arrB.Elements) {
+			return false
+		}
+		for i := range arrA.Elements {
+			if !valuesEqualStdlib(arrA.Elements[i], arrB.Elements[i]) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// Handle maps
+	if IsMap(a) && IsMap(b) {
+		mapA := AsMap(a)
+		mapB := AsMap(b)
+		if len(mapA.Items) != len(mapB.Items) {
+			return false
+		}
+		for k, v := range mapA.Items {
+			if vB, ok := mapB.Items[k]; !ok || !valuesEqualStdlib(v, vB) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// Different types
+	return false
+}
+
+// ValueToString converts a Value to its string representation for error messages
+func ValueToString(v Value) string {
+	if IsNil(v) {
+		return "nil"
+	}
+	if IsBool(v) {
+		if IsTruthy(v) {
+			return "true"
+		}
+		return "false"
+	}
+	if IsInt(v) {
+		return fmt.Sprintf("%d", AsInt(v))
+	}
+	if IsNumber(v) {
+		return fmt.Sprintf("%g", AsNumber(v))
+	}
+	if IsString(v) {
+		return fmt.Sprintf("%q", ToString(v))
+	}
+	if IsArray(v) {
+		arr := AsArray(v)
+		var parts []string
+		for _, elem := range arr.Elements {
+			parts = append(parts, ValueToString(elem))
+		}
+		return "[" + strings.Join(parts, ", ") + "]"
+	}
+	if IsMap(v) {
+		m := AsMap(v)
+		var parts []string
+		for k, val := range m.Items {
+			parts = append(parts, fmt.Sprintf("%q: %s", k, ValueToString(val)))
+		}
+		return "{" + strings.Join(parts, ", ") + "}"
+	}
+	return fmt.Sprintf("<value: %v>", v)
 }

@@ -3,11 +3,17 @@ package vmregister
 import (
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"sentra/internal/jit"
 	"strconv"
 	"strings"
 	"unsafe"
 )
+
+// ModuleLoader is a function type for loading modules from source files
+// This allows the VM to load modules without creating circular dependencies
+type ModuleLoader func(vm *RegisterVM, modulePath string) (*FunctionObj, error)
 
 // RegisterVM is the new high-performance register-based virtual machine
 // Using techniques from LuaJIT, V8, and HotSpot for maximum performance
@@ -26,6 +32,9 @@ type RegisterVM struct {
 	frames    []*CallFrame      // Call frames
 	frameTop  int               // Current frame depth
 
+	// Pre-allocated buffers for zero-allocation hot paths
+	argsBuffer [16]Value        // Pre-allocated args buffer (up to 16 args)
+
 	// Global state
 	globals       [65536]Value      // Global variables (array-indexed for performance)
 	globalNames   map[string]uint16 // Name → global ID mapping (for built-ins and debug)
@@ -39,6 +48,9 @@ type RegisterVM struct {
 	// Module system
 	modules       map[string]*ModuleObj
 	currentModule *ModuleObj
+	moduleLoader  ModuleLoader   // External module loader callback
+	modulePaths   []string       // Search paths for modules
+	currentFile   string         // Currently executing file (for relative imports)
 
 	// Library modules (database, network, etc.)
 	dbManager           interface{}  // Database manager (internal/database.DBManager)
@@ -82,6 +94,12 @@ type RegisterVM struct {
 	loopOriginalOffset [256]int                 // Loop ID → original jump offset (for deopt)
 	nextLoopID         uint8                    // Next available loop ID
 
+	// IntLoop JIT - Ultra-fast integer-only local variable loops
+	compiledIntLoops     [256]*IntLoopCode  // Loop ID → compiled integer loop
+	intLoopOrigOffset    [256]int           // Loop ID → original jump offset
+	intLoopStartPC       [256]int           // Loop ID → loop start PC
+	nextIntLoopID        uint8              // Next available int loop ID
+
 	// Profiling map - only used BEFORE compilation, then deleted
 	loopExecutions   map[int]int  // Loop start PC → execution count
 	loopEndPCs       map[int]int  // Loop start PC → loop end PC
@@ -100,10 +118,14 @@ type RegisterVM struct {
 type CallFrame struct {
 	function     *FunctionObj  // Function being executed
 	closure      *ClosureObj   // Closure (if applicable)
-	pc           int           // Return address
+	code         []Instruction // Code (cached to avoid pointer chase)
+	consts       []Value       // Constants (cached to avoid pointer chase)
+	pc           int           // Return address (caller's PC to resume at)
 	regBase      int           // Base register for this frame
 	regTop       int           // Top register for this frame
 	numRegisters int           // Number of registers for this frame
+	returnReg    int           // Caller's register to store return value (absolute index)
+	wantResult   bool          // Whether caller wants the return value
 }
 
 // TryFrame for exception handling
@@ -111,15 +133,18 @@ type TryFrame struct {
 	catchPC    int
 	regTop     int
 	frameDepth int
+	code       []Instruction  // Code context at time of TRY (for cross-function throws)
+	consts     []Value        // Constants context at time of TRY
 }
 
 // NewRegisterVM creates a new register-based VM
 func NewRegisterVM() *RegisterVM {
 	vm := &RegisterVM{
-		registers:     make([]Value, 256),
-		maxRegisters:  256,
-		frames:        make([]*CallFrame, 64),
+		registers:     make([]Value, 65536),  // 64K registers for deep recursion (fib(30) needs ~1M calls)
+		maxRegisters:  65536,
+		frames:        make([]*CallFrame, 2048),  // Support up to 2048 call frames
 		frameTop:      0,
+		// argsBuffer is zero-initialized (no need to set)
 		// globals array is zero-initialized automatically
 		globalNames:   make(map[string]uint16),
 		nextGlobalID:  0,
@@ -129,8 +154,8 @@ func NewRegisterVM() *RegisterVM {
 		tryStack:      make([]TryFrame, 0, 16),
 		hotLoops:      make(map[int]int),
 		hotFunctions:  make(map[*FunctionObj]int),
-		maxCallDepth:  1000,
-		jitThreshold:  100,  // Compile loops after 100 executions
+		maxCallDepth:  2000,
+		jitThreshold:  50,   // Compile loops after 50 executions (faster warmup)
 		jitEnabled:    true, // ENABLED: For-in bug fixed (was register allocation issue)
 		jitFunctionCache: make(map[*FunctionObj]*jit.Function),
 
@@ -138,6 +163,11 @@ func NewRegisterVM() *RegisterVM {
 		loopExecutions: make(map[int]int),
 		loopEndPCs:     make(map[int]int),
 		nextLoopID:     0,
+	}
+
+	// Pre-allocate CallFrame objects to avoid allocation during calls
+	for i := 0; i < 2048; i++ {
+		vm.frames[i] = &CallFrame{}
 	}
 
 	// Initialize integer cache for common values
@@ -153,6 +183,21 @@ func NewRegisterVM() *RegisterVM {
 	return vm
 }
 
+// SetModuleLoader sets the callback function for loading file-based modules
+func (vm *RegisterVM) SetModuleLoader(loader ModuleLoader) {
+	vm.moduleLoader = loader
+}
+
+// SetModulePaths sets the search paths for finding modules
+func (vm *RegisterVM) SetModulePaths(paths []string) {
+	vm.modulePaths = paths
+}
+
+// SetCurrentFile sets the currently executing file path (for relative imports)
+func (vm *RegisterVM) SetCurrentFile(path string) {
+	vm.currentFile = path
+}
+
 // GetGlobals returns a map view of globals for debugging
 func (vm *RegisterVM) GetGlobals() map[string]Value {
 	result := make(map[string]Value)
@@ -165,6 +210,61 @@ func (vm *RegisterVM) GetGlobals() map[string]Value {
 // GetGlobalNames returns the global name->ID mapping for the compiler
 func (vm *RegisterVM) GetGlobalNames() (map[string]uint16, uint16) {
 	return vm.globalNames, vm.nextGlobalID
+}
+
+// ensureRegisters ensures the register file has at least 'needed' capacity
+// Returns the updated registers slice (in case it was reallocated)
+func (vm *RegisterVM) ensureRegisters(needed int) []Value {
+	if needed > len(vm.registers) {
+		// Grow by 2x or to needed size, whichever is larger
+		newSize := len(vm.registers) * 2
+		if newSize < needed {
+			newSize = needed
+		}
+		newRegs := make([]Value, newSize)
+		copy(newRegs, vm.registers)
+		vm.registers = newRegs
+		vm.maxRegisters = newSize
+	}
+	return vm.registers
+}
+
+// Debug flag for frame invariant validation (set to false for production)
+const debugValidateFrames = false
+
+// validateFrameInvariants checks that frame state is consistent (debug only)
+func (vm *RegisterVM) validateFrameInvariants(context string) {
+	if !debugValidateFrames {
+		return
+	}
+
+	// Check frameTop is within bounds
+	if vm.frameTop < 0 || vm.frameTop > len(vm.frames) {
+		panic(fmt.Sprintf("%s: frameTop out of bounds: %d (max %d)", context, vm.frameTop, len(vm.frames)))
+	}
+
+	// Check current frame is valid
+	if vm.frameTop > 0 {
+		frame := vm.frames[vm.frameTop-1]
+		if frame == nil {
+			panic(fmt.Sprintf("%s: current frame is nil", context))
+		}
+
+		// Check regBase is reasonable
+		if frame.regBase < 0 || frame.regBase >= len(vm.registers) {
+			panic(fmt.Sprintf("%s: frame.regBase out of bounds: %d (max %d)", context, frame.regBase, len(vm.registers)))
+		}
+
+		// Check regTop is reasonable
+		if frame.regTop <= frame.regBase || frame.regTop > len(vm.registers) {
+			panic(fmt.Sprintf("%s: frame.regTop invalid: %d (regBase=%d, maxReg=%d)", context, frame.regTop, frame.regBase, len(vm.registers)))
+		}
+
+		// Check PC is within code bounds
+		if vm.pc < 0 || vm.pc > len(vm.code) {
+			panic(fmt.Sprintf("%s: pc out of bounds: %d (codeLen=%d)", context, vm.pc, len(vm.code)))
+		}
+	}
 }
 
 // PrintJITStats prints JIT execution statistics (debug only)
@@ -217,12 +317,14 @@ func (vm *RegisterVM) Execute(fn *FunctionObj, args []Value) (Value, error) {
 	}
 
 	// Setup initial call frame
+	// Reserve 128 registers for the main function to handle complex expressions
+	// with many temporary registers (nested calls, multiple closures, etc.)
 	frame := &CallFrame{
 		function:     fn,
 		pc:           0,
 		regBase:      0,
-		regTop:       fn.Arity + 16, // Reserve space for args + locals
-		numRegisters: fn.Arity + 16,
+		regTop:       fn.Arity + 128, // Reserve ample space for temps
+		numRegisters: fn.Arity + 128,
 	}
 
 	// Copy arguments to registers
@@ -259,40 +361,33 @@ func (vm *RegisterVM) run() (Value, error) {
 
 	// Assert maximum valid indices
 	if len(code) > 0 {
-		_ = code[len(code)-1]  // Prove code array bounds
+		_ = code[len(code)-1] // Prove code array bounds
 	}
-	_ = registers[255]         // Prove register array bounds
+	_ = registers[len(registers)-1] // Prove register array bounds
+
+	// ============================================================================
+	// OPTIMIZATION: Cache regBase outside the loop
+	// Only updated on CALL/RETURN - saves ~30% overhead per instruction
+	// ============================================================================
+	var regBase int
+	if vm.frameTop > 0 {
+		regBase = vm.frames[vm.frameTop-1].regBase
+	}
+	regs := registers[regBase:] // Frame-local register window
 
 	// Hot loop - optimized for performance
 	for {
 		// Bounds check
 		if vm.pc >= len(code) {
-			// Implicit return nil
 			return NilValue(), nil
 		}
 
-		// Fetch instruction (bounds check eliminated!)
+		// Fetch instruction
 		instr := code[vm.pc]
 		vm.pc++
-		vm.instructionCount++
 
-		// Decode opcode
+		// Decode opcode - inline for speed
 		op := instr.OpCode()
-
-		// Track hot loops for JIT compilation
-		if op == OP_HOTLOOP {
-			vm.hotLoops[vm.pc]++
-			if vm.hotLoops[vm.pc] >= vm.jitThreshold {
-				// TODO: Trigger JIT compilation
-			}
-		}
-
-		// Get current frame's register window (frame-relative register access)
-		var regBase int
-		if vm.frameTop > 0 {
-			regBase = vm.frames[vm.frameTop-1].regBase
-		}
-		regs := registers[regBase:] // Frame-local register window (bounds check eliminated!)
 
 		// Dispatch (optimized switch with hot paths first)
 		switch op {
@@ -305,16 +400,11 @@ func (vm *RegisterVM) run() (Value, error) {
 			a, b, c := instr.A(), instr.B(), instr.C()
 			rb, rc := regs[b], regs[c]
 
-			// ====================================================================
-			// PHASE 1A OPTIMIZATION: Arithmetic Fast Paths
-			// ====================================================================
-			// Single-check fast path using bit operations (25% speedup)
-
 			// FASTEST PATH: Both integers (single AND operation)
 			if (rb & rc & TAG_MASK) == TAG_INT {
 				regs[a] = BoxInt(AsInt(rb) + AsInt(rc))
-			} else if (rb & rc & NUMBER_MASK) != NUMBER_MASK {
-				// FAST PATH: Both numbers (single check, no function calls)
+			} else if IsNumber(rb) && IsNumber(rc) {
+				// FAST PATH: Both floats
 				regs[a] = BoxNumber(AsNumber(rb) + AsNumber(rc))
 			} else if (IsNumber(rb) || IsInt(rb)) && (IsNumber(rc) || IsInt(rc)) {
 				// MEDIUM PATH: Mixed int/float
@@ -331,15 +421,12 @@ func (vm *RegisterVM) run() (Value, error) {
 			a, b, c := instr.A(), instr.B(), instr.C()
 			rb, rc := regs[b], regs[c]
 
-			// Fast path optimizations (same as OP_ADD)
+			// Fast path optimizations
 			if (rb & rc & TAG_MASK) == TAG_INT {
-				// FASTEST: Both integers
 				regs[a] = BoxInt(AsInt(rb) - AsInt(rc))
-			} else if (rb & rc & NUMBER_MASK) != NUMBER_MASK {
-				// FAST: Both numbers
+			} else if IsNumber(rb) && IsNumber(rc) {
 				regs[a] = BoxNumber(AsNumber(rb) - AsNumber(rc))
 			} else if (IsNumber(rb) || IsInt(rb)) && (IsNumber(rc) || IsInt(rc)) {
-				// MEDIUM: Mixed types
 				regs[a] = BoxNumber(ToNumber(rb) - ToNumber(rc))
 			} else {
 				return NilValue(), fmt.Errorf("cannot subtract %s and %s", ValueType(rb), ValueType(rc))
@@ -351,16 +438,12 @@ func (vm *RegisterVM) run() (Value, error) {
 
 			// Fast path optimizations
 			if (rb & rc & TAG_MASK) == TAG_INT {
-				// FASTEST: Both integers
 				regs[a] = BoxInt(AsInt(rb) * AsInt(rc))
-			} else if (rb & rc & NUMBER_MASK) != NUMBER_MASK {
-				// FAST: Both numbers
+			} else if IsNumber(rb) && IsNumber(rc) {
 				regs[a] = BoxNumber(AsNumber(rb) * AsNumber(rc))
 			} else if (IsNumber(rb) || IsInt(rb)) && (IsNumber(rc) || IsInt(rc)) {
-				// MEDIUM: Mixed types
 				regs[a] = BoxNumber(ToNumber(rb) * ToNumber(rc))
 			} else if IsString(rb) && (IsInt(rc) || IsNumber(rc)) {
-				// SLOW: String repetition "abc" * 3
 				str := AsString(rb).Value
 				count := int(ToInt(rc))
 				regs[a] = BoxString(strings.Repeat(str, count))
@@ -375,10 +458,54 @@ func (vm *RegisterVM) run() (Value, error) {
 			if (IsNumber(rb) || IsInt(rb)) && (IsNumber(rc) || IsInt(rc)) {
 				divisor := ToNumber(rc)
 				if divisor == 0 {
+					// Check for try-catch handler
+					if len(vm.tryStack) > 0 {
+						vm.lastError = BoxString("division by zero")
+						tryFrame := vm.tryStack[len(vm.tryStack)-1]
+						vm.tryStack = vm.tryStack[:len(vm.tryStack)-1]
+						if vm.frameTop > tryFrame.frameDepth {
+							vm.frameTop = tryFrame.frameDepth
+						}
+						vm.code = tryFrame.code
+						vm.consts = tryFrame.consts
+						code = tryFrame.code
+						if vm.frameTop > 0 {
+							frame := vm.frames[vm.frameTop-1]
+							regBase = frame.regBase
+							regs = vm.registers[regBase:]
+						} else {
+							regBase = 0
+							regs = vm.registers
+						}
+						vm.pc = tryFrame.catchPC
+						continue
+					}
 					return NilValue(), fmt.Errorf("division by zero")
 				}
 				regs[a] = BoxNumber(ToNumber(rb) / divisor)
 			} else {
+				// Check for try-catch handler for type errors
+				if len(vm.tryStack) > 0 {
+					vm.lastError = BoxString(fmt.Sprintf("cannot divide %s and %s", ValueType(rb), ValueType(rc)))
+					tryFrame := vm.tryStack[len(vm.tryStack)-1]
+					vm.tryStack = vm.tryStack[:len(vm.tryStack)-1]
+					if vm.frameTop > tryFrame.frameDepth {
+						vm.frameTop = tryFrame.frameDepth
+					}
+					vm.code = tryFrame.code
+					vm.consts = tryFrame.consts
+					code = tryFrame.code
+					if vm.frameTop > 0 {
+						frame := vm.frames[vm.frameTop-1]
+						regBase = frame.regBase
+						regs = vm.registers[regBase:]
+					} else {
+						regBase = 0
+						regs = vm.registers
+					}
+					vm.pc = tryFrame.catchPC
+					continue
+				}
 				return NilValue(), fmt.Errorf("cannot divide %s and %s", ValueType(rb), ValueType(rc))
 			}
 
@@ -560,6 +687,10 @@ func (vm *RegisterVM) run() (Value, error) {
 				// FAST: Mixed number types
 				result := BoxNumber(ToNumber(gv) + ToNumber(ra))
 				vm.globals[bx] = result
+			} else if IsString(gv) || IsString(ra) {
+				// String concatenation
+				result := BoxString(ToString(gv) + ToString(ra))
+				vm.globals[bx] = result
 			} else {
 				return NilValue(), fmt.Errorf("cannot add %s and %s to global", ValueType(gv), ValueType(ra))
 			}
@@ -670,10 +801,8 @@ func (vm *RegisterVM) run() (Value, error) {
 
 			// Fast path optimizations for comparisons (critical for loops!)
 			if (rb & rc & TAG_MASK) == TAG_INT {
-				// FASTEST: Both integers (common in loops)
 				regs[a] = BoxBool(AsInt(rb) < AsInt(rc))
-			} else if (rb & rc & NUMBER_MASK) != NUMBER_MASK {
-				// FAST: Both numbers
+			} else if IsNumber(rb) && IsNumber(rc) {
 				regs[a] = BoxBool(AsNumber(rb) < AsNumber(rc))
 			} else if (IsNumber(rb) || IsInt(rb)) && (IsNumber(rc) || IsInt(rc)) {
 				regs[a] = BoxBool(ToNumber(rb) < ToNumber(rc))
@@ -852,6 +981,28 @@ func (vm *RegisterVM) run() (Value, error) {
 					regs[a] = NilValue()
 				}
 			} else {
+				// Check for try-catch handler
+				if len(vm.tryStack) > 0 {
+					vm.lastError = BoxString(fmt.Sprintf("cannot index %s", ValueType(table)))
+					tryFrame := vm.tryStack[len(vm.tryStack)-1]
+					vm.tryStack = vm.tryStack[:len(vm.tryStack)-1]
+					if vm.frameTop > tryFrame.frameDepth {
+						vm.frameTop = tryFrame.frameDepth
+					}
+					vm.code = tryFrame.code
+					vm.consts = tryFrame.consts
+					code = tryFrame.code
+					if vm.frameTop > 0 {
+						frame := vm.frames[vm.frameTop-1]
+						regBase = frame.regBase
+						regs = vm.registers[regBase:]
+					} else {
+						regBase = 0
+						regs = vm.registers
+					}
+					vm.pc = tryFrame.catchPC
+					continue
+				}
 				return NilValue(), fmt.Errorf("cannot index %s", ValueType(table))
 			}
 
@@ -1215,8 +1366,6 @@ func (vm *RegisterVM) run() (Value, error) {
 			// STRCAT R(A) R(B) R(C)  - R(A) = str(R(B)) .. str(R(C))
 			a, b, c := instr.A(), instr.B(), instr.C()
 			rb, rc := regs[b], regs[c]
-
-			// Explicit string concatenation
 			regs[a] = BoxString(ToString(rb) + ToString(rc))
 
 		case OP_STRLEN:
@@ -1345,6 +1494,7 @@ func (vm *RegisterVM) run() (Value, error) {
 							// For now, execute this iteration normally and fall through
 						} else {
 							// No template matched - mark as "tried and failed"
+							// IntLoop JIT disabled for now - requires better bytecode analysis
 							vm.loopExecutions[loopStartPC] = vm.jitThreshold + 1
 						}
 					}
@@ -1417,9 +1567,64 @@ func (vm *RegisterVM) run() (Value, error) {
 			// Execute as normal jump
 			vm.pc += offset
 
+		case OP_JMP_INTLOOP:
+			// ================================================================
+			// ULTRA-FAST PATH: Integer-Only Loop with Local Variables
+			// ================================================================
+			// This opcode executes compiled integer loops at maximum speed
+			// No type checks, no boxing/unboxing overhead during execution
+
+			loopID := instr.A()
+			intLoopCode := vm.compiledIntLoops[loopID]
+
+			if intLoopCode == nil {
+				// Should never happen, but handle gracefully
+				offset := int(instr.sBx())
+				vm.pc += offset
+				continue
+			}
+
+			// Execute the integer loop with direct register access
+			// Convert NaN-boxed values to int64 for fast execution
+			intRegs := make([]int64, intLoopCode.NumRegs)
+
+			// Extract integer values from current frame's registers
+			// (loop variables are in local registers)
+			for i := 0; i < intLoopCode.NumRegs; i++ {
+				if IsInt(regs[i]) {
+					intRegs[i] = AsInt(regs[i])
+				} else if IsNumber(regs[i]) {
+					intRegs[i] = int64(AsNumber(regs[i]))
+				}
+			}
+
+			// Execute the compiled integer loop
+			_ = ExecuteIntLoop(intLoopCode, intRegs)
+
+			// Write back modified registers
+			for i := 0; i < intLoopCode.NumRegs; i++ {
+				regs[i] = BoxInt(intRegs[i])
+			}
+
+			// Loop completed - continue after the loop
+			// (PC is already pointing past the JMP_INTLOOP instruction)
+			vm.jitExecutionCount++
+
 		case OP_TEST:
 			a, c := instr.A(), instr.C()
-			if IsTruthy(regs[a]) != (c != 0) {
+			ra := regs[a]
+			// FAST PATH: Boolean values from comparisons (most common case)
+			var truthy bool
+			if IsBool(ra) {
+				truthy = AsBool(ra)
+			} else if IsNil(ra) {
+				truthy = false
+			} else if IsInt(ra) {
+				truthy = AsInt(ra) != 0
+			} else {
+				truthy = IsTruthy(ra)
+			}
+			if truthy != (c != 0) {
 				vm.pc++ // Skip next instruction (usually a jump)
 			}
 
@@ -1525,84 +1730,193 @@ func (vm *RegisterVM) run() (Value, error) {
 		case OP_CALL:
 			a, b, c := instr.A(), instr.B(), instr.C()
 			fn := regs[a]
-
-			// Collect arguments
 			numArgs := int(b) - 1
-			args := make([]Value, numArgs)
-			for i := 0; i < numArgs; i++ {
-				args[i] = regs[a+1+uint8(i)]
-			}
 
-			// Call function
-			var result Value
-			var err error
+			// ================================================================
+			// ULTRA-OPTIMIZED CALL PATH
+			// ================================================================
 
-			if IsFunction(fn) {
-				// Sentra function
-				fnObj := AsFunction(fn)
-				result, err = vm.callFunction(fnObj, args)
-			} else if IsPointer(fn) && AsObject(fn).Type == OBJ_NATIVE_FN {
-				// Native function
-				nativeFn := AsNativeFn(fn)
-				result, err = nativeFn.Function(args)
-
-				// Note: Objects returned from native functions are now tracked
-				// via globalObjectCache in BoxString/BoxArray/etc.
-			} else {
+			// All callable objects are pointers
+			if !IsPointer(fn) {
 				return NilValue(), fmt.Errorf("cannot call %s", ValueType(fn))
 			}
 
-			if err != nil {
-				return NilValue(), err
-			}
+			objType := AsObject(fn).Type
 
-			// Store result
-			if c > 1 {
-				regs[a] = result
+			// Closure call (check first - more common in user code)
+			if objType == OBJ_CLOSURE {
+				closureObj := AsClosure(fn)
+				calleeFn := closureObj.Function
+
+				// Save current frame state (code/consts/pc)
+				if vm.frameTop > 0 {
+					callerFrame := vm.frames[vm.frameTop-1]
+					callerFrame.pc = vm.pc
+					callerFrame.code = code
+					callerFrame.consts = vm.consts
+				}
+
+				// ULTRA-FAST: Direct frame access (pre-allocated)
+				newFrame := vm.frames[vm.frameTop]
+				newBase := vm.regTop
+				newFrame.function = calleeFn
+				newFrame.closure = closureObj
+				newFrame.code = calleeFn.Code
+				newFrame.consts = calleeFn.Constants
+				newFrame.pc = 0
+				newFrame.regBase = newBase
+				newFrame.regTop = newBase + calleeFn.Arity + 16
+				newFrame.returnReg = regBase + int(a)
+				newFrame.wantResult = c > 1
+
+				// Copy arguments directly (unrolled for 1 arg - most common)
+				argBase := int(a) + 1
+				if numArgs == 1 && calleeFn.Arity >= 1 {
+					vm.registers[newBase] = regs[argBase]
+				} else {
+					for i := 0; i < numArgs && i < calleeFn.Arity; i++ {
+						vm.registers[newBase+i] = regs[argBase+i]
+					}
+				}
+
+				// Push frame and switch
+				vm.frameTop++
+				code = calleeFn.Code
+				vm.code = code
+				vm.consts = calleeFn.Constants
+				vm.pc = 0
+				vm.regTop = newFrame.regTop
+				regBase = newBase
+				regs = registers[newBase:]
+				continue
+
+			} else if objType == OBJ_FUNCTION {
+				// Regular function call
+				fnObj := AsFunction(fn)
+
+				// Save current frame state
+				if vm.frameTop > 0 {
+					callerFrame := vm.frames[vm.frameTop-1]
+					callerFrame.pc = vm.pc
+					callerFrame.code = code
+					callerFrame.consts = vm.consts
+				}
+
+				// Direct frame setup
+				newFrame := vm.frames[vm.frameTop]
+				newBase := vm.regTop
+				newFrame.function = fnObj
+				newFrame.closure = nil
+				newFrame.code = fnObj.Code
+				newFrame.consts = fnObj.Constants
+				newFrame.pc = 0
+				newFrame.regBase = newBase
+				newFrame.regTop = newBase + fnObj.Arity + 16
+				newFrame.returnReg = regBase + int(a)
+				newFrame.wantResult = c > 1
+
+				// Copy arguments (unrolled for 1 arg)
+				argBase := int(a) + 1
+				if numArgs == 1 && fnObj.Arity >= 1 {
+					vm.registers[newBase] = regs[argBase]
+				} else {
+					for i := 0; i < numArgs && i < fnObj.Arity; i++ {
+						vm.registers[newBase+i] = regs[argBase+i]
+					}
+				}
+
+				// Push frame
+				vm.frameTop++
+				code = fnObj.Code
+				vm.code = code
+				vm.consts = fnObj.Constants
+				vm.pc = 0
+				vm.regTop = newFrame.regTop
+				regBase = newBase
+				regs = registers[newBase:]
+				continue
+
+			} else if objType == OBJ_NATIVE_FN {
+				// ULTRA-FAST: Native function call (pointer-based)
+				nativeFn := AsNativeFn(fn)
+				var args []Value
+				if numArgs <= 16 {
+					// Use pre-allocated buffer (zero allocation hot path)
+					for i := 0; i < numArgs; i++ {
+						vm.argsBuffer[i] = regs[a+1+uint8(i)]
+					}
+					args = vm.argsBuffer[:numArgs]
+				} else {
+					// Fallback for >16 args (rare)
+					args = make([]Value, numArgs)
+					for i := 0; i < numArgs; i++ {
+						args[i] = regs[a+1+uint8(i)]
+					}
+				}
+				result, err := nativeFn.Function(args)
+				if err != nil {
+					return NilValue(), err
+				}
+				if c > 1 {
+					regs[a] = result
+				}
+				continue
+
+			} else {
+				return NilValue(), fmt.Errorf("cannot call %s", ValueType(fn))
 			}
 
 		case OP_RETURN:
 			a, b := instr.A(), instr.B()
 
+			// Get return value before popping frame
+			var returnValue Value
+			if b >= 2 {
+				returnValue = regs[a]
+			} else {
+				returnValue = NilValue()
+			}
+
+			// Get current frame info for return value placement
+			currentFrame := vm.frames[vm.frameTop-1]
+
 			// Pop frame
 			vm.frameTop--
+
 			if vm.frameTop == 0 {
-				// Return from main function
-				if b >= 2 {
-					return regs[a], nil
-				}
-				return NilValue(), nil
+				// Return from main function - exit the loop
+				return returnValue, nil
 			}
 
-			// Restore previous frame state
-			frame := vm.frames[vm.frameTop-1]
-			if frame.function != nil {
-				vm.code = frame.function.Code
-				vm.consts = frame.function.Constants
-			} else {
-				// Defensive: if no function, keep current code/consts
-				// This shouldn't happen in normal execution
-			}
-			vm.pc = frame.pc
-			vm.regTop = frame.regTop
+			// ================================================================
+			// ULTRA-FAST RETURN: Use cached code/consts (no pointer chase)
+			// ================================================================
 
-			// Return value
-			if b >= 2 {
-				return regs[a], nil
+			// Get caller's frame - use cached code/consts directly
+			callerFrame := vm.frames[vm.frameTop-1]
+
+			// Restore from cached values (no pointer dereference needed!)
+			code = callerFrame.code
+			vm.code = code
+			vm.consts = callerFrame.consts
+			vm.pc = callerFrame.pc
+			vm.regTop = callerFrame.regTop
+
+			// Store return value in caller's destination register
+			if currentFrame.wantResult {
+				vm.registers[currentFrame.returnReg] = returnValue
 			}
-			return NilValue(), nil
+
+			// Update local variables for the caller's frame
+			regBase = callerFrame.regBase
+			regs = registers[regBase:]
+			continue // Continue loop with caller's code
 
 		case OP_TAILCALL:
 			// TAILCALL R(A) B  - return R(A)(R(A+1)...R(A+B-1)) (tail call optimization)
 			a, b := instr.A(), instr.B()
 			fn := regs[a]
-
-			// Collect arguments
 			numArgs := int(b) - 1
-			args := make([]Value, numArgs)
-			for i := 0; i < numArgs; i++ {
-				args[i] = regs[a+1+uint8(i)]
-			}
 
 			// For tail call, reuse current frame instead of creating new one
 			if IsFunction(fn) {
@@ -1612,15 +1926,57 @@ func (vm *RegisterVM) run() (Value, error) {
 				vm.consts = fnObj.Constants
 				vm.pc = 0
 
-				// Set up arguments in registers
-				for i, arg := range args {
-					regs[uint8(i)] = arg
+				// OPTIMIZED: Copy arguments directly (no intermediate slice)
+				argBase := int(a) + 1
+				for i := 0; i < numArgs; i++ {
+					regs[uint8(i)] = regs[argBase+i]
 				}
 
+				// Update local code variable for bounds check elimination
+				code = vm.code
+
 				// Continue execution (no return, just jump to start of new function)
+				continue
+			} else if IsPointer(fn) && AsObject(fn).Type == OBJ_CLOSURE {
+				// Closure tail call - reuse frame
+				closureObj := AsClosure(fn)
+				calleeFn := closureObj.Function
+
+				vm.code = calleeFn.Code
+				vm.consts = calleeFn.Constants
+				vm.pc = 0
+
+				// Update frame's closure reference
+				if vm.frameTop > 0 {
+					vm.frames[vm.frameTop-1].closure = closureObj
+					vm.frames[vm.frameTop-1].function = calleeFn
+				}
+
+				// OPTIMIZED: Copy arguments directly (no intermediate slice)
+				argBase := int(a) + 1
+				for i := 0; i < numArgs; i++ {
+					regs[uint8(i)] = regs[argBase+i]
+				}
+
+				// Update local code variable
+				code = vm.code
+				continue
 			} else if IsPointer(fn) && AsObject(fn).Type == OBJ_NATIVE_FN {
 				// Native functions can't be tail-called, just call normally
 				nativeFn := AsNativeFn(fn)
+				// OPTIMIZED: Use pre-allocated buffer
+				var args []Value
+				if numArgs <= 16 {
+					for i := 0; i < numArgs; i++ {
+						vm.argsBuffer[i] = regs[a+1+uint8(i)]
+					}
+					args = vm.argsBuffer[:numArgs]
+				} else {
+					args = make([]Value, numArgs)
+					for i := 0; i < numArgs; i++ {
+						args[i] = regs[a+1+uint8(i)]
+					}
+				}
 				result, err := nativeFn.Function(args)
 				if err != nil {
 					return NilValue(), err
@@ -1682,11 +2038,13 @@ func (vm *RegisterVM) run() (Value, error) {
 			sbx := instr.sBx()
 			catchPC := vm.pc + int(sbx)
 
-			// Push try frame
+			// Push try frame with code context for cross-function throws
 			tryFrame := TryFrame{
 				catchPC:    catchPC,
 				regTop:     vm.regTop,
 				frameDepth: vm.frameTop,
+				code:       vm.code,    // Save current code context
+				consts:     vm.consts,  // Save current constants
 			}
 			vm.tryStack = append(vm.tryStack, tryFrame)
 
@@ -1710,9 +2068,24 @@ func (vm *RegisterVM) run() (Value, error) {
 				// Pop try frame
 				vm.tryStack = vm.tryStack[:len(vm.tryStack)-1]
 
-				// Restore frame state if needed
+				// Restore frame state if needed (unwind call stack)
 				if vm.frameTop > tryFrame.frameDepth {
 					vm.frameTop = tryFrame.frameDepth
+				}
+
+				// Restore code context (for cross-function throws)
+				vm.code = tryFrame.code
+				vm.consts = tryFrame.consts
+				code = tryFrame.code  // Update local cache too!
+
+				// Update regs pointer to match the frame depth
+				if vm.frameTop > 0 {
+					frame := vm.frames[vm.frameTop-1]
+					regBase = frame.regBase
+					regs = vm.registers[regBase:]
+				} else {
+					regBase = 0
+					regs = vm.registers
 				}
 
 				// Jump to catch handler
@@ -1722,25 +2095,54 @@ func (vm *RegisterVM) run() (Value, error) {
 				return NilValue(), fmt.Errorf("uncaught exception: %s", ToString(errorValue))
 			}
 
+		case OP_GETERROR:
+			// GETERROR R(A)  - R(A) = last error value
+			a := instr.A()
+			regs[a] = vm.lastError
+
 		// ====================================================================
-		// Upvalue Operations (Closures) - Basic Implementation
+		// Upvalue Operations (Closures) - Full Implementation
 		// ====================================================================
 
 		case OP_GETUPVAL:
 			// GETUPVAL R(A) B  - R(A) = UpValue[B]
 			a, b := instr.A(), instr.B()
-			// For now, treat upvalues as globals (simplified)
-			// Full closure support would require proper upvalue tracking
-			_ = b
-			regs[a] = NilValue() // TODO: Implement proper closure support
+
+			// Get the current closure from the call frame
+			if vm.frameTop > 0 {
+				frame := vm.frames[vm.frameTop-1]
+				if frame.closure != nil && int(b) < len(frame.closure.Upvalues) {
+					upval := frame.closure.Upvalues[b]
+					if upval != nil && upval.Location != nil {
+						regs[a] = *upval.Location
+					} else if upval != nil {
+						regs[a] = upval.Closed
+					} else {
+						regs[a] = NilValue()
+					}
+				} else {
+					regs[a] = NilValue()
+				}
+			} else {
+				regs[a] = NilValue()
+			}
 
 		case OP_SETUPVAL:
 			// SETUPVAL R(A) B  - UpValue[B] = R(A)
 			a, b := instr.A(), instr.B()
-			// For now, simplified implementation
-			_ = a
-			_ = b
-			// TODO: Implement proper closure support
+
+			// Get the current closure from the call frame
+			if vm.frameTop > 0 {
+				frame := vm.frames[vm.frameTop-1]
+				if frame.closure != nil && int(b) < len(frame.closure.Upvalues) {
+					upval := frame.closure.Upvalues[b]
+					if upval.Location != nil {
+						*upval.Location = regs[a]
+					} else {
+						upval.Closed = regs[a]
+					}
+				}
+			}
 
 		case OP_CLOSURE:
 			// CLOSURE R(A) Bx  - R(A) = closure(PROTO[Bx])
@@ -1748,9 +2150,48 @@ func (vm *RegisterVM) run() (Value, error) {
 			proto := vm.consts[bx]
 
 			if IsFunction(proto) {
-				// For now, just copy the function (no upvalue capture)
-				// Full implementation would create a closure with captured upvalues
-				regs[a] = proto
+				fn := AsFunction(proto)
+
+				// Create closure object with captured upvalues
+				closure := &ClosureObj{
+					Object:   Object{Type: OBJ_CLOSURE},
+					Function: fn,
+					Upvalues: make([]*UpvalueObj, len(fn.Upvalues)),
+				}
+
+				// Capture upvalues based on function's upvalue descriptors
+				// Using "closed" capture - immediately copy values to heap storage
+				// This avoids issues with stack reuse after function returns
+				for i, upvalDesc := range fn.Upvalues {
+					if upvalDesc.IsLocal {
+						// Capture from current stack frame - use heap storage
+						localReg := regBase + int(upvalDesc.Index)
+						if localReg < len(registers) {
+							// Create heap-allocated storage for this upvalue
+							heapStorage := new(Value)
+							*heapStorage = registers[localReg]
+							upval := &UpvalueObj{
+								Object:   Object{Type: OBJ_UPVALUE},
+								Location: heapStorage,
+								Closed:   registers[localReg],
+							}
+							closure.Upvalues[i] = upval
+							vm.gcRoots = append(vm.gcRoots, upval)
+						}
+					} else {
+						// Capture from enclosing closure's upvalues
+						if vm.frameTop > 0 {
+							frame := vm.frames[vm.frameTop-1]
+							if frame.closure != nil && int(upvalDesc.Index) < len(frame.closure.Upvalues) {
+								closure.Upvalues[i] = frame.closure.Upvalues[upvalDesc.Index]
+							}
+						}
+					}
+				}
+
+				// Add to GC roots
+				vm.gcRoots = append(vm.gcRoots, closure)
+				regs[a] = BoxPointer(unsafe.Pointer(closure))
 			} else {
 				return NilValue(), fmt.Errorf("cannot create closure from %s", ValueType(proto))
 			}
@@ -1839,9 +2280,16 @@ func (vm *RegisterVM) run() (Value, error) {
 			}
 
 			if hasNext {
-				// Store key and value in output registers
-				regs[a+2] = key
-				regs[a+3] = value
+				// Store primary value in R(A+2), secondary info in R(A+3)
+				// For arrays: R(A+2) = element (value), R(A+3) = index
+				// For maps: R(A+2) = key, R(A+3) = value
+				if IsArray(collection) {
+					regs[a+2] = value // element
+					regs[a+3] = key   // index
+				} else {
+					regs[a+2] = key   // map key
+					regs[a+3] = value // map value
+				}
 			} else {
 				// No more elements, jump to end of loop and cleanup iterator
 				vm.pc += int(sbx)
@@ -2312,17 +2760,26 @@ func (vm *RegisterVM) callFunction(fn *FunctionObj, args []Value) (Value, error)
 		return NilValue(), fmt.Errorf("stack overflow: max call depth exceeded")
 	}
 
-	// Save current state
-	currentFrame := vm.frames[vm.frameTop-1]
-	currentFrame.pc = vm.pc
+	// Save caller's state completely
+	savedFrameTop := vm.frameTop
+	savedPC := vm.pc
+	savedRegTop := vm.regTop
+	savedCode := vm.code
+	savedConsts := vm.consts
+
+	// Save current frame's PC for potential later use
+	if vm.frameTop > 0 {
+		vm.frames[vm.frameTop-1].pc = vm.pc
+	}
 
 	// Create new frame
+	// Reserve 64 registers for function body (handles nested calls and temps)
 	newFrame := &CallFrame{
 		function:     fn,
 		pc:           0,
 		regBase:      vm.regTop,
-		regTop:       vm.regTop + fn.Arity + 16,
-		numRegisters: fn.Arity + 16,
+		regTop:       vm.regTop + fn.Arity + 64,
+		numRegisters: fn.Arity + 64,
 	}
 
 	// Copy arguments
@@ -2333,7 +2790,7 @@ func (vm *RegisterVM) callFunction(fn *FunctionObj, args []Value) (Value, error)
 	}
 
 	// Initialize remaining registers to nil (with bounds checking)
-	for i := len(args); i < fn.Arity+16; i++ {
+	for i := len(args); i < fn.Arity+64; i++ {
 		regIdx := newFrame.regBase + i
 		if regIdx >= len(vm.registers) {
 			break  // Prevent overflow - registers will be allocated on demand
@@ -2345,14 +2802,94 @@ func (vm *RegisterVM) callFunction(fn *FunctionObj, args []Value) (Value, error)
 	vm.frames[vm.frameTop] = newFrame
 	vm.frameTop++
 
-	// Update VM state
+	// Update VM state for callee
 	vm.code = fn.Code
 	vm.consts = fn.Constants
 	vm.pc = 0
 	vm.regTop = newFrame.regTop
 
-	// Execute (will return via OP_RETURN)
-	return vm.run()
+	// Execute callee (will return via OP_RETURN)
+	result, err := vm.run()
+
+	// Restore caller's state completely
+	vm.frameTop = savedFrameTop
+	vm.pc = savedPC
+	vm.regTop = savedRegTop
+	vm.code = savedCode
+	vm.consts = savedConsts
+
+	return result, err
+}
+
+// callClosure calls a closure with the given arguments
+func (vm *RegisterVM) callClosure(closure *ClosureObj, args []Value) (Value, error) {
+	fn := closure.Function
+
+	// Check call depth
+	if vm.frameTop >= vm.maxCallDepth {
+		return NilValue(), fmt.Errorf("stack overflow: max call depth exceeded")
+	}
+
+	// Save caller's state completely
+	savedFrameTop := vm.frameTop
+	savedPC := vm.pc
+	savedRegTop := vm.regTop
+	savedCode := vm.code
+	savedConsts := vm.consts
+
+	// Save current frame's PC for potential later use
+	if vm.frameTop > 0 {
+		vm.frames[vm.frameTop-1].pc = vm.pc
+	}
+
+	// Create new frame with closure reference
+	// Reserve 64 registers for function body (handles nested calls and temps)
+	newFrame := &CallFrame{
+		function:     fn,
+		closure:      closure,
+		pc:           0,
+		regBase:      vm.regTop,
+		regTop:       vm.regTop + fn.Arity + 64,
+		numRegisters: fn.Arity + 64,
+	}
+
+	// Copy arguments
+	for i, arg := range args {
+		if i < fn.Arity {
+			vm.registers[newFrame.regBase+i] = arg
+		}
+	}
+
+	// Initialize remaining registers to nil (with bounds checking)
+	for i := len(args); i < fn.Arity+64; i++ {
+		regIdx := newFrame.regBase + i
+		if regIdx >= len(vm.registers) {
+			break
+		}
+		vm.registers[regIdx] = NilValue()
+	}
+
+	// Push frame
+	vm.frames[vm.frameTop] = newFrame
+	vm.frameTop++
+
+	// Update VM state for callee
+	vm.code = fn.Code
+	vm.consts = fn.Constants
+	vm.pc = 0
+	vm.regTop = newFrame.regTop
+
+	// Execute callee (will return via OP_RETURN)
+	result, err := vm.run()
+
+	// Restore caller's state completely
+	vm.frameTop = savedFrameTop
+	vm.pc = savedPC
+	vm.regTop = savedRegTop
+	vm.code = savedCode
+	vm.consts = savedConsts
+
+	return result, err
 }
 
 // loadModule loads a module by path or name
@@ -2368,8 +2905,109 @@ func (vm *RegisterVM) loadModule(path string) (*ModuleObj, error) {
 		return mod, nil
 	}
 
-	// For now, return error - file-based modules not yet implemented
-	return nil, fmt.Errorf("module not found: %s (file-based modules not yet implemented)", path)
+	// Try file-based module loading
+	if vm.moduleLoader != nil {
+		resolvedPath := vm.resolveModulePath(path)
+		if resolvedPath != "" {
+			// Load and compile the module
+			fn, err := vm.moduleLoader(vm, resolvedPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load module %s: %w", path, err)
+			}
+
+			// Create module object
+			module := &ModuleObj{
+				Object:  Object{Type: OBJ_MODULE},
+				Name:    path,
+				Path:    resolvedPath,
+				Exports: make(map[string]Value),
+				Loaded:  false,
+			}
+
+			// Store module before executing to handle circular imports
+			vm.modules[path] = module
+			globalObjectCache = append(globalObjectCache, module)
+
+			// Save current module
+			previousModule := vm.currentModule
+			previousFile := vm.currentFile
+			vm.currentModule = module
+			vm.currentFile = resolvedPath
+
+			// Execute the module
+			_, err = vm.Execute(fn, nil)
+			if err != nil {
+				delete(vm.modules, path)
+				vm.currentModule = previousModule
+				vm.currentFile = previousFile
+				return nil, fmt.Errorf("failed to execute module %s: %w", path, err)
+			}
+
+			// Restore previous module
+			vm.currentModule = previousModule
+			vm.currentFile = previousFile
+			module.Loaded = true
+
+			return module, nil
+		}
+	}
+
+	return nil, fmt.Errorf("module not found: %s", path)
+}
+
+// resolveModulePath finds the actual file path for a module
+func (vm *RegisterVM) resolveModulePath(modulePath string) string {
+	// Handle relative imports
+	if strings.HasPrefix(modulePath, "./") || strings.HasPrefix(modulePath, "../") {
+		if vm.currentFile != "" {
+			dir := filepath.Dir(vm.currentFile)
+			fullPath := filepath.Join(dir, modulePath)
+			// Try with .sn extension
+			if !strings.HasSuffix(fullPath, ".sn") {
+				if _, err := os.Stat(fullPath + ".sn"); err == nil {
+					return fullPath + ".sn"
+				}
+			}
+			if _, err := os.Stat(fullPath); err == nil {
+				return fullPath
+			}
+		}
+	}
+
+	// Try module paths
+	for _, searchPath := range vm.modulePaths {
+		// Try direct path
+		fullPath := filepath.Join(searchPath, modulePath)
+		if !strings.HasSuffix(fullPath, ".sn") {
+			snPath := fullPath + ".sn"
+			if _, err := os.Stat(snPath); err == nil {
+				return snPath
+			}
+		}
+		if _, err := os.Stat(fullPath); err == nil {
+			return fullPath
+		}
+
+		// Try as directory with index.sn
+		indexPath := filepath.Join(searchPath, modulePath, "index.sn")
+		if _, err := os.Stat(indexPath); err == nil {
+			return indexPath
+		}
+	}
+
+	// Try current working directory
+	if !strings.HasPrefix(modulePath, "/") && !strings.HasPrefix(modulePath, "\\") {
+		if !strings.HasSuffix(modulePath, ".sn") {
+			if _, err := os.Stat(modulePath + ".sn"); err == nil {
+				return modulePath + ".sn"
+			}
+		}
+		if _, err := os.Stat(modulePath); err == nil {
+			return modulePath
+		}
+	}
+
+	return ""
 }
 
 // loadBuiltinModule creates built-in modules
@@ -2379,9 +3017,29 @@ func (vm *RegisterVM) loadBuiltinModule(name string) *ModuleObj {
 		return vm.createMathModule()
 	case "string":
 		return vm.createStringModule()
+	case "array":
+		return vm.createArrayModule()
+	case "io":
+		return vm.createIOModule()
+	case "json":
+		return vm.createJSONModule()
+	case "time":
+		return vm.createTimeModule()
+	case "os":
+		return vm.createOSModule()
+	case "http":
+		return vm.createHTTPModule()
 	default:
 		return nil
 	}
+}
+
+// getGlobalByName safely retrieves a global value by name
+func (vm *RegisterVM) getGlobalByName(name string) Value {
+	if id, ok := vm.globalNames[name]; ok {
+		return vm.globals[id]
+	}
+	return NilValue()
 }
 
 // createMathModule creates the math built-in module
@@ -2393,14 +3051,20 @@ func (vm *RegisterVM) createMathModule() *ModuleObj {
 	exports["E"] = BoxNumber(2.718281828459045)
 
 	// Math functions - reference from globals using name→ID mapping
-	exports["abs"] = vm.globals[vm.globalNames["abs"]]
-	exports["sqrt"] = vm.globals[vm.globalNames["sqrt"]]
-	exports["floor"] = vm.globals[vm.globalNames["floor"]]
-	exports["ceil"] = vm.globals[vm.globalNames["ceil"]]
-	exports["round"] = vm.globals[vm.globalNames["round"]]
-	exports["pow"] = vm.globals[vm.globalNames["pow"]]
-	exports["min"] = vm.globals[vm.globalNames["min"]]
-	exports["max"] = vm.globals[vm.globalNames["max"]]
+	exports["abs"] = vm.getGlobalByName("abs")
+	exports["sqrt"] = vm.getGlobalByName("sqrt")
+	exports["floor"] = vm.getGlobalByName("floor")
+	exports["ceil"] = vm.getGlobalByName("ceil")
+	exports["round"] = vm.getGlobalByName("round")
+	exports["pow"] = vm.getGlobalByName("pow")
+	exports["min"] = vm.getGlobalByName("min")
+	exports["max"] = vm.getGlobalByName("max")
+	exports["sin"] = vm.getGlobalByName("sin")
+	exports["cos"] = vm.getGlobalByName("cos")
+	exports["tan"] = vm.getGlobalByName("tan")
+	exports["log"] = vm.getGlobalByName("log")
+	exports["exp"] = vm.getGlobalByName("exp")
+	exports["random"] = vm.getGlobalByName("random")
 
 	module := &ModuleObj{
 		Object:  Object{Type: OBJ_MODULE},
@@ -2421,10 +3085,18 @@ func (vm *RegisterVM) createStringModule() *ModuleObj {
 	exports := make(map[string]Value)
 
 	// String functions - reference from globals using name→ID mapping
-	exports["upper"] = vm.globals[vm.globalNames["upper"]]
-	exports["lower"] = vm.globals[vm.globalNames["lower"]]
-	exports["trim"] = vm.globals[vm.globalNames["trim"]]
-	exports["len"] = vm.globals[vm.globalNames["len"]]
+	exports["upper"] = vm.getGlobalByName("upper")
+	exports["lower"] = vm.getGlobalByName("lower")
+	exports["trim"] = vm.getGlobalByName("trim")
+	exports["len"] = vm.getGlobalByName("len")
+	exports["split"] = vm.getGlobalByName("split")
+	exports["join"] = vm.getGlobalByName("join")
+	exports["replace"] = vm.getGlobalByName("replace")
+	exports["contains"] = vm.getGlobalByName("contains")
+	exports["starts_with"] = vm.getGlobalByName("starts_with")
+	exports["ends_with"] = vm.getGlobalByName("ends_with")
+	exports["substring"] = vm.getGlobalByName("substring")
+	exports["char_at"] = vm.getGlobalByName("char_at")
 
 	module := &ModuleObj{
 		Object:  Object{Type: OBJ_MODULE},
@@ -2437,5 +3109,171 @@ func (vm *RegisterVM) createStringModule() *ModuleObj {
 	// Add to global cache to prevent GC
 	globalObjectCache = append(globalObjectCache, module)
 
+	return module
+}
+
+// createArrayModule creates the array built-in module
+func (vm *RegisterVM) createArrayModule() *ModuleObj {
+	exports := make(map[string]Value)
+
+	// Array functions - reference from globals
+	exports["push"] = vm.getGlobalByName("push")
+	exports["pop"] = vm.getGlobalByName("pop")
+	exports["len"] = vm.getGlobalByName("len")
+	exports["sort"] = vm.getGlobalByName("sort")
+	exports["reverse"] = vm.getGlobalByName("reverse")
+	exports["slice"] = vm.getGlobalByName("slice")
+	exports["concat"] = vm.getGlobalByName("concat")
+	exports["index_of"] = vm.getGlobalByName("index_of")
+	exports["contains"] = vm.getGlobalByName("contains")
+	exports["join"] = vm.getGlobalByName("join")
+	exports["remove"] = vm.getGlobalByName("remove")
+	exports["insert"] = vm.getGlobalByName("insert")
+	exports["first"] = vm.getGlobalByName("first")
+	exports["last"] = vm.getGlobalByName("last")
+	// New utility functions
+	exports["sum"] = vm.getGlobalByName("sum")
+	exports["avg"] = vm.getGlobalByName("avg")
+	exports["min"] = vm.getGlobalByName("min_arr")
+	exports["max"] = vm.getGlobalByName("max_arr")
+	exports["unique"] = vm.getGlobalByName("unique")
+	exports["flatten"] = vm.getGlobalByName("flatten")
+	exports["zip"] = vm.getGlobalByName("zip")
+	exports["enumerate"] = vm.getGlobalByName("enumerate")
+	exports["count"] = vm.getGlobalByName("count")
+	exports["fill"] = vm.getGlobalByName("fill")
+	exports["range"] = vm.getGlobalByName("range")
+
+	module := &ModuleObj{
+		Object:  Object{Type: OBJ_MODULE},
+		Name:    "array",
+		Path:    "<builtin>",
+		Exports: exports,
+		Loaded:  true,
+	}
+
+	globalObjectCache = append(globalObjectCache, module)
+	return module
+}
+
+// createIOModule creates the io built-in module
+func (vm *RegisterVM) createIOModule() *ModuleObj {
+	exports := make(map[string]Value)
+
+	// IO functions - reference from globals
+	exports["readfile"] = vm.getGlobalByName("read_file")
+	exports["writefile"] = vm.getGlobalByName("write_file")
+	exports["exists"] = vm.getGlobalByName("file_exists")
+	exports["listdir"] = vm.getGlobalByName("list_dir")
+	exports["mkdir"] = vm.getGlobalByName("mkdir")
+	exports["remove"] = vm.getGlobalByName("remove_file")
+	exports["rename"] = vm.getGlobalByName("rename_file")
+	exports["stat"] = vm.getGlobalByName("file_stat")
+	exports["append"] = vm.getGlobalByName("append_file")
+
+	module := &ModuleObj{
+		Object:  Object{Type: OBJ_MODULE},
+		Name:    "io",
+		Path:    "<builtin>",
+		Exports: exports,
+		Loaded:  true,
+	}
+
+	globalObjectCache = append(globalObjectCache, module)
+	return module
+}
+
+// createJSONModule creates the json built-in module
+func (vm *RegisterVM) createJSONModule() *ModuleObj {
+	exports := make(map[string]Value)
+
+	// JSON functions - reference from globals
+	exports["encode"] = vm.getGlobalByName("json_encode")
+	exports["decode"] = vm.getGlobalByName("json_decode")
+	exports["stringify"] = vm.getGlobalByName("json_encode")
+	exports["parse"] = vm.getGlobalByName("json_decode")
+
+	module := &ModuleObj{
+		Object:  Object{Type: OBJ_MODULE},
+		Name:    "json",
+		Path:    "<builtin>",
+		Exports: exports,
+		Loaded:  true,
+	}
+
+	globalObjectCache = append(globalObjectCache, module)
+	return module
+}
+
+// createTimeModule creates the time built-in module
+func (vm *RegisterVM) createTimeModule() *ModuleObj {
+	exports := make(map[string]Value)
+
+	// Time functions - reference from globals
+	exports["time"] = vm.getGlobalByName("timestamp")
+	exports["date"] = vm.getGlobalByName("date")
+	exports["datetime"] = vm.getGlobalByName("datetime")
+	exports["sleep"] = vm.getGlobalByName("sleep")
+	exports["now"] = vm.getGlobalByName("timestamp")
+	exports["format"] = vm.getGlobalByName("format_timestamp")
+
+	module := &ModuleObj{
+		Object:  Object{Type: OBJ_MODULE},
+		Name:    "time",
+		Path:    "<builtin>",
+		Exports: exports,
+		Loaded:  true,
+	}
+
+	globalObjectCache = append(globalObjectCache, module)
+	return module
+}
+
+// createOSModule creates the os built-in module
+func (vm *RegisterVM) createOSModule() *ModuleObj {
+	exports := make(map[string]Value)
+
+	// OS functions - reference from globals
+	exports["getenv"] = vm.getGlobalByName("getenv")
+	exports["setenv"] = vm.getGlobalByName("setenv")
+	exports["exit"] = vm.getGlobalByName("exit")
+	exports["cwd"] = vm.getGlobalByName("cwd")
+	exports["chdir"] = vm.getGlobalByName("chdir")
+	exports["args"] = vm.getGlobalByName("os_args")
+	exports["hostname"] = vm.getGlobalByName("hostname")
+	exports["platform"] = vm.getGlobalByName("os_platform")
+
+	module := &ModuleObj{
+		Object:  Object{Type: OBJ_MODULE},
+		Name:    "os",
+		Path:    "<builtin>",
+		Exports: exports,
+		Loaded:  true,
+	}
+
+	globalObjectCache = append(globalObjectCache, module)
+	return module
+}
+
+// createHTTPModule creates the http built-in module
+func (vm *RegisterVM) createHTTPModule() *ModuleObj {
+	exports := make(map[string]Value)
+
+	// HTTP functions - reference from globals
+	exports["get"] = vm.getGlobalByName("http_get")
+	exports["post"] = vm.getGlobalByName("http_post")
+	exports["request"] = vm.getGlobalByName("http_request")
+	exports["download"] = vm.getGlobalByName("http_download")
+	exports["json"] = vm.getGlobalByName("http_json")
+
+	module := &ModuleObj{
+		Object:  Object{Type: OBJ_MODULE},
+		Name:    "http",
+		Path:    "<builtin>",
+		Exports: exports,
+		Loaded:  true,
+	}
+
+	globalObjectCache = append(globalObjectCache, module)
 	return module
 }

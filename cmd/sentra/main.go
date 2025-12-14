@@ -288,6 +288,19 @@ func main() {
 			// IMPORTANT: Create VM first so it registers all built-in functions
 			registerVM := vmregister.NewRegisterVM()
 
+			// Set up module loader for file-based imports
+			registerVM.SetModuleLoader(createModuleLoader())
+			registerVM.SetCurrentFile(filename)
+
+			// Set up module search paths (current directory and lib directory)
+			absPath, _ := filepath.Abs(filename)
+			modulePaths := []string{
+				filepath.Dir(absPath),         // Directory containing the main file
+				".",                           // Current working directory
+				filepath.Join(filepath.Dir(absPath), "lib"), // lib subdirectory
+			}
+			registerVM.SetModulePaths(modulePaths)
+
 			// Get the VM's global name mappings to pass to the compiler
 			// This ensures the compiler uses the same IDs as the VM
 			globalNames, nextID := registerVM.GetGlobalNames()
@@ -316,6 +329,37 @@ func main() {
 
 	// Unknown command - suggest alternatives
 	suggestCommand(cmd)
+}
+
+// createModuleLoader creates a module loader function for the VM
+// This allows file-based module imports
+func createModuleLoader() vmregister.ModuleLoader {
+	return func(vm *vmregister.RegisterVM, modulePath string) (*vmregister.FunctionObj, error) {
+		// Read module source
+		source, err := os.ReadFile(modulePath)
+		if err != nil {
+			return nil, fmt.Errorf("cannot read module file: %w", err)
+		}
+
+		// Lex the module
+		scanner := lexer.NewScannerWithFile(string(source), modulePath)
+		tokens := scanner.ScanTokens()
+
+		// Parse the module
+		p := parser.NewParserWithSource(tokens, string(source), modulePath)
+		stmts := p.Parse()
+
+		// Compile the module using VM's global names for consistency
+		globalNames, nextID := vm.GetGlobalNames()
+		c := compregister.NewCompilerWithGlobals(globalNames, nextID)
+
+		fn, err := c.Compile(stmts)
+		if err != nil {
+			return nil, fmt.Errorf("compilation error in module: %w", err)
+		}
+
+		return fn, nil
+	}
 }
 
 func checkSyntax(filename string) {
