@@ -312,6 +312,18 @@ func BoxMap(items map[string]Value) Value {
 	return BoxPointer(unsafe.Pointer(obj))
 }
 
+func BoxFunction(fn *FunctionObj) Value {
+	// Add to global cache to prevent Go's GC from collecting it
+	globalObjectCache = append(globalObjectCache, fn)
+	return BoxPointer(unsafe.Pointer(fn))
+}
+
+func BoxClosure(closure *ClosureObj) Value {
+	// Add to global cache to prevent Go's GC from collecting it
+	globalObjectCache = append(globalObjectCache, closure)
+	return BoxPointer(unsafe.Pointer(closure))
+}
+
 // ============================================================================
 // Value Extraction (Unboxing)
 // ============================================================================
