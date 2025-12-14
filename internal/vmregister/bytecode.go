@@ -152,8 +152,9 @@ const (
 	// Control Flow
 	// ========================================================================
 
-	OP_JMP     // JMP sBx                  pc += sBx
-	OP_JMP_HOT // JMP_HOT sBx loopID       pc += sBx (JIT-compiled loop, loopID in upper bits)
+	OP_JMP         // JMP sBx                  pc += sBx
+	OP_JMP_HOT     // JMP_HOT sBx loopID       pc += sBx (JIT-compiled loop, loopID in upper bits)
+	OP_JMP_INTLOOP // JMP_INTLOOP A sBx        Execute compiled integer loop (loopID in A)
 	OP_TEST    // TEST R(A) C              if (bool(R(A)) != C) pc++
 	OP_TESTSET // TESTSET R(A) R(B) C      if (bool(R(B)) == C) R(A) = R(B) else pc++
 
@@ -209,9 +210,10 @@ const (
 	// Error Handling
 	// ========================================================================
 
-	OP_TRY    // TRY sBx                   Setup try block, catch at pc+sBx
-	OP_ENDTRY // ENDTRY                    Pop try block
-	OP_THROW  // THROW R(A)                Throw error R(A)
+	OP_TRY      // TRY sBx                   Setup try block, catch at pc+sBx
+	OP_ENDTRY   // ENDTRY                    Pop try block
+	OP_THROW    // THROW R(A)                Throw error R(A)
+	OP_GETERROR // GETERROR R(A)             R(A) = last error value
 
 	// ========================================================================
 	// OOP: Class Operations
@@ -424,6 +426,7 @@ var opNames = [...]string{
 	OP_PARSEINT:    "PARSEINT",
 	OP_PARSEFLT:    "PARSEFLT",
 	OP_JMP:         "JMP",
+	OP_JMP_INTLOOP: "JMP_INTLOOP",
 	OP_TEST:      "TEST",
 	OP_TESTSET:   "TESTSET",
 	OP_EQJ:       "EQJ",
@@ -448,6 +451,7 @@ var opNames = [...]string{
 	OP_TRY:        "TRY",
 	OP_ENDTRY:     "ENDTRY",
 	OP_THROW:      "THROW",
+	OP_GETERROR:   "GETERROR",
 	OP_CLASS:      "CLASS",
 	OP_INSTANCE:   "INSTANCE",
 	OP_GETMETHOD:  "GETMETHOD",

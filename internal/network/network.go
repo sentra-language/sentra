@@ -6,8 +6,10 @@ import (
 	"math/rand"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	// Note: packet capture would require external libraries
 	// "github.com/google/gopacket"
@@ -24,6 +26,10 @@ type NetworkModule struct {
 	WSServers    map[string]*WebSocketServer
 	HTTPServers  map[string]*HTTPServer
 	mu           sync.RWMutex
+
+	// Pre-allocated buffers for high-performance socket operations
+	acceptCounter uint64              // Counter for generating socket IDs (atomic)
+	receiveBuffer []byte              // Shared receive buffer (single-threaded use)
 }
 
 // Socket represents a network socket
@@ -84,12 +90,13 @@ type NetworkInfo struct {
 // NewNetworkModule creates a new network module
 func NewNetworkModule() *NetworkModule {
 	return &NetworkModule{
-		Sockets:      make(map[string]*Socket),
+		Sockets:       make(map[string]*Socket),
 		Listeners:    make(map[string]*Listener),
 		PacketBuffer: make([]PacketInfo, 0, 1000),
 		WebSockets:   make(map[string]*WebSocketConn),
 		WSServers:    make(map[string]*WebSocketServer),
 		HTTPServers:  make(map[string]*HTTPServer),
+		receiveBuffer: make([]byte, 65536), // Pre-allocated receive buffer
 	}
 }
 
@@ -176,7 +183,7 @@ func (n *NetworkModule) Accept(listenerID string) (*Socket, error) {
 	n.mu.RLock()
 	listener, exists := n.Listeners[listenerID]
 	n.mu.RUnlock()
-	
+
 	if !exists {
 		return nil, fmt.Errorf("listener not found: %s", listenerID)
 	}
@@ -187,13 +194,17 @@ func (n *NetworkModule) Accept(listenerID string) (*Socket, error) {
 			return nil, err
 		}
 
-		socketID := fmt.Sprintf("accepted_%s_%d", conn.RemoteAddr().String(), time.Now().Unix())
+		// OPTIMIZED: Use atomic counter for socket ID (avoids fmt.Sprintf allocation)
+		counter := atomic.AddUint64(&n.acceptCounter, 1)
+		socketID := "conn_" + strconv.FormatUint(counter, 10)
+
+		// OPTIMIZED: Don't allocate buffer - use shared receiveBuffer instead
 		socket := &Socket{
 			ID:       socketID,
 			Type:     "TCP",
 			Conn:     conn,
 			IsServer: true,
-			Buffer:   make([]byte, 65536),
+			// Buffer: nil - use shared receiveBuffer for reads
 		}
 
 		n.mu.Lock()
@@ -240,7 +251,15 @@ func (n *NetworkModule) Receive(socketID string, maxBytes int) ([]byte, error) {
 		return nil, fmt.Errorf("socket not found: %s", socketID)
 	}
 
-	buffer := make([]byte, maxBytes)
+	// OPTIMIZED: Use shared buffer or socket buffer instead of allocating
+	var buffer []byte
+	if maxBytes <= len(n.receiveBuffer) {
+		buffer = n.receiveBuffer[:maxBytes]
+	} else {
+		// Fallback for unusually large reads
+		buffer = make([]byte, maxBytes)
+	}
+
 	var bytesRead int
 	var err error
 

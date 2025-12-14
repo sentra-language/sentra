@@ -339,7 +339,7 @@ func (vm *EnhancedVM) Run() (Value, error) {
 					vm.push(constVal)
 				}
 			} else {
-				panic(fmt.Sprintf("constant index %d out of bounds", constIndex))
+				panic(fmt.Sprintf("constant index %d out of bounds (len=%d)", constIndex, len(frame.chunk.Constants)))
 			}
 			
 		case bytecode.OpNil:

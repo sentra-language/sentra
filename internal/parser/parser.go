@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sentra/internal/errors"
 	"sentra/internal/lexer"
+	"strconv"
 	"strings"
 )
 
@@ -494,9 +495,22 @@ func (p *Parser) primary() Expr {
 		// Scanner already removes quotes and processes escape sequences
 		return &Literal{Value: tok.Lexeme}
 	case lexer.TokenNumber:
-		var val float64
-		fmt.Sscanf(tok.Lexeme, "%f", &val)
-		return &Literal{Value: val}
+		// Parse as integer if no decimal point, otherwise as float
+		if strings.Contains(tok.Lexeme, ".") {
+			// Has decimal point - parse as float64
+			val, err := strconv.ParseFloat(tok.Lexeme, 64)
+			if err != nil {
+				val = 0.0
+			}
+			return &Literal{Value: val}
+		} else {
+			// No decimal point - parse as int64
+			val, err := strconv.ParseInt(tok.Lexeme, 10, 64)
+			if err != nil {
+				val = 0
+			}
+			return &Literal{Value: val}
+		}
 	case lexer.TokenIdent:
 		return &Variable{Name: tok.Lexeme}
 	case lexer.TokenNull:
