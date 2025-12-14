@@ -265,11 +265,11 @@ func main() {
 			stmts = p.Parse()
 		}()
 
-		// Check if using new register-based VM (default to old VM until compregister is restored)
-		useOldVM := true
+		// Check if using old stack-based VM
+		useOldVM := false
 		for _, arg := range os.Args {
-			if arg == "--newvm" || arg == "--register" {
-				useOldVM = false
+			if arg == "--oldvm" || arg == "--stack" {
+				useOldVM = true
 				break
 			}
 		}
