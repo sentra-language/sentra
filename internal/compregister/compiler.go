@@ -212,6 +212,141 @@ func (c *Compiler) getOrAssignGlobalID(name string) uint16 {
 	return id
 }
 
+// isConstantExpr checks if an expression can be evaluated at compile time
+func (c *Compiler) isConstantExpr(expr parser.Expr) bool {
+	switch e := expr.(type) {
+	case *parser.Literal:
+		// Numbers, strings, bools, nil are constant
+		switch e.Value.(type) {
+		case int, int64, float64, string, bool, nil:
+			return true
+		}
+		return false
+	case *parser.Binary:
+		// Binary is constant if both sides are constant and operator is foldable
+		switch e.Operator {
+		case "+", "-", "*", "/", "%", "==", "!=", "<", "<=", ">", ">=":
+			return c.isConstantExpr(e.Left) && c.isConstantExpr(e.Right)
+		}
+		return false
+	case *parser.UnaryExpr:
+		// Unary is constant if operand is constant
+		switch e.Operator {
+		case "-", "!":
+			return c.isConstantExpr(e.Operand)
+		}
+		return false
+	}
+	return false
+}
+
+// evalConstantExpr evaluates a constant expression at compile time
+// Returns (result, ok) where ok is false if evaluation fails
+func (c *Compiler) evalConstantExpr(expr parser.Expr) (interface{}, bool) {
+	switch e := expr.(type) {
+	case *parser.Literal:
+		return e.Value, true
+
+	case *parser.UnaryExpr:
+		operand, ok := c.evalConstantExpr(e.Operand)
+		if !ok {
+			return nil, false
+		}
+		switch e.Operator {
+		case "-":
+			switch v := operand.(type) {
+			case int:
+				return -v, true
+			case int64:
+				return -v, true
+			case float64:
+				return -v, true
+			}
+		case "!":
+			switch v := operand.(type) {
+			case bool:
+				return !v, true
+			}
+		}
+		return nil, false
+
+	case *parser.Binary:
+		left, lok := c.evalConstantExpr(e.Left)
+		right, rok := c.evalConstantExpr(e.Right)
+		if !lok || !rok {
+			return nil, false
+		}
+
+		// Convert to float64 for arithmetic
+		lf, lfok := toFloat64(left)
+		rf, rfok := toFloat64(right)
+
+		switch e.Operator {
+		case "+":
+			// Handle string concatenation
+			if ls, ok := left.(string); ok {
+				if rs, ok := right.(string); ok {
+					return ls + rs, true
+				}
+			}
+			if lfok && rfok {
+				return lf + rf, true
+			}
+		case "-":
+			if lfok && rfok {
+				return lf - rf, true
+			}
+		case "*":
+			if lfok && rfok {
+				return lf * rf, true
+			}
+		case "/":
+			if lfok && rfok && rf != 0 {
+				return lf / rf, true
+			}
+		case "%":
+			if lfok && rfok && rf != 0 {
+				return float64(int64(lf) % int64(rf)), true
+			}
+		case "==":
+			return left == right, true
+		case "!=":
+			return left != right, true
+		case "<":
+			if lfok && rfok {
+				return lf < rf, true
+			}
+		case "<=":
+			if lfok && rfok {
+				return lf <= rf, true
+			}
+		case ">":
+			if lfok && rfok {
+				return lf > rf, true
+			}
+		case ">=":
+			if lfok && rfok {
+				return lf >= rf, true
+			}
+		}
+		return nil, false
+	}
+	return nil, false
+}
+
+// toFloat64 converts a numeric value to float64
+func toFloat64(v interface{}) (float64, bool) {
+	switch n := v.(type) {
+	case int:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case float64:
+		return n, true
+	}
+	return 0, false
+}
+
 // Define a local variable in current scope
 func (c *Compiler) defineLocal(name string) int {
 	reg := c.allocator.Alloc()
@@ -1286,7 +1421,42 @@ func (c *Compiler) compileVariable(e *parser.Variable) int {
 }
 
 func (c *Compiler) compileBinary(e *parser.Binary) int {
-	// OPTIMIZATION: Check for immediate arithmetic (n + imm8, n - imm8)
+	// OPTIMIZATION 1: Constant folding - evaluate constant expressions at compile time
+	// This handles cases like: 2 * 3 + 1, 10 / 2, "hello" + "world", etc.
+	if c.isConstantExpr(e) {
+		if result, ok := c.evalConstantExpr(e); ok {
+			reg := c.allocator.Alloc()
+			switch v := result.(type) {
+			case float64:
+				// Try to keep as integer if possible
+				if v == float64(int64(v)) {
+					constIdx := c.addNumberConstant(float64(int64(v)))
+					c.emit(vmregister.CreateABx(vmregister.OP_LOADK, uint8(reg), constIdx))
+				} else {
+					constIdx := c.addNumberConstant(v)
+					c.emit(vmregister.CreateABx(vmregister.OP_LOADK, uint8(reg), constIdx))
+				}
+			case int:
+				constIdx := c.addNumberConstant(float64(v))
+				c.emit(vmregister.CreateABx(vmregister.OP_LOADK, uint8(reg), constIdx))
+			case int64:
+				constIdx := c.addNumberConstant(float64(v))
+				c.emit(vmregister.CreateABx(vmregister.OP_LOADK, uint8(reg), constIdx))
+			case string:
+				constIdx := c.addStringConstant(v)
+				c.emit(vmregister.CreateABx(vmregister.OP_LOADK, uint8(reg), constIdx))
+			case bool:
+				var val uint8 = 0
+				if v {
+					val = 1
+				}
+				c.emit(vmregister.CreateABC(vmregister.OP_LOADBOOL, uint8(reg), val, 0))
+			}
+			return reg
+		}
+	}
+
+	// OPTIMIZATION 2: Check for immediate arithmetic (n + imm8, n - imm8)
 	// This avoids constant table lookup and is faster for common patterns like n-1, n-2
 	if e.Operator == "+" || e.Operator == "-" {
 		if lit, ok := e.Right.(*parser.Literal); ok {
@@ -1372,6 +1542,36 @@ func (c *Compiler) compileBinary(e *parser.Binary) int {
 }
 
 func (c *Compiler) compileUnaryExpr(e *parser.UnaryExpr) int {
+	// OPTIMIZATION: Constant folding for unary expressions like -5, !true
+	if c.isConstantExpr(e) {
+		if result, ok := c.evalConstantExpr(e); ok {
+			reg := c.allocator.Alloc()
+			switch v := result.(type) {
+			case float64:
+				if v == float64(int64(v)) {
+					constIdx := c.addNumberConstant(float64(int64(v)))
+					c.emit(vmregister.CreateABx(vmregister.OP_LOADK, uint8(reg), constIdx))
+				} else {
+					constIdx := c.addNumberConstant(v)
+					c.emit(vmregister.CreateABx(vmregister.OP_LOADK, uint8(reg), constIdx))
+				}
+			case int:
+				constIdx := c.addNumberConstant(float64(v))
+				c.emit(vmregister.CreateABx(vmregister.OP_LOADK, uint8(reg), constIdx))
+			case int64:
+				constIdx := c.addNumberConstant(float64(v))
+				c.emit(vmregister.CreateABx(vmregister.OP_LOADK, uint8(reg), constIdx))
+			case bool:
+				var val uint8 = 0
+				if v {
+					val = 1
+				}
+				c.emit(vmregister.CreateABC(vmregister.OP_LOADBOOL, uint8(reg), val, 0))
+			}
+			return reg
+		}
+	}
+
 	operandReg := c.compileExpr(e.Operand)
 	resultReg := c.allocator.Alloc()
 
