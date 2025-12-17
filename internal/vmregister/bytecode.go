@@ -164,6 +164,18 @@ const (
 	OP_LTJ  // LTJ R(A) R(B) sBx         if (R(A) < R(B)) pc += sBx
 	OP_LEJ  // LEJ R(A) R(B) sBx         if (R(A) <= R(B)) pc += sBx
 
+	// Comparison with constant and jump (super optimization for patterns like "if n <= 1")
+	OP_EQJK // EQJK R(A) K(B) sC         if (R(A) == K(B)) pc += sC
+	OP_NEJK // NEJK R(A) K(B) sC         if (R(A) != K(B)) pc += sC
+	OP_LTJK // LTJK R(A) K(B) sC         if (R(A) < K(B)) pc += sC
+	OP_LEJK // LEJK R(A) K(B) sC         if (R(A) <= K(B)) pc += sC
+	OP_GTJK // GTJK R(A) K(B) sC         if (R(A) > K(B)) pc += sC
+	OP_GEJK // GEJK R(A) K(B) sC         if (R(A) >= K(B)) pc += sC
+
+	// Immediate arithmetic (no constant table lookup - ultra fast for n+1, n-1, n-2)
+	OP_ADDI // ADDI R(A) R(B) imm8       R(A) = R(B) + imm8
+	OP_SUBI // SUBI R(A) R(B) imm8       R(A) = R(B) - imm8
+
 	// ========================================================================
 	// Loop Operations (optimized numeric for loops)
 	// ========================================================================
@@ -433,6 +445,14 @@ var opNames = [...]string{
 	OP_NEJ:       "NEJ",
 	OP_LTJ:       "LTJ",
 	OP_LEJ:       "LEJ",
+	OP_EQJK:      "EQJK",
+	OP_NEJK:      "NEJK",
+	OP_LTJK:      "LTJK",
+	OP_LEJK:      "LEJK",
+	OP_GTJK:      "GTJK",
+	OP_GEJK:      "GEJK",
+	OP_ADDI:      "ADDI",
+	OP_SUBI:      "SUBI",
 	OP_FORPREP:   "FORPREP",
 	OP_FORLOOP:   "FORLOOP",
 	OP_ITERINIT:  "ITERINIT",

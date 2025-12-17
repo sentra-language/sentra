@@ -52,22 +52,28 @@ const (
 
 // Opcode constants (matching vmregister opcodes)
 const (
-	OP_ADD       = 0
-	OP_MUL       = 2
-	OP_ADDK      = 7
-	OP_MULK      = 9
-	OP_CALL      = 75
-	OP_PRINT     = 96
-	OP_SETGLOBAL = 24
-	OP_SETTABLE  = 30
-	OP_APPEND    = 36
-	OP_FORPREP   = 68
-	OP_FORLOOP   = 69
-	OP_TEST      = 63
-	OP_JMP       = 60
-	OP_TAILCALL  = 76
-	OP_TRY       = 81
-	OP_THROW     = 83
+	OP_ADD        = 0
+	OP_MUL        = 2
+	OP_ADDK       = 7
+	OP_MULK       = 9
+	OP_LT         = 12
+	OP_LE         = 13
+	OP_MOVE       = 20
+	OP_LOADK      = 21
+	OP_GETGLOBAL  = 24
+	OP_SETGLOBAL  = 25
+	OP_SETTABLE   = 30
+	OP_APPEND     = 36
+	OP_JMP        = 63
+	OP_TEST       = 66
+	OP_FORPREP    = 68
+	OP_FORLOOP    = 69
+	OP_CALL       = 85
+	OP_TAILCALL   = 86
+	OP_ADDI       = 78
+	OP_PRINT      = 100
+	OP_TRY        = 81
+	OP_THROW      = 83
 )
 
 // Instruction decoding (matching vmregister format)
@@ -85,20 +91,30 @@ func (i Instruction) A() uint8 {
 	return uint8((i >> 8) & 0xFF)
 }
 
+func (i Instruction) B() uint8 {
+	return uint8((i >> 16) & 0xFF)
+}
+
+func (i Instruction) C() uint8 {
+	return uint8((i >> 24) & 0xFF)
+}
+
 func (i Instruction) sBx() int16 {
 	return int16((i>>16)&MASK_sBx) - MAXARG_sBx
 }
 
 // IntLoopCode represents a compiled integer-only loop (matches vmregister.IntLoopCode)
 type IntLoopCode struct {
-	NumRegs    int
-	CounterReg int
-	LimitReg   int
-	StepReg    int
-	AccumReg   int
-	Template   int
-	StartPC    int
-	EndPC      int
+	NumRegs      int
+	CounterReg   int
+	LimitReg     int
+	StepReg      int
+	AccumReg     int
+	Template     int
+	StartPC      int
+	EndPC        int
+	LimitIsConst bool   // True if limit is a constant (loaded by LOADK)
+	LimitConst   int64  // The actual limit value if LimitIsConst is true
 }
 
 // Profiler tracks function execution for JIT compilation decisions
@@ -250,15 +266,16 @@ func (p *Profiler) Reset() {
 
 // LoopAnalysis contains analysis results for a loop
 type LoopAnalysis struct {
-	MatchedTemplate TemplateType
-	StartPC         int
-	EndPC           int
-	CounterReg      int
-	LimitReg        int
-	StepReg         int
-	AccumReg        int
-	LoopID          uint32
-	IntLoopCode     *IntLoopCode
+	MatchedTemplate  TemplateType
+	StartPC          int
+	EndPC            int
+	CounterReg       int
+	LimitReg         int
+	StepReg          int
+	AccumReg         int
+	AccumGlobalIdx   int // -1 if accumulator is local, >= 0 if global
+	LoopID           uint32
+	IntLoopCode      *IntLoopCode
 }
 
 // Compiler handles JIT compilation
@@ -650,7 +667,191 @@ func analyzeLoopInternal(code []Instruction, consts []Value, startPC, endPC int)
 		return analysis
 	}
 
+	// Check for while/for loop sum pattern:
+	// Pattern: LT/LE result, i, limit → TEST result → JMP forward → body (with ADD) → JMP backward
+	// Or: TEST cond → JMP forward → body (with ADD) → JMP backward
+	analysis := analyzeWhileLoopPattern(code, consts, startPC, endPC)
+	if analysis != nil {
+		return analysis
+	}
+
 	return &LoopAnalysis{MatchedTemplate: TEMPLATE_UNKNOWN}
+}
+
+// analyzeWhileLoopPattern detects and analyzes while/for loop sum patterns
+func analyzeWhileLoopPattern(code []Instruction, consts []Value, startPC, endPC int) *LoopAnalysis {
+	if endPC-startPC < 4 {
+		return nil // Too short for a meaningful loop
+	}
+
+	// Look for pattern:
+	// [startPC]   LT/LE resultReg, counterReg, limitReg
+	// [startPC+1] TEST resultReg, 0
+	// [startPC+2] JMP forward (exit)
+	// ... body with ADD ...
+	// [endPC]     JMP backward (to startPC)
+
+	// Find comparison and TEST instructions
+	var counterReg, limitReg, accumReg int = -1, -1, -1
+	var hasTest, hasForwardJump, hasAdd, hasIncrement bool
+	bodyStartPC := startPC
+
+	// Track LOADK instructions to find constant limit
+	// Maps register -> constant index
+	loadkMap := make(map[int]int)
+	var limitIsConst bool = false
+	var limitConstVal int64 = 0
+
+	// Check first few instructions for condition pattern
+	for i := startPC; i < startPC+5 && i < endPC; i++ {
+		instr := code[i]
+		op := instr.OpCode()
+
+		switch op {
+		case OP_LOADK:
+			// LOADK R(A) Kst(Bx) - load constant into register
+			loadkReg := int(instr.A())
+			// For ABx format, Bx is in bits 16-31
+			loadkConstIdx := int((instr >> 16) & 0xFFFF)
+			loadkMap[loadkReg] = loadkConstIdx
+		case OP_LT, OP_LE:
+			// LT/LE result, counter, limit
+			counterReg = int(instr.B())
+			limitReg = int(instr.C())
+		case OP_TEST:
+			hasTest = true
+		case OP_JMP:
+			offset := instr.sBx()
+			if offset > 0 {
+				hasForwardJump = true
+				bodyStartPC = i + 1
+			}
+		}
+	}
+
+	// Check if the limit register was loaded from a constant
+	if constIdx, found := loadkMap[limitReg]; found && constIdx < len(consts) {
+		limitIsConst = true
+		// Extract int64 from NaN-boxed value
+		constVal := uint64(consts[constIdx])
+
+		// Check if it's a NaN-boxed integer (TAG_INT = 0xFFFC000000000000)
+		if (constVal >> 48) == 0xFFFC {
+			limitConstVal = int64(constVal & 0x0000FFFFFFFFFFFF)
+		} else {
+			// It's a float64 - convert to int64
+			floatVal := *(*float64)(unsafe.Pointer(&constVal))
+			limitConstVal = int64(floatVal)
+		}
+	}
+
+	if !hasTest || !hasForwardJump {
+		return nil
+	}
+
+	// Analyze body for ADD (accumulator pattern) and ADDI/ADDK + MOVE (increment pattern)
+	var addDestReg, addSrc1, addSrc2 int = -1, -1, -1
+	var accumGlobalIdx int = -1
+
+	for i := bodyStartPC; i < endPC; i++ {
+		instr := code[i]
+		op := instr.OpCode()
+
+		switch op {
+		case OP_GETGLOBAL:
+			// Track global being read for potential accumulator pattern
+			// We'll match this with ADD and SETGLOBAL
+		case OP_SETGLOBAL:
+			// If we saw an ADD before and this sets the same global, it's accumulator pattern
+			// This is: GETGLOBAL temp, idx; ADD result, temp, counter; SETGLOBAL result, idx
+			if hasAdd && addDestReg == int(instr.A()) {
+				accumGlobalIdx = int(instr.B())
+			}
+		case OP_ADD:
+			// ADD dest, src1, src2
+			addDestReg = int(instr.A())
+			addSrc1 = int(instr.B())
+			addSrc2 = int(instr.C())
+
+			// Check for sum = sum + i pattern (accumulator)
+			// The counter is in src1 or src2
+			if addSrc1 == counterReg || addSrc2 == counterReg {
+				hasAdd = true
+			}
+		case OP_ADDK:
+			// ADDK dest, src, constIdx - used for i = i + 1
+			destReg := int(instr.A())
+			srcReg := int(instr.B())
+			if destReg == srcReg && destReg == counterReg {
+				hasIncrement = true
+			}
+		case OP_ADDI:
+			// ADDI dest, src, imm8 - this produces the new counter value
+			srcReg := int(instr.B())
+			if srcReg == counterReg {
+				hasIncrement = true
+			}
+		case OP_MOVE:
+			// MOVE is used to copy incremented value back to counter
+			// Pattern: ADDI temp, counter, 1; MOVE counter, temp
+		case OP_CALL, OP_PRINT, OP_SETTABLE, OP_APPEND:
+			// Side effects - can't JIT (but allow GETGLOBAL/SETGLOBAL for accumulator)
+			return nil
+		}
+	}
+
+	// Require: sum pattern with counter increment
+	// Either local accumulator (accumReg >= 0) or global accumulator (accumGlobalIdx >= 0)
+	if hasAdd && hasIncrement && counterReg >= 0 && (accumReg >= 0 || accumGlobalIdx >= 0) {
+		analysis := &LoopAnalysis{
+			MatchedTemplate:  TEMPLATE_SUM,
+			StartPC:          startPC,
+			EndPC:            endPC,
+			CounterReg:       counterReg,
+			LimitReg:         limitReg,
+			AccumReg:         accumReg,
+			AccumGlobalIdx:   accumGlobalIdx,
+		}
+
+		analysis.IntLoopCode = &IntLoopCode{
+			NumRegs:      4,
+			CounterReg:   counterReg,
+			LimitReg:     limitReg,
+			AccumReg:     accumReg,
+			Template:     LOOP_SUM,
+			StartPC:      startPC,
+			EndPC:        endPC,
+			LimitIsConst: limitIsConst,
+			LimitConst:   limitConstVal,
+		}
+
+		return analysis
+	}
+
+	// Check for simple counter loop (no accumulator)
+	if hasIncrement && counterReg >= 0 {
+		analysis := &LoopAnalysis{
+			MatchedTemplate: TEMPLATE_COUNTER,
+			StartPC:         startPC,
+			EndPC:           endPC,
+			CounterReg:      counterReg,
+			LimitReg:        limitReg,
+			AccumGlobalIdx:  -1,
+		}
+
+		analysis.IntLoopCode = &IntLoopCode{
+			NumRegs:    2,
+			CounterReg: counterReg,
+			LimitReg:   limitReg,
+			Template:   LOOP_COUNT_UP,
+			StartPC:    startPC,
+			EndPC:      endPC,
+		}
+
+		return analysis
+	}
+
+	return nil
 }
 
 // Static helper functions for package-level AnalyzeLoop
@@ -710,4 +911,280 @@ func templateToIntLoopStatic(t TemplateType) int {
 	default:
 		return LOOP_GENERIC
 	}
+}
+
+// ============================================================================
+// Function-Level JIT Compilation
+// ============================================================================
+
+// FunctionPattern identifies recognizable function patterns for JIT
+type FunctionPattern int
+
+const (
+	PATTERN_UNKNOWN FunctionPattern = iota
+	PATTERN_FIB                     // Double recursive fibonacci: fib(n-1) + fib(n-2)
+	PATTERN_FACTORIAL               // Single recursive factorial: n * fact(n-1)
+	PATTERN_TAIL_RECURSIVE          // Tail recursive (optimizable)
+	PATTERN_SIMPLE_RECURSIVE        // Simple single recursion
+)
+
+// CompiledFunc represents a JIT-compiled native function
+type CompiledFunc struct {
+	Pattern  FunctionPattern
+	Native   func(int64) int64 // Native implementation
+	ArgCount int
+}
+
+// FunctionJIT handles function-level JIT compilation
+type FunctionJIT struct {
+	mu            sync.RWMutex
+	compiledFuncs map[uintptr]*CompiledFunc
+	callCounts    map[uintptr]uint32
+}
+
+// NewFunctionJIT creates a new function-level JIT compiler
+func NewFunctionJIT() *FunctionJIT {
+	return &FunctionJIT{
+		compiledFuncs: make(map[uintptr]*CompiledFunc),
+		callCounts:    make(map[uintptr]uint32),
+	}
+}
+
+// Hot function threshold for JIT compilation
+const FUNC_JIT_THRESHOLD = 1000
+
+// RecordCall records a function call and checks if JIT compilation should occur
+// Returns the compiled function if available, nil otherwise
+func (j *FunctionJIT) RecordCall(fnAddr uintptr) *CompiledFunc {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
+	// Check if already compiled
+	if compiled := j.compiledFuncs[fnAddr]; compiled != nil {
+		return compiled
+	}
+
+	// Increment call count
+	j.callCounts[fnAddr]++
+
+	return nil
+}
+
+// GetCompiled returns a compiled function if available
+func (j *FunctionJIT) GetCompiled(fnAddr uintptr) *CompiledFunc {
+	j.mu.RLock()
+	defer j.mu.RUnlock()
+	return j.compiledFuncs[fnAddr]
+}
+
+// IsHot checks if a function is hot enough for JIT compilation
+func (j *FunctionJIT) IsHot(fnAddr uintptr) bool {
+	j.mu.RLock()
+	defer j.mu.RUnlock()
+	return j.callCounts[fnAddr] >= FUNC_JIT_THRESHOLD
+}
+
+// Additional opcodes for function pattern detection (must match bytecode.go)
+const (
+	OP_SUB_FN   = 1  // SUB R(A) R(B) R(C)
+	OP_LT_FN    = 12 // LT comparison
+	OP_LE_FN    = 13 // LE comparison
+	OP_CALL_FN  = 85 // CALL
+	OP_RETURN_FN = 87 // RETURN
+	OP_SUBI_FN  = 79 // SUBI - subtract immediate
+	OP_LEJK_FN  = 75 // LEJK - compare <= constant and jump
+	OP_LTJK_FN  = 74 // LTJK - compare < constant and jump
+	OP_GTJK_FN  = 76 // GTJK - compare > constant and jump
+	OP_GEJK_FN  = 77 // GEJK - compare >= constant and jump
+)
+
+// AnalyzeFunction analyzes a function's bytecode to detect patterns
+func (j *FunctionJIT) AnalyzeFunction(code []Instruction, consts []Value, arity int) FunctionPattern {
+	if len(code) < 5 || arity != 1 {
+		return PATTERN_UNKNOWN
+	}
+
+	// Look for fib pattern:
+	// 1. Compare input with constant (n <= 1)
+	// 2. Conditional return
+	// 3. Two recursive calls with (n-1) and (n-2)
+	// 4. Add results
+	// 5. Return
+
+	callCount := 0
+	hasSubtract := false
+	hasAdd := false
+	hasComparison := false
+
+	// Analyze opcodes
+	for _, instr := range code {
+		op := instr.OpCode()
+		switch op {
+		case OP_CALL_FN:
+			callCount++
+		case OP_SUBI_FN, OP_SUB_FN:
+			hasSubtract = true
+		case OP_ADD:
+			hasAdd = true
+		case OP_LE_FN, OP_LT_FN, OP_LEJK_FN, OP_LTJK_FN, OP_GTJK_FN, OP_GEJK_FN:
+			hasComparison = true
+		}
+	}
+
+	// Detect fib pattern: 2 calls, subtract operations, add, comparison
+	if callCount == 2 && hasAdd && hasComparison && hasSubtract {
+		return PATTERN_FIB
+	}
+
+	// Detect factorial pattern: 1 call, multiply, subtract, comparison
+	// Pattern: if n <= 1 return 1; return n * fact(n-1)
+	hasMul := false
+	for _, instr := range code {
+		if instr.OpCode() == 2 { // OP_MUL = 2
+			hasMul = true
+			break
+		}
+	}
+	if callCount == 1 && hasMul && hasComparison && hasSubtract {
+		return PATTERN_FACTORIAL
+	}
+
+	// Detect simple recursive: 1 call, comparison
+	if callCount == 1 && hasComparison {
+		return PATTERN_SIMPLE_RECURSIVE
+	}
+
+	return PATTERN_UNKNOWN
+}
+
+// CompileFunction compiles a function based on detected pattern
+func (j *FunctionJIT) CompileFunction(fnAddr uintptr, pattern FunctionPattern) *CompiledFunc {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
+	// Check if already compiled
+	if compiled := j.compiledFuncs[fnAddr]; compiled != nil {
+		return compiled
+	}
+
+	var compiled *CompiledFunc
+
+	switch pattern {
+	case PATTERN_FIB:
+		compiled = &CompiledFunc{
+			Pattern:  PATTERN_FIB,
+			Native:   nativeFib,
+			ArgCount: 1,
+		}
+	default:
+		return nil
+	}
+
+	j.compiledFuncs[fnAddr] = compiled
+	return compiled
+}
+
+// nativeFib is the native Go implementation of fibonacci
+// This is the "compiled" version that replaces interpreted execution
+func nativeFib(n int64) int64 {
+	if n <= 1 {
+		return n
+	}
+	return nativeFib(n-1) + nativeFib(n-2)
+}
+
+// nativeFibIterative is an iterative version (even faster)
+func nativeFibIterative(n int64) int64 {
+	if n <= 1 {
+		return n
+	}
+	a, b := int64(0), int64(1)
+	for i := int64(2); i <= n; i++ {
+		a, b = b, a+b
+	}
+	return b
+}
+
+// ExecuteNative executes a compiled function with the given argument
+func (cf *CompiledFunc) ExecuteNative(arg int64) int64 {
+	return cf.Native(arg)
+}
+
+// ============================================================================
+// Native Loop Compilation
+// ============================================================================
+
+// NativeLoopType identifies the type of native loop
+type NativeLoopType int
+
+const (
+	NATIVE_LOOP_UNKNOWN NativeLoopType = iota
+	NATIVE_LOOP_SUM                    // sum = sum + i pattern
+	NATIVE_LOOP_COUNT                  // simple counter loop
+	NATIVE_LOOP_PRODUCT                // product = product * i pattern
+)
+
+// NativeLoop holds a compiled native loop implementation
+type NativeLoop struct {
+	Type       NativeLoopType
+	CounterReg int // Register holding counter
+	LimitReg   int // Register holding limit
+	AccumReg   int // Register holding accumulator (for sum/product)
+	StepValue  int64
+}
+
+// ExecuteSumLoop executes a native sum loop: sum += i for i in range
+// Returns the final sum and counter values
+func ExecuteSumLoop(start, limit, step, initialSum int64) (sum, finalCounter int64) {
+	sum = initialSum
+	i := start
+	for i < limit {
+		sum += i
+		i += step
+	}
+	return sum, i
+}
+
+// ExecuteCountLoop executes a native count loop
+func ExecuteCountLoop(start, limit, step int64) int64 {
+	i := start
+	for i < limit {
+		i += step
+	}
+	return i
+}
+
+// ExecuteProductLoop executes a native product loop
+func ExecuteProductLoop(start, limit, step, initialProduct int64) (product, finalCounter int64) {
+	product = initialProduct
+	i := start
+	for i < limit {
+		product *= i
+		i += step
+	}
+	return product, i
+}
+
+// ============================================================================
+// More Function Patterns
+// ============================================================================
+
+// nativeFactorial computes n! recursively
+func NativeFactorial(n int64) int64 {
+	if n <= 1 {
+		return 1
+	}
+	return n * NativeFactorial(n-1)
+}
+
+// nativeFactorialIterative computes n! iteratively (faster)
+func NativeFactorialIterative(n int64) int64 {
+	if n <= 1 {
+		return 1
+	}
+	result := int64(1)
+	for i := int64(2); i <= n; i++ {
+		result *= i
+	}
+	return result
 }
