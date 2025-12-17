@@ -410,6 +410,101 @@ func (c *Compiler) compileAssignmentStmt(s *parser.AssignmentStmt) {
 	}
 }
 
+// tryCompileSwapPattern attempts to detect and optimize array swap pattern
+// Pattern: let temp = arr[i]; arr[i] = arr[j]; arr[j] = temp
+// Returns number of statements consumed (3 if matched, 0 if not)
+func (c *Compiler) tryCompileSwapPattern(stmts []parser.Stmt, idx int) int {
+	if idx+2 >= len(stmts) {
+		return 0
+	}
+	
+	// Statement 1: let temp = arr[i]
+	letStmt, ok := stmts[idx].(*parser.LetStmt)
+	if !ok || letStmt.Expr == nil {
+		return 0
+	}
+	indexExpr1, ok := letStmt.Expr.(*parser.IndexExpr)
+	if !ok {
+		return 0
+	}
+	arrIdent1, ok := indexExpr1.Object.(*parser.Variable)
+	if !ok {
+		return 0
+	}
+	
+	// Statement 2: arr[i] = arr[j]
+	assign1, ok := stmts[idx+1].(*parser.IndexAssignmentStmt)
+	if !ok {
+		return 0
+	}
+	arrIdent2, ok := assign1.Object.(*parser.Variable)
+	if !ok || arrIdent2.Name != arrIdent1.Name {
+		return 0
+	}
+	indexExpr2, ok := assign1.Value.(*parser.IndexExpr)
+	if !ok {
+		return 0
+	}
+	arrIdent3, ok := indexExpr2.Object.(*parser.Variable)
+	if !ok || arrIdent3.Name != arrIdent1.Name {
+		return 0
+	}
+	
+	// Statement 3: arr[j] = temp
+	assign2, ok := stmts[idx+2].(*parser.IndexAssignmentStmt)
+	if !ok {
+		return 0
+	}
+	arrIdent4, ok := assign2.Object.(*parser.Variable)
+	if !ok || arrIdent4.Name != arrIdent1.Name {
+		return 0
+	}
+	tempIdent, ok := assign2.Value.(*parser.Variable)
+	if !ok || tempIdent.Name != letStmt.Name {
+		return 0
+	}
+	
+	// Check index consistency: arr[i] in stmt1 == arr[i] in stmt2
+	// and arr[j] in stmt2 value == arr[j] in stmt3 target
+	// For simplicity, just compare that indices are identifiers
+	idx1_1, ok1 := indexExpr1.Index.(*parser.Variable)
+	idx1_2, ok2 := assign1.Index.(*parser.Variable)
+	idx2_1, ok3 := indexExpr2.Index.(*parser.Variable)
+	idx2_2, ok4 := assign2.Index.(*parser.Variable)
+	
+	if !ok1 || !ok2 || !ok3 || !ok4 {
+		return 0
+	}
+	if idx1_1.Name != idx1_2.Name || idx2_1.Name != idx2_2.Name {
+		return 0
+	}
+	
+	// Emit OP_SWAPARR
+	arrReg := c.compileExpr(arrIdent1)
+	idx1Reg := c.compileExpr(indexExpr1.Index)
+	idx2Reg := c.compileExpr(indexExpr2.Index)
+	c.emit(vmregister.CreateABC(vmregister.OP_SWAPARR, uint8(arrReg), uint8(idx1Reg), uint8(idx2Reg)))
+	c.allocator.Free(arrReg)
+	c.allocator.Free(idx1Reg)
+	c.allocator.Free(idx2Reg)
+	
+	return 3
+}
+
+// compileStmtsOptimized compiles statements with pattern optimization
+func (c *Compiler) compileStmtsOptimized(stmts []parser.Stmt) {
+	for i := 0; i < len(stmts); {
+		// Try swap pattern first
+		consumed := c.tryCompileSwapPattern(stmts, i)
+		if consumed > 0 {
+			i += consumed
+			continue
+		}
+		c.compileStmt(stmts[i])
+		i++
+	}
+}
+
 // compileIndexAssignmentStmt compiles index assignment (arr[i] = v)
 func (c *Compiler) compileIndexAssignmentStmt(s *parser.IndexAssignmentStmt) {
 	objReg := c.compileExpr(s.Object)
@@ -684,11 +779,9 @@ func (c *Compiler) compileWhileStmt(s *parser.WhileStmt) {
 	// Jump out of loop if false
 	exitJump := c.emit(vmregister.CreateAsBx(vmregister.OP_JMP, 0, 0))
 
-	// Compile body
+	// Compile body with swap optimization
 	c.pushScope()
-	for _, stmt := range s.Body {
-		c.compileStmt(stmt)
-	}
+	c.compileStmtsOptimized(s.Body)
 	c.popScope()
 
 	// Jump back to condition
@@ -778,11 +871,9 @@ func (c *Compiler) tryCompileOptimizedWhile(cond *parser.Binary, body []parser.S
 	// Jump out of loop if false
 	exitJump := c.emit(vmregister.CreateAsBx(vmregister.OP_JMP, 0, 0))
 
-	// Compile body
+	// Compile body with swap optimization
 	c.pushScope()
-	for _, stmt := range body {
-		c.compileStmt(stmt)
-	}
+	c.compileStmtsOptimized(body)
 	c.popScope()
 
 	// Jump back to condition check
@@ -854,10 +945,8 @@ func (c *Compiler) compileForStmt(s *parser.ForStmt) {
 		exitJump = c.emit(vmregister.CreateAsBx(vmregister.OP_JMP, 0, 0))
 	}
 
-	// Compile body
-	for _, stmt := range s.Body {
-		c.compileStmt(stmt)
-	}
+	// Compile body with swap optimization
+	c.compileStmtsOptimized(s.Body)
 
 	// Compile update expression
 	if s.Update != nil {
