@@ -1213,6 +1213,17 @@ func (vm *RegisterVM) run() (Value, error) {
 				return NilValue(), fmt.Errorf("cannot index assign %s", ValueType(table))
 			}
 
+		case OP_SWAPARR:
+			// SWAPARR R(A) R(B) R(C) - swap array R(A)[R(B)] and R(A)[R(C)]
+			// Fast atomic swap of two array elements (optimized for sorting)
+			a, b, c := instr.A(), instr.B(), instr.C()
+			arr := AsArray(regs[a])
+			idx1 := int(AsInt(regs[b]))
+			idx2 := int(AsInt(regs[c]))
+			if idx1 >= 0 && idx1 < len(arr.Elements) && idx2 >= 0 && idx2 < len(arr.Elements) {
+				arr.Elements[idx1], arr.Elements[idx2] = arr.Elements[idx2], arr.Elements[idx1]
+			}
+
 		case OP_SELF:
 			// SELF R(A) R(B) R(C)  - R(A+1) = R(B); R(A) = R(B)[R(C)] (method call optimization)
 			a, b, c := instr.A(), instr.B(), instr.C()

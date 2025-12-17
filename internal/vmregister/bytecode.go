@@ -118,6 +118,14 @@ const (
 	OP_SLICE_STR  // SLICE_STR R(A) R(B) R(C) R(D) R(A) = R(B)[R(C):R(D)] (string slice)
 
 	// ========================================================================
+	// Fast Array Operations (JIT optimized - assumes array type verified)
+	// ========================================================================
+
+	OP_GETARRAYI // GETARRAYI R(A) R(B) R(C)   R(A) = array R(B)[int R(C)] (fast path)
+	OP_SETARRAYI // SETARRAYI R(A) R(B) R(C)   array R(A)[int R(B)] = R(C) (fast path)
+	OP_SWAPARR   // SWAPARR R(A) R(B) R(C)     swap array R(A)[R(B)] and R(A)[R(C)]
+
+	// ========================================================================
 	// Map Operations (optimized)
 	// ========================================================================
 
@@ -426,6 +434,9 @@ var opNames = [...]string{
 	OP_JOIN:        "JOIN",
 	OP_REPLACE:     "REPLACE",
 	OP_SLICE_STR:   "SLICE_STR",
+	OP_GETARRAYI:   "GETARRAYI",
+	OP_SETARRAYI:   "SETARRAYI",
+	OP_SWAPARR:     "SWAPARR",
 	OP_KEYS:        "KEYS",
 	OP_HASKEY:      "HASKEY",
 	OP_TYPEOF_FAST: "TYPEOF_FAST",
