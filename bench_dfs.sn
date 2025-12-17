@@ -1,0 +1,60 @@
+// Graph DFS benchmark
+fn createGraph(nodes, edges) {
+    let graph = []
+    let i = 0
+    while (i < nodes) {
+        push(graph, [])
+        i = i + 1
+    }
+    
+    let seed = 42
+    let e = 0
+    while (e < edges) {
+        seed = (seed * 1103515245 + 12345) % 2147483648
+        let from = seed % nodes
+        seed = (seed * 1103515245 + 12345) % 2147483648
+        let to = seed % nodes
+        push(graph[from], to)
+        e = e + 1
+    }
+    return graph
+}
+
+fn dfs(graph, start, visited) {
+    if (visited[start] == 1) {
+        return 0
+    }
+    visited[start] = 1
+    let count = 1
+    let neighbors = graph[start]
+    let i = 0
+    while (i < len(neighbors)) {
+        count = count + dfs(graph, neighbors[i], visited)
+        i = i + 1
+    }
+    return count
+}
+
+fn newVisited(n) {
+    let visited = []
+    let i = 0
+    while (i < n) {
+        push(visited, 0)
+        i = i + 1
+    }
+    return visited
+}
+
+// Create graph and run DFS 50 times
+let nodes = 500
+let edges = 2000
+let graph = createGraph(nodes, edges)
+
+let run = 0
+let total = 0
+while (run < 50) {
+    let visited = newVisited(nodes)
+    total = total + dfs(graph, 0, visited)
+    run = run + 1
+}
+print(total)
