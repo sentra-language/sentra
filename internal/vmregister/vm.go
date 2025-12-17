@@ -610,9 +610,10 @@ func (vm *RegisterVM) run() (Value, error) {
 			a, b, c := instr.A(), instr.B(), instr.C()
 			rb, kc := regs[b], consts[c]
 
-			// FAST PATH: Both integers
+			// ULTRA-FAST PATH: Both integers - fully inlined
 			if (rb & kc & TAG_MASK) == TAG_INT {
-				regs[a] = BoxInt(AsInt(rb) + AsInt(kc))
+				sum := int64(rb&INT_MASK) + int64(kc&INT_MASK)
+				regs[a] = Value(TAG_INT | uint64(sum&INT_MASK))
 			} else if IsNumber(rb) && IsNumber(kc) {
 				regs[a] = BoxNumber(AsNumber(rb) + AsNumber(kc))
 			} else {
@@ -623,9 +624,10 @@ func (vm *RegisterVM) run() (Value, error) {
 			a, b, c := instr.A(), instr.B(), instr.C()
 			rb, kc := regs[b], consts[c]
 
-			// FAST PATH: Both integers (most common for fib n-1, n-2)
+			// ULTRA-FAST PATH: Both integers (most common for fib n-1, n-2)
 			if (rb & kc & TAG_MASK) == TAG_INT {
-				regs[a] = BoxInt(AsInt(rb) - AsInt(kc))
+				diff := int64(rb&INT_MASK) - int64(kc&INT_MASK)
+				regs[a] = Value(TAG_INT | uint64(diff&INT_MASK))
 			} else if IsNumber(rb) && IsNumber(kc) {
 				regs[a] = BoxNumber(AsNumber(rb) - AsNumber(kc))
 			} else {
@@ -1019,11 +1021,8 @@ func (vm *RegisterVM) run() (Value, error) {
 			regs[a] = regs[b]
 
 		case OP_LOADK:
+			// FAST PATH: Direct constant access (assume correct bytecode)
 			a, bx := instr.A(), instr.Bx()
-			if consts == nil || bx >= uint16(len(consts)) {
-				return NilValue(), fmt.Errorf("constant index %d out of range (consts len: %d, frame: %d)",
-					bx, len(consts), vm.frameTop)
-			}
 			regs[a] = consts[bx]
 
 		case OP_LOADBOOL:
@@ -1831,19 +1830,31 @@ func (vm *RegisterVM) run() (Value, error) {
 		case OP_TEST:
 			a, c := instr.A(), instr.C()
 			ra := regs[a]
-			// FAST PATH: Boolean values from comparisons (most common case)
-			var truthy bool
-			if IsBool(ra) {
-				truthy = AsBool(ra)
+			// ULTRA-FAST PATH: Check for exact boolean tags (most common case)
+			// After comparisons (LT, LE, etc.), ra is exactly TAG_TRUE or TAG_FALSE
+			if ra == TAG_TRUE {
+				if c == 0 {
+					pc++ // Skip next (truthy != false)
+				}
+			} else if ra == TAG_FALSE {
+				if c != 0 {
+					pc++ // Skip next (falsy != true)
+				}
 			} else if IsNil(ra) {
-				truthy = false
-			} else if IsInt(ra) {
-				truthy = AsInt(ra) != 0
+				// Nil is falsy
+				if c != 0 {
+					pc++
+				}
+			} else if (ra & TAG_MASK) == TAG_INT {
+				// Integer: truthy if non-zero
+				if (AsInt(ra) != 0) != (c != 0) {
+					pc++
+				}
 			} else {
-				truthy = IsTruthy(ra)
-			}
-			if truthy != (c != 0) {
-				pc++ // Skip next instruction (usually a jump)
+				// Slow path for other types
+				if IsTruthy(ra) != (c != 0) {
+					pc++
+				}
 			}
 
 		case OP_TESTSET:
