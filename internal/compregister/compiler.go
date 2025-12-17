@@ -350,7 +350,52 @@ func (c *Compiler) compileLetStmt(s *parser.LetStmt) {
 func (c *Compiler) compileAssignmentStmt(s *parser.AssignmentStmt) {
 	localReg := c.resolveLocal(s.Name)
 	if localReg >= 0 {
-		// Local variable
+		// OPTIMIZATION: Detect x = x + 1 or x = x - 1 for OP_INCR/OP_DECR
+		if binary, ok := s.Value.(*parser.Binary); ok {
+			if binary.Operator == "+" || binary.Operator == "-" {
+				// Check if one side is the same variable and other is literal 1
+				var varSide *parser.Variable
+				var litSide *parser.Literal
+
+				if v, ok := binary.Left.(*parser.Variable); ok && v.Name == s.Name {
+					varSide = v
+					if l, ok := binary.Right.(*parser.Literal); ok {
+						litSide = l
+					}
+				} else if v, ok := binary.Right.(*parser.Variable); ok && v.Name == s.Name && binary.Operator == "+" {
+					// x = 1 + x (only for addition, not subtraction)
+					varSide = v
+					if l, ok := binary.Left.(*parser.Literal); ok {
+						litSide = l
+					}
+				}
+
+				if varSide != nil && litSide != nil {
+					// Check if literal is 1
+					isOne := false
+					switch v := litSide.Value.(type) {
+					case int64:
+						isOne = v == 1
+					case int:
+						isOne = v == 1
+					case float64:
+						isOne = v == 1.0
+					}
+
+					if isOne {
+						if binary.Operator == "+" {
+							c.emit(vmregister.CreateABC(vmregister.OP_INCR, uint8(localReg), 0, 0))
+							return
+						} else {
+							c.emit(vmregister.CreateABC(vmregister.OP_DECR, uint8(localReg), 0, 0))
+							return
+						}
+					}
+				}
+			}
+		}
+
+		// Local variable - normal path
 		valueReg := c.compileExpr(s.Value)
 		if valueReg != localReg {
 			c.emit(vmregister.CreateABC(vmregister.OP_MOVE, uint8(localReg), uint8(valueReg), 0))
@@ -457,6 +502,34 @@ func (c *Compiler) compileReturnStmt(s *parser.ReturnStmt) {
 
 // compileIfStmt compiles an if statement
 func (c *Compiler) compileIfStmt(s *parser.IfStmt) {
+	// OPTIMIZATION: Check for comparison-with-constant pattern
+	// Pattern: if (expr <= const) or similar - use LEJK opcode
+	if jumpPC, ok := c.tryCompileComparisonJump(s.Condition, false); ok {
+		// Successfully emitted optimized comparison-jump, jumpPC needs patching
+		// Compile then branch
+		c.pushScope()
+		for _, stmt := range s.Then {
+			c.compileStmt(stmt)
+		}
+		c.popScope()
+
+		if len(s.Else) > 0 {
+			// Jump over else branch
+			jumpToEnd := c.emit(vmregister.CreateAsBx(vmregister.OP_JMP, 0, 0))
+			c.patchJump(jumpPC)
+			c.pushScope()
+			for _, stmt := range s.Else {
+				c.compileStmt(stmt)
+			}
+			c.popScope()
+			c.patchJump(jumpToEnd)
+		} else {
+			c.patchJump(jumpPC)
+		}
+		return
+	}
+
+	// Fallback: regular compilation
 	condReg := c.compileExpr(s.Condition)
 
 	// TEST condReg 0 - skip next if false
@@ -495,8 +568,104 @@ func (c *Compiler) compileIfStmt(s *parser.IfStmt) {
 	}
 }
 
+// tryCompileComparisonJump tries to compile a comparison-with-constant into a single LEJK-style opcode.
+// Returns the PC of the emitted jump instruction (for patching) and true on success, or 0 and false if
+// the pattern doesn't match.
+// If invertJump is true, jump when condition is TRUE (for while loops), otherwise jump when FALSE (for if statements).
+func (c *Compiler) tryCompileComparisonJump(condition parser.Expr, invertJump bool) (int, bool) {
+	// Check if condition is a binary comparison
+	binary, ok := condition.(*parser.Binary)
+	if !ok {
+		return 0, false
+	}
+
+	// Must be a comparison operator
+	var op vmregister.OpCode
+	switch binary.Operator {
+	case "<=":
+		op = vmregister.OP_LEJK
+	case "<":
+		op = vmregister.OP_LTJK
+	case ">":
+		op = vmregister.OP_GTJK
+	case ">=":
+		op = vmregister.OP_GEJK
+	case "==":
+		op = vmregister.OP_EQJK
+	case "!=":
+		op = vmregister.OP_NEJK
+	default:
+		return 0, false
+	}
+
+	// Check if right operand is a constant
+	literal, isLiteral := binary.Right.(*parser.Literal)
+	if !isLiteral {
+		return 0, false
+	}
+
+	// Must be a numeric literal
+	var constIdx uint16
+	switch v := literal.Value.(type) {
+	case int64:
+		constIdx = c.addConstant(vmregister.BoxInt(v))
+	case float64:
+		constIdx = c.addConstant(vmregister.BoxNumber(v))
+	default:
+		return 0, false
+	}
+
+	// Constant index must fit in 8 bits
+	if constIdx > 255 {
+		return 0, false
+	}
+
+	// Compile the left operand (the register to compare)
+	leftReg := c.compileExpr(binary.Left)
+
+	// For if statements (invertJump=false): we want to jump OVER the then branch when condition is FALSE
+	// For while loops (invertJump=true): we want to jump OUT of the loop when condition is FALSE
+	//
+	// The xxJK opcodes jump when condition is TRUE, so for if statements we need to invert the comparison.
+	// For "if (n <= 1)" we want to execute the then-branch when n <= 1, so we jump to else when n > 1.
+	// We can achieve this by using GTJK instead of LEJK.
+
+	if !invertJump {
+		// Invert the comparison operator for if-statement (jump when condition is FALSE)
+		switch op {
+		case vmregister.OP_LEJK:
+			op = vmregister.OP_GTJK // n <= k becomes "jump if n > k"
+		case vmregister.OP_LTJK:
+			op = vmregister.OP_GEJK // n < k becomes "jump if n >= k"
+		case vmregister.OP_GTJK:
+			op = vmregister.OP_LEJK // n > k becomes "jump if n <= k"
+		case vmregister.OP_GEJK:
+			op = vmregister.OP_LTJK // n >= k becomes "jump if n < k"
+		case vmregister.OP_EQJK:
+			op = vmregister.OP_NEJK // n == k becomes "jump if n != k"
+		case vmregister.OP_NEJK:
+			op = vmregister.OP_EQJK // n != k becomes "jump if n == k"
+		}
+	}
+
+	// Emit the comparison-jump instruction
+	// Note: C field is signed 8-bit offset, initially 0 (will be patched)
+	jumpPC := c.emit(vmregister.CreateABC(op, uint8(leftReg), uint8(constIdx), 0))
+
+	c.allocator.Free(leftReg)
+	return jumpPC, true
+}
+
 // compileWhileStmt compiles a while statement
 func (c *Compiler) compileWhileStmt(s *parser.WhileStmt) {
+	// OPTIMIZATION: Detect comparison conditions and use fused comparison-jump
+	// This hoists constant loads outside the loop and uses LTJ/LEJ/etc.
+	if binary, ok := s.Condition.(*parser.Binary); ok {
+		if c.tryCompileOptimizedWhile(binary, s.Body) {
+			return
+		}
+	}
+
 	loopStart := len(c.code)
 
 	// Push loop info for break/continue
@@ -537,6 +706,125 @@ func (c *Compiler) compileWhileStmt(s *parser.WhileStmt) {
 
 	// Pop loop info
 	c.loopStack = c.loopStack[:len(c.loopStack)-1]
+}
+
+// tryCompileOptimizedWhile tries to compile an optimized while loop
+// Hoists constant loads outside the loop for better performance
+// Returns true if optimization was applied
+func (c *Compiler) tryCompileOptimizedWhile(cond *parser.Binary, body []parser.Stmt) bool {
+	// Detect comparison operators
+	var cmpOp vmregister.OpCode
+	switch cond.Operator {
+	case "<":
+		cmpOp = vmregister.OP_LT
+	case "<=":
+		cmpOp = vmregister.OP_LE
+	case ">":
+		cmpOp = vmregister.OP_GT
+	case ">=":
+		cmpOp = vmregister.OP_GE
+	default:
+		return false // Not a comparison we can optimize
+	}
+
+	// Check if right side is a constant (loop-invariant)
+	// This is the common pattern: while i < 10000000
+	rightLit, rightIsLit := cond.Right.(*parser.Literal)
+	if !rightIsLit {
+		return false
+	}
+
+	// Check if it's a numeric literal
+	switch rightLit.Value.(type) {
+	case int64, int, float64:
+		// OK
+	default:
+		return false
+	}
+
+	// Check if left side is a local variable
+	leftVar, leftIsVar := cond.Left.(*parser.Variable)
+	if !leftIsVar {
+		return false
+	}
+	leftReg := c.resolveLocal(leftVar.Name)
+	if leftReg < 0 {
+		return false // Not a local variable
+	}
+
+	// Load constant ONCE before the loop (loop-invariant hoisting)
+	limitReg := c.allocator.Alloc()
+	c.allocator.Lock(limitReg) // Keep it locked during the loop
+	constIdx := c.addConstant(c.literalToValue(rightLit))
+	c.emit(vmregister.CreateABx(vmregister.OP_LOADK, uint8(limitReg), constIdx))
+
+	// Allocate result register for comparison
+	resultReg := c.allocator.Alloc()
+
+	loopStart := len(c.code)
+
+	// Push loop info for break/continue
+	c.loopStack = append(c.loopStack, LoopInfo{
+		startPC:    loopStart,
+		breakJumps: make([]int, 0),
+	})
+
+	// Emit comparison: result = left cmpOp limit
+	c.emit(vmregister.CreateABC(cmpOp, uint8(resultReg), uint8(leftReg), uint8(limitReg)))
+
+	// TEST result - skip next if false
+	c.emit(vmregister.CreateABC(vmregister.OP_TEST, uint8(resultReg), 0, 0))
+
+	// Jump out of loop if false
+	exitJump := c.emit(vmregister.CreateAsBx(vmregister.OP_JMP, 0, 0))
+
+	// Compile body
+	c.pushScope()
+	for _, stmt := range body {
+		c.compileStmt(stmt)
+	}
+	c.popScope()
+
+	// Jump back to condition check
+	offset := loopStart - len(c.code) - 1
+	c.emit(vmregister.CreateAsBx(vmregister.OP_JMP, 0, int16(offset)))
+
+	// Patch exit jump
+	c.patchJump(exitJump)
+
+	// Patch break jumps
+	loopInfo := c.loopStack[len(c.loopStack)-1]
+	for _, breakPC := range loopInfo.breakJumps {
+		c.patchJumpAt(breakPC)
+	}
+
+	// Pop loop info
+	c.loopStack = c.loopStack[:len(c.loopStack)-1]
+
+	// Unlock and free registers
+	c.allocator.Unlock(limitReg)
+	c.allocator.Free(limitReg)
+	c.allocator.Free(resultReg)
+
+	return true
+}
+
+// literalToValue converts a parser.Literal to a VM Value
+func (c *Compiler) literalToValue(lit *parser.Literal) vmregister.Value {
+	switch v := lit.Value.(type) {
+	case int64:
+		return vmregister.BoxInt(v)
+	case int:
+		return vmregister.BoxInt(int64(v))
+	case float64:
+		return vmregister.BoxNumber(v)
+	case string:
+		return vmregister.BoxString(v)
+	case bool:
+		return vmregister.BoxBool(v)
+	default:
+		return vmregister.NilValue()
+	}
 }
 
 // compileForStmt compiles a for statement
@@ -801,8 +1089,26 @@ func (c *Compiler) patchJumpAt(pc int) {
 	offset := len(c.code) - pc - 1
 	instr := c.code[pc]
 	op := instr.OpCode()
-	a := instr.A()
-	c.code[pc] = vmregister.CreateAsBx(op, a, int16(offset))
+
+	// Check if this is a comparison-with-constant-jump opcode (uses ABC format with signed C)
+	switch op {
+	case vmregister.OP_LEJK, vmregister.OP_LTJK, vmregister.OP_GTJK,
+		vmregister.OP_GEJK, vmregister.OP_EQJK, vmregister.OP_NEJK:
+		// These use ABC format with signed 8-bit offset in C
+		a := instr.A()
+		b := instr.B()
+		// Clamp offset to 8-bit signed range
+		if offset > 127 {
+			offset = 127 // Fallback: will need to use regular comparison
+		} else if offset < -128 {
+			offset = -128
+		}
+		c.code[pc] = vmregister.CreateABC(op, a, b, uint8(int8(offset)))
+	default:
+		// Standard AsBx format
+		a := instr.A()
+		c.code[pc] = vmregister.CreateAsBx(op, a, int16(offset))
+	}
 }
 
 // compileExpr compiles an expression and returns the register containing the result
@@ -891,6 +1197,41 @@ func (c *Compiler) compileVariable(e *parser.Variable) int {
 }
 
 func (c *Compiler) compileBinary(e *parser.Binary) int {
+	// OPTIMIZATION: Check for immediate arithmetic (n + imm8, n - imm8)
+	// This avoids constant table lookup and is faster for common patterns like n-1, n-2
+	if e.Operator == "+" || e.Operator == "-" {
+		if lit, ok := e.Right.(*parser.Literal); ok {
+			var imm int64 = -1
+			switch v := lit.Value.(type) {
+			case int64:
+				imm = v
+			case int:
+				imm = int64(v)
+			case float64:
+				if v == float64(int64(v)) && v >= 0 && v <= 255 {
+					imm = int64(v)
+				}
+			}
+			if imm >= 0 && imm <= 255 {
+				// Use ADDI/SUBI with immediate value
+				leftReg := c.compileExpr(e.Left)
+				leftWasLocked := c.allocator.locked[leftReg]
+				resultReg := c.allocator.Alloc()
+
+				if e.Operator == "+" {
+					c.emit(vmregister.CreateABC(vmregister.OP_ADDI, uint8(resultReg), uint8(leftReg), uint8(imm)))
+				} else {
+					c.emit(vmregister.CreateABC(vmregister.OP_SUBI, uint8(resultReg), uint8(leftReg), uint8(imm)))
+				}
+
+				if !leftWasLocked {
+					c.allocator.Free(leftReg)
+				}
+				return resultReg
+			}
+		}
+	}
+
 	leftReg := c.compileExpr(e.Left)
 	// Check if left was already locked (e.g., it's a parameter or local)
 	leftWasLocked := c.allocator.locked[leftReg]

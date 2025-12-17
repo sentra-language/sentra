@@ -108,13 +108,14 @@ type (
 
 	FunctionObj struct {
 		Object
-		Name       string
-		Arity      int
-		Code       []Instruction // Register-based bytecode
-		Constants  []Value
-		ObjectRefs []interface{} // GC-visible references to keep objects alive
-		Upvalues   []UpvalueDesc
-		IsVariadic bool
+		Name           string
+		Arity          int
+		Code           []Instruction // Register-based bytecode
+		Constants      []Value
+		ObjectRefs     []interface{} // GC-visible references to keep objects alive
+		Upvalues       []UpvalueDesc
+		IsVariadic     bool
+		CompiledNative func(int64) int64 // JIT-compiled native implementation (nil if not compiled)
 	}
 
 	ClosureObj struct {
@@ -232,14 +233,18 @@ func BoxNumber(n float64) Value {
 
 // BoxInt creates a Value from int64
 // Uses small int encoding if possible, otherwise converts to float64
+// For positive integers in range, this is just a single OR operation
+//
+//go:inline
 func BoxInt(i int64) Value {
-	// Check if fits in 48 bits (signed)
-	if i >= -(1<<47) && i < (1<<47) {
-		if i < 0 {
-			// Negative: set sign bit and use two's complement
-			return Value(TAG_INT | uint64(i&0xFFFFFFFFFFFF))
-		}
+	// FAST PATH: Non-negative small integers (most common case)
+	// This compiles to a single OR instruction for positive values
+	if i >= 0 && i < (1<<47) {
 		return Value(TAG_INT | uint64(i))
+	}
+	// Negative small integers
+	if i >= -(1<<47) {
+		return Value(TAG_INT | uint64(i&0xFFFFFFFFFFFF))
 	}
 	// Too large: use float64
 	return BoxNumber(float64(i))
