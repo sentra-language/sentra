@@ -423,16 +423,14 @@ func (vm *RegisterVM) run() (Value, error) {
 
 			// FASTEST PATH: Both integers - fully inlined
 			if (rb & rc & TAG_MASK) == TAG_INT {
-				// Inline AsInt + addition + BoxInt for maximum speed
-				sum := int64(rb&INT_MASK) + int64(rc&INT_MASK)
-				// Check if result fits in NaN-boxed integer (47 bits)
-				if sum >= 0 && sum < (1<<47) {
-					regs[a] = Value(TAG_INT | uint64(sum))
-				} else if sum < 0 && sum >= -(1<<47) {
-					regs[a] = Value(TAG_INT | uint64(sum&0xFFFFFFFFFFFF))
+				// Must use AsInt for proper sign-extension of negative numbers
+				sum := AsInt(rb) + AsInt(rc)
+				// Check if result fits in NaN-boxed integer (47 bits signed)
+				if sum >= -(1<<47) && sum < (1<<47) {
+					regs[a] = BoxInt(sum)
 				} else {
 					// Result too large - use float64
-					regs[a] = BoxNumber(float64(AsInt(rb)) + float64(AsInt(rc)))
+					regs[a] = BoxNumber(float64(sum))
 				}
 			} else if IsNumber(rb) && IsNumber(rc) {
 				// FAST PATH: Both floats
@@ -452,13 +450,15 @@ func (vm *RegisterVM) run() (Value, error) {
 			a, b, c := instr.A(), instr.B(), instr.C()
 			rb, rc := regs[b], regs[c]
 
-			// FASTEST PATH: Both integers - fully inlined
+			// FASTEST PATH: Both integers - properly sign-extend
 			if (rb & rc & TAG_MASK) == TAG_INT {
-				diff := int64(rb&INT_MASK) - int64(rc&INT_MASK)
-				if diff >= 0 {
-					regs[a] = Value(TAG_INT | uint64(diff))
+				diff := AsInt(rb) - AsInt(rc)
+				// Check if result fits in NaN-boxed integer (47 bits signed)
+				if diff >= -(1<<47) && diff < (1<<47) {
+					regs[a] = BoxInt(diff)
 				} else {
-					regs[a] = Value(TAG_INT | uint64(diff&0xFFFFFFFFFFFF))
+					// Result too large - use float64
+					regs[a] = BoxNumber(float64(diff))
 				}
 			} else if IsNumber(rb) && IsNumber(rc) {
 				regs[a] = BoxNumber(AsNumber(rb) - AsNumber(rc))
@@ -610,10 +610,10 @@ func (vm *RegisterVM) run() (Value, error) {
 			a, b, c := instr.A(), instr.B(), instr.C()
 			rb, kc := regs[b], consts[c]
 
-			// ULTRA-FAST PATH: Both integers - fully inlined
+			// FAST PATH: Both integers - properly sign-extend
 			if (rb & kc & TAG_MASK) == TAG_INT {
-				sum := int64(rb&INT_MASK) + int64(kc&INT_MASK)
-				regs[a] = Value(TAG_INT | uint64(sum&INT_MASK))
+				sum := AsInt(rb) + AsInt(kc)
+				regs[a] = BoxInt(sum)
 			} else if IsNumber(rb) && IsNumber(kc) {
 				regs[a] = BoxNumber(AsNumber(rb) + AsNumber(kc))
 			} else {
@@ -624,10 +624,10 @@ func (vm *RegisterVM) run() (Value, error) {
 			a, b, c := instr.A(), instr.B(), instr.C()
 			rb, kc := regs[b], consts[c]
 
-			// ULTRA-FAST PATH: Both integers (most common for fib n-1, n-2)
+			// FAST PATH: Both integers - properly sign-extend
 			if (rb & kc & TAG_MASK) == TAG_INT {
-				diff := int64(rb&INT_MASK) - int64(kc&INT_MASK)
-				regs[a] = Value(TAG_INT | uint64(diff&INT_MASK))
+				diff := AsInt(rb) - AsInt(kc)
+				regs[a] = BoxInt(diff)
 			} else if IsNumber(rb) && IsNumber(kc) {
 				regs[a] = BoxNumber(AsNumber(rb) - AsNumber(kc))
 			} else {
@@ -666,15 +666,10 @@ func (vm *RegisterVM) run() (Value, error) {
 			a, b, c := instr.A(), instr.B(), instr.C()
 			rb := regs[b]
 
-			// ULTRA FAST: Direct bit manipulation (fully inlined)
+			// FAST: Use AsInt for proper sign-extension
 			if (rb & TAG_MASK) == TAG_INT {
-				// Inline: extract int, add, rebox
-				result := int64(rb&INT_MASK) + int64(c)
-				if result >= 0 {
-					regs[a] = Value(TAG_INT | uint64(result))
-				} else {
-					regs[a] = Value(TAG_INT | uint64(result&0xFFFFFFFFFFFF))
-				}
+				result := AsInt(rb) + int64(c)
+				regs[a] = BoxInt(result)
 			} else if IsNumber(rb) {
 				regs[a] = BoxNumber(AsNumber(rb) + float64(c))
 			} else {
@@ -686,15 +681,10 @@ func (vm *RegisterVM) run() (Value, error) {
 			a, b, c := instr.A(), instr.B(), instr.C()
 			rb := regs[b]
 
-			// ULTRA FAST: Direct bit manipulation (fully inlined)
+			// FAST: Use AsInt for proper sign-extension
 			if (rb & TAG_MASK) == TAG_INT {
-				// Inline: extract int, sub, rebox
-				result := int64(rb&INT_MASK) - int64(c)
-				if result >= 0 {
-					regs[a] = Value(TAG_INT | uint64(result))
-				} else {
-					regs[a] = Value(TAG_INT | uint64(result&0xFFFFFFFFFFFF))
-				}
+				result := AsInt(rb) - int64(c)
+				regs[a] = BoxInt(result)
 			} else if IsNumber(rb) {
 				regs[a] = BoxNumber(AsNumber(rb) - float64(c))
 			} else {
@@ -708,18 +698,13 @@ func (vm *RegisterVM) run() (Value, error) {
 		// Expected impact: 15-20% speedup by eliminating 40% of instructions
 
 		case OP_INCR:
-			// R(A) = R(A) + 1 (local increment) - FULLY INLINED
+			// R(A) = R(A) + 1 (local increment)
 			a := instr.A()
 			ra := regs[a]
 
 			if (ra & TAG_MASK) == TAG_INT {
-				// ULTRA FAST: Direct bit manipulation
-				result := int64(ra&INT_MASK) + 1
-				if result >= 0 {
-					regs[a] = Value(TAG_INT | uint64(result))
-				} else {
-					regs[a] = Value(TAG_INT | uint64(result&0xFFFFFFFFFFFF))
-				}
+				// Use AsInt for proper sign-extension
+				regs[a] = BoxInt(AsInt(ra) + 1)
 			} else if IsNumber(ra) {
 				regs[a] = BoxNumber(AsNumber(ra) + 1.0)
 			} else {
@@ -727,18 +712,13 @@ func (vm *RegisterVM) run() (Value, error) {
 			}
 
 		case OP_DECR:
-			// R(A) = R(A) - 1 (local decrement) - FULLY INLINED
+			// R(A) = R(A) - 1 (local decrement)
 			a := instr.A()
 			ra := regs[a]
 
 			if (ra & TAG_MASK) == TAG_INT {
-				// ULTRA FAST: Direct bit manipulation
-				result := int64(ra&INT_MASK) - 1
-				if result >= 0 {
-					regs[a] = Value(TAG_INT | uint64(result))
-				} else {
-					regs[a] = Value(TAG_INT | uint64(result&0xFFFFFFFFFFFF))
-				}
+				// Use AsInt for proper sign-extension
+				regs[a] = BoxInt(AsInt(ra) - 1)
 			} else if IsNumber(ra) {
 				regs[a] = BoxNumber(AsNumber(ra) - 1.0)
 			} else {

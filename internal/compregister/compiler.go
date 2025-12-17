@@ -1333,8 +1333,11 @@ func (c *Compiler) compileCallExpr(e *parser.CallExpr) int {
 	// Compile arguments FIRST into temporary registers
 	// This avoids conflicts between argument computation and call slots
 	argRegs := make([]int, len(e.Args))
+	argWasLocked := make([]bool, len(e.Args))
 	for i, arg := range e.Args {
 		argRegs[i] = c.compileExpr(arg)
+		// Track if register was already locked (parameter/local)
+		argWasLocked[i] = c.allocator.locked[argRegs[i]]
 		// Lock each argument register to prevent conflicts
 		c.allocator.Lock(argRegs[i])
 	}
@@ -1355,10 +1358,16 @@ func (c *Compiler) compileCallExpr(e *parser.CallExpr) int {
 	// Move arguments to their slots
 	for i, argReg := range argRegs {
 		targetReg := baseReg + 1 + i
-		c.allocator.Unlock(argReg)
+		// Restore original lock state
+		if !argWasLocked[i] {
+			c.allocator.Unlock(argReg)
+		}
 		if argReg != targetReg {
 			c.emit(vmregister.CreateABC(vmregister.OP_MOVE, uint8(targetReg), uint8(argReg), 0))
-			c.allocator.Free(argReg)
+			// Only free if it wasn't originally locked (don't free parameters/locals!)
+			if !argWasLocked[i] {
+				c.allocator.Free(argReg)
+			}
 		}
 	}
 
