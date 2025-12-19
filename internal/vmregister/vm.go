@@ -176,7 +176,7 @@ func NewRegisterVM() *RegisterVM {
 		hotFunctions:  make(map[*FunctionObj]int),
 		maxCallDepth:  2000,
 		jitThreshold:  50,   // Compile loops after 50 executions (faster warmup)
-		jitEnabled:    true, // ENABLED: For-in bug fixed (was register allocation issue)
+		jitEnabled:    true, // ENABLED: Fixed hot loop JIT for function-local loops
 		jitFunctionCache: make(map[*FunctionObj]*jit.Function),
 
 		// Function-level JIT
@@ -1570,14 +1570,16 @@ func (vm *RegisterVM) run() (Value, error) {
 						}
 
 						// Convert bytecode to uint32 slice for analysis
-						codeSlice := make([]uint32, len(vm.code))
-						for i, inst := range vm.code {
+						// IMPORTANT: Use local 'code' variable, NOT vm.code (which isn't updated for function calls)
+						codeSlice := make([]uint32, len(code))
+						for i, inst := range code {
 							codeSlice[i] = uint32(inst)
 						}
 
 						// Convert constants to jit.Value slice (both are uint64)
-						constsSlice := make([]jit.Value, len(vm.consts))
-						for i, val := range vm.consts {
+						// IMPORTANT: Use local 'consts' variable, NOT vm.consts
+						constsSlice := make([]jit.Value, len(consts))
+						for i, val := range consts {
 							constsSlice[i] = jit.Value(val)
 						}
 
@@ -1605,7 +1607,9 @@ func (vm *RegisterVM) run() (Value, error) {
 
 							// Encode: opcode=OP_JMP_HOT, loopID in A field, offset in Bx
 							patchedInstr := CreateABx(OP_JMP_HOT, uint8(loopID), uint16(offset&0xFFFF))
-							vm.code[loopEndPC] = patchedInstr
+							// IMPORTANT: Patch local 'code' slice (which is function's bytecode)
+							// NOT vm.code (which may point to stale global code)
+							code[loopEndPC] = patchedInstr
 							// fmt.Printf("JIT: Bytecode patched to OP_JMP_HOT (loopID=%d)\n", loopID)
 
 							// ==============================================
@@ -2136,7 +2140,7 @@ func (vm *RegisterVM) run() (Value, error) {
 				newFrame.consts = calleeConsts
 				newFrame.pc = 0
 				newFrame.regBase = newBase
-				newRegTop := newBase + calleeArity + 16
+				newRegTop := newBase + calleeArity + 64
 				newFrame.regTop = newRegTop
 				newFrame.returnReg = regBase + int(a)
 				newFrame.wantResult = c > 1
@@ -2183,7 +2187,7 @@ func (vm *RegisterVM) run() (Value, error) {
 				newFrame.consts = fnObj.Constants
 				newFrame.pc = 0
 				newFrame.regBase = newBase
-				newFrame.regTop = newBase + fnObj.Arity + 16
+				newFrame.regTop = newBase + fnObj.Arity + 64
 				newFrame.returnReg = regBase + int(a)
 				newFrame.wantResult = c > 1
 
