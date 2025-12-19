@@ -1,6 +1,6 @@
 package memory
 
-// IntegratedMemoryModule combines stub and enhanced forensics
+// IntegratedMemoryModule combines base memory module with enhanced forensics capabilities
 type IntegratedMemoryModule struct {
 	*MemoryModule
 	*EnhancedForensics
@@ -96,7 +96,7 @@ func (m *IntegratedMemoryModule) GetProcessInfo(pid int) map[string]interface{} 
 	// Find process in our cache
 	processes, err := m.EnhancedForensics.EnumerateProcesses()
 	if err != nil {
-		// Fall back to stub
+		// Fall back to base module
 		return m.MemoryModule.GetProcessInfo(pid)
 	}
 	

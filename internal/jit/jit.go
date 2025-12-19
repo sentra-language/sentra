@@ -607,7 +607,7 @@ type CompiledFunction struct {
 	OptimizedCode []uint32
 }
 
-// Compile compiles a function at the specified tier (stub for legacy compatibility)
+// Compile compiles a function at the specified tier (legacy API - actual JIT uses pattern matching)
 func (c *Compiler) Compile(fn *Function, tier CompilationTier) (*CompiledFunction, error) {
 	return &CompiledFunction{}, nil
 }

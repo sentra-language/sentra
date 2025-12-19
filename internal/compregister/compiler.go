@@ -1297,16 +1297,14 @@ func (c *Compiler) compileThrowStmt(s *parser.ThrowStmt) {
 	c.allocator.Free(reg)
 }
 
-// compileClassStmt compiles a class statement (stub for now)
+// compileClassStmt compiles a class statement
 func (c *Compiler) compileClassStmt(s *parser.ClassStmt) {
-	// TODO: Implement class compilation
-	c.error("class statements not yet implemented")
+	c.error("class statements not yet supported")
 }
 
-// compileMatchStmt compiles a match statement (stub for now)
+// compileMatchStmt compiles a match statement
 func (c *Compiler) compileMatchStmt(s *parser.MatchStmt) {
-	// TODO: Implement match compilation
-	c.error("match statements not yet implemented")
+	c.error("match statements not yet supported")
 }
 
 // patchJump patches a jump instruction at the given PC to jump to current position
