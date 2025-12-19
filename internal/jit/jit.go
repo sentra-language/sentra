@@ -50,11 +50,13 @@ const (
 	LOOP_GENERIC    = 4
 )
 
-// Opcode constants (matching vmregister opcodes)
+// Opcode constants (matching vmregister opcodes - must be kept in sync!)
 const (
 	OP_ADD        = 0
+	OP_SUB        = 1
 	OP_MUL        = 2
 	OP_ADDK       = 7
+	OP_SUBK       = 8
 	OP_MULK       = 9
 	OP_LT         = 12
 	OP_LE         = 13
@@ -62,18 +64,22 @@ const (
 	OP_LOADK      = 21
 	OP_GETGLOBAL  = 24
 	OP_SETGLOBAL  = 25
-	OP_SETTABLE   = 30
+	OP_SETTABLE   = 31
 	OP_APPEND     = 36
-	OP_JMP        = 63
-	OP_TEST       = 66
-	OP_FORPREP    = 68
-	OP_FORLOOP    = 69
-	OP_CALL       = 85
-	OP_TAILCALL   = 86
-	OP_ADDI       = 78
-	OP_PRINT      = 100
-	OP_TRY        = 81
-	OP_THROW      = 83
+	OP_JMP        = 66
+	OP_TEST       = 69
+	OP_LEJK       = 78  // Compare <= constant and jump
+	OP_ADDI       = 81
+	OP_SUBI       = 82
+	OP_FORPREP    = 83
+	OP_INCR       = 115  // INCR R(A) - increment R(A) by 1
+	OP_FORLOOP    = 84
+	OP_CALL       = 88
+	OP_TAILCALL   = 89
+	OP_RETURN     = 90
+	OP_TRY        = 98
+	OP_THROW      = 100
+	OP_PRINT      = 124
 )
 
 // Instruction decoding (matching vmregister format)
@@ -753,14 +759,18 @@ func analyzeWhileLoopPattern(code []Instruction, consts []Value, startPC, endPC 
 	var addDestReg, addSrc1, addSrc2 int = -1, -1, -1
 	var accumGlobalIdx int = -1
 
+	// Track if loop uses global variables for counter (can't JIT those yet)
+	usesGlobalCounter := false
+
 	for i := bodyStartPC; i < endPC; i++ {
 		instr := code[i]
 		op := instr.OpCode()
 
 		switch op {
 		case OP_GETGLOBAL:
-			// Track global being read for potential accumulator pattern
-			// We'll match this with ADD and SETGLOBAL
+			// Check if this loads the counter from a global - if so, can't JIT
+			// (We don't have enough info to detect this perfectly, but if we see
+			// GETGLOBAL before ADDI that modifies the counter, it's likely global)
 		case OP_SETGLOBAL:
 			// If we saw an ADD before and this sets the same global, it's accumulator pattern
 			// This is: GETGLOBAL temp, idx; ADD result, temp, counter; SETGLOBAL result, idx
@@ -774,9 +784,19 @@ func analyzeWhileLoopPattern(code []Instruction, consts []Value, startPC, endPC 
 			addSrc2 = int(instr.C())
 
 			// Check for sum = sum + i pattern (accumulator)
-			// The counter is in src1 or src2
-			if addSrc1 == counterReg || addSrc2 == counterReg {
+			// The counter is in src1 or src2, the other is the accumulator
+			if addSrc1 == counterReg {
 				hasAdd = true
+				// accumulator is src2 or dest (if dest == src2, it's sum = sum + i)
+				if addDestReg == addSrc2 {
+					accumReg = addDestReg
+				}
+			} else if addSrc2 == counterReg {
+				hasAdd = true
+				// accumulator is src1 or dest (if dest == src1, it's sum = sum + i)
+				if addDestReg == addSrc1 {
+					accumReg = addDestReg
+				}
 			}
 		case OP_ADDK:
 			// ADDK dest, src, constIdx - used for i = i + 1
@@ -791,13 +811,50 @@ func analyzeWhileLoopPattern(code []Instruction, consts []Value, startPC, endPC 
 			if srcReg == counterReg {
 				hasIncrement = true
 			}
+			// Check if next instruction is SETGLOBAL - means counter is global
+			if i+1 < endPC {
+				nextInstr := code[i+1]
+				if nextInstr.OpCode() == OP_SETGLOBAL {
+					usesGlobalCounter = true
+				}
+			}
+		case OP_INCR:
+			// INCR R(A) - increment R(A) by 1
+			// This is the most common counter increment pattern
+			incrReg := int(instr.A())
+			if incrReg == counterReg {
+				hasIncrement = true
+			}
+			// Check if next instruction is SETGLOBAL - means counter is global
+			if i+1 < endPC {
+				nextInstr := code[i+1]
+				if nextInstr.OpCode() == OP_SETGLOBAL {
+					usesGlobalCounter = true
+				}
+			}
 		case OP_MOVE:
-			// MOVE is used to copy incremented value back to counter
-			// Pattern: ADDI temp, counter, 1; MOVE counter, temp
+			// MOVE R(A), R(B) - copy R(B) to R(A)
+			// Used in pattern: ADD temp, sum, i; MOVE sum, temp
+			moveDest := int(instr.A())
+			moveSrc := int(instr.B())
+
+			// If MOVE copies from the ADD destination, the real accumulator is MOVE's dest
+			if hasAdd && moveSrc == addDestReg && accumReg < 0 {
+				// The ADD put result in temp (addDestReg), MOVE copies to real accum (moveDest)
+				// Check if one of the ADD sources matches the MOVE dest (sum = sum + i pattern)
+				if addSrc1 == moveDest || addSrc2 == moveDest {
+					accumReg = moveDest
+				}
+			}
 		case OP_CALL, OP_PRINT, OP_SETTABLE, OP_APPEND:
 			// Side effects - can't JIT (but allow GETGLOBAL/SETGLOBAL for accumulator)
 			return nil
 		}
+	}
+
+	// Skip JIT for loops with global counter (not yet supported)
+	if usesGlobalCounter {
+		return nil
 	}
 
 	// Require: sum pattern with counter increment
@@ -986,16 +1043,16 @@ func (j *FunctionJIT) IsHot(fnAddr uintptr) bool {
 
 // Additional opcodes for function pattern detection (must match bytecode.go)
 const (
-	OP_SUB_FN   = 1  // SUB R(A) R(B) R(C)
-	OP_LT_FN    = 12 // LT comparison
-	OP_LE_FN    = 13 // LE comparison
-	OP_CALL_FN  = 85 // CALL
-	OP_RETURN_FN = 87 // RETURN
-	OP_SUBI_FN  = 79 // SUBI - subtract immediate
-	OP_LEJK_FN  = 75 // LEJK - compare <= constant and jump
-	OP_LTJK_FN  = 74 // LTJK - compare < constant and jump
-	OP_GTJK_FN  = 76 // GTJK - compare > constant and jump
-	OP_GEJK_FN  = 77 // GEJK - compare >= constant and jump
+	OP_SUB_FN    = 1  // SUB R(A) R(B) R(C)
+	OP_LT_FN     = 12 // LT comparison
+	OP_LE_FN     = 13 // LE comparison
+	OP_LTJK_FN   = 77 // LTJK - compare < constant and jump
+	OP_LEJK_FN   = 78 // LEJK - compare <= constant and jump
+	OP_GTJK_FN   = 79 // GTJK - compare > constant and jump
+	OP_GEJK_FN   = 80 // GEJK - compare >= constant and jump
+	OP_SUBI_FN   = 82 // SUBI - subtract immediate
+	OP_CALL_FN   = 88 // CALL
+	OP_RETURN_FN = 90 // RETURN
 )
 
 // AnalyzeFunction analyzes a function's bytecode to detect patterns

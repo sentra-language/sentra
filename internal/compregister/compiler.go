@@ -1116,9 +1116,13 @@ func (c *Compiler) compileForInStmt(s *parser.ForInStmt) {
 	// Compile iterable (collection)
 	iterableReg := c.compileExpr(s.Collection)
 
-	// Allocate iterator register
-	iterReg := c.allocator.Alloc()
+	// Allocate 4 consecutive registers for iterator:
+	// R(A) = collection, R(A+1) = index, R(A+2) = key, R(A+3) = value
+	iterReg := c.findConsecutiveRegisters(4)
 	c.allocator.Lock(iterReg)
+	c.allocator.Lock(iterReg + 1)
+	c.allocator.Lock(iterReg + 2)
+	c.allocator.Lock(iterReg + 3)
 
 	// Initialize iterator
 	c.emit(vmregister.CreateABC(vmregister.OP_ITERINIT, uint8(iterReg), uint8(iterableReg), 0))
@@ -1163,9 +1167,11 @@ func (c *Compiler) compileForInStmt(s *parser.ForInStmt) {
 	// Pop loop info
 	c.loopStack = c.loopStack[:len(c.loopStack)-1]
 
-	// Free iterator register
-	c.allocator.Unlock(iterReg)
-	c.allocator.Free(iterReg)
+	// Free all 4 iterator registers
+	for i := 0; i < 4; i++ {
+		c.allocator.Unlock(iterReg + i)
+		c.allocator.Free(iterReg + i)
+	}
 
 	c.popScope()
 }
