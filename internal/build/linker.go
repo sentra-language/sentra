@@ -173,10 +173,10 @@ func (r *ImportResolver) loadModule(modulePath string) (*ModuleNode, error) {
 	}, nil
 }
 
-// loadBuiltinModule loads a built-in module (stub for now)
+// loadBuiltinModule loads a built-in module
 func (r *ImportResolver) loadBuiltinModule(modulePath string) (*ModuleNode, error) {
 	// Built-in modules are provided by the runtime
-	// We create a stub module that the VM will recognize
+	// We create a placeholder that the VM will recognize and handle
 	
 	builtinSource := fmt.Sprintf("// Built-in module: %s\n// Provided by runtime", modulePath)
 	
