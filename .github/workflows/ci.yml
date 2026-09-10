@@ -39,6 +39,36 @@ jobs:
         run: ./sentra run examples/basics/hello.sn && ./sentra run examples/basics/math.sn
         shell: bash
 
+  govulncheck:
+    name: Vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  gosec:
+    name: Static security analysis (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      # Advisory until the existing findings are triaged and fixed.
+      - name: Run gosec
+        uses: securego/gosec@master
+        with:
+          args: ./...
+        continue-on-error: true
+
   vet:
     name: Vet (advisory)
     runs-on: ubuntu-latest

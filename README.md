@@ -12,7 +12,7 @@ Sentra combines the simplicity of Python, the performance of Go, and security fe
 
 📚 **[Full Documentation](https://sentra-language.github.io)** | 🚀 **[Quick Start](https://sentra-language.github.io/quick-start/)** | 📖 **[Tutorial](https://sentra-language.github.io/tutorial/)** | 🔧 **[API Reference](https://sentra-language.github.io/reference/)**
 
-> **Supply chain:** official binaries are built in public CI, checksummed, signed with cosign (keyless/OIDC), and shipped with SBOMs. See [SECURITY.md](SECURITY.md) for verification steps.
+> **Supply chain:** official binaries are built in public CI, checksummed, signed with cosign (keyless/OIDC), and shipped with SBOMs. See [SECURITY.md](SECURITY.md) for verification steps and [SECURITY_ROADMAP.md](SECURITY_ROADMAP.md) for the plan to make the runtime secure by construction.
 
 ## 🎯 Quick Start
 
