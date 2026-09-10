@@ -56,7 +56,7 @@ func NewParserWithSource(tokens []lexer.Token, source string, file string) *Pars
 }
 
 func (p *Parser) Parse() []Stmt {
-	var stmts []Stmt
+	stmts := []Stmt{}
 	for !p.isAtEnd() {
 		if p.match(lexer.TokenFn) {
 			stmts = append(stmts, p.function())

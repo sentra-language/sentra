@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build CLI
+        run: go build -o sentra${{ runner.os == 'Windows' && '.exe' || '' }} ./cmd/sentra
+        shell: bash
+
+      - name: Smoke test
+        run: ./sentra run examples/basics/hello.sn && ./sentra run examples/basics/control_flow.sn
+        shell: bash
+
+  vet:
+    name: Vet (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      # Advisory for now: pre-existing warnings (unsafe.Pointer in the register
+      # VM, IPv6 address formatting in scanners) are tracked but not yet fixed.
+      - name: go vet
+        run: go vet ./...
+        continue-on-error: true

@@ -173,9 +173,9 @@ func GetSimpleTestFunctions() map[string]*vm.NativeFunction {
 			Arity: 0,
 			Function: func(args []vm.Value) (vm.Value, error) {
 				total := testsPassed + testsFailed
-				fmt.Printf("\n" + strings.Repeat("=", 60) + "\n")
+				fmt.Printf("\n%s\n", strings.Repeat("=", 60))
 				fmt.Printf("📊 Test Results Summary\n")
-				fmt.Printf(strings.Repeat("=", 60) + "\n")
+				fmt.Printf("%s\n", strings.Repeat("=", 60))
 				fmt.Printf("Total Tests:    %d\n", total)
 				fmt.Printf("\033[32m✓ Passed:       %d\033[0m\n", testsPassed)
 				if testsFailed > 0 {

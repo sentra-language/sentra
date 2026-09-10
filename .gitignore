@@ -7,7 +7,7 @@ CLAUDE.md
 *.exe
 *.test
 *.out
-sentra
+/sentra
 
 # Profiling files
 *.prof

@@ -81,9 +81,9 @@ func (r *TextReporter) TestSkipped(result TestResult) {
 }
 
 func (r *TextReporter) Summary(stats *TestStats) {
-	fmt.Printf("\n" + strings.Repeat("=", 60) + "\n")
+	fmt.Printf("\n%s\n", strings.Repeat("=", 60))
 	fmt.Printf("📊 Test Results Summary\n")
-	fmt.Printf(strings.Repeat("=", 60) + "\n")
+	fmt.Printf("%s\n", strings.Repeat("=", 60))
 	
 	fmt.Printf("Total Tests:    %d\n", stats.TotalTests)
 	
@@ -311,6 +311,6 @@ func (r *JUnitReporter) Summary(stats *TestStats) {
 		return
 	}
 	
-	fmt.Println(xml.Header)
+	fmt.Print(xml.Header)
 	fmt.Println(string(output))
 }

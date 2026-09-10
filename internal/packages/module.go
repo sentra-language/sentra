@@ -65,7 +65,7 @@ func NewModuleCache(baseDir string) *ModuleCache {
 		homeDir, _ := os.UserHomeDir()
 		baseDir = filepath.Join(homeDir, ".sentra", "pkg", "mod")
 	}
-	
+
 	return &ModuleCache{
 		BaseDir: baseDir,
 		modules: make(map[string]*CachedModule),
@@ -79,36 +79,36 @@ func ParseModFile(path string) (*Module, error) {
 		return nil, fmt.Errorf("failed to open mod file: %w", err)
 	}
 	defer file.Close()
-	
+
 	mod := &Module{
 		Require: []Requirement{},
 		Replace: make(map[string]Replacement),
 		Exclude: []string{},
 	}
-	
+
 	scanner := bufio.NewScanner(file)
 	var inRequire, inReplace, inExclude bool
-	
+
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		
+
 		// Skip comments and empty lines
 		if line == "" || strings.HasPrefix(line, "//") {
 			continue
 		}
-		
+
 		// Handle module declaration
 		if strings.HasPrefix(line, "module ") {
 			mod.Module = strings.TrimSpace(strings.TrimPrefix(line, "module"))
 			continue
 		}
-		
+
 		// Handle sentra version
 		if strings.HasPrefix(line, "sentra ") {
 			mod.Sentra = strings.TrimSpace(strings.TrimPrefix(line, "sentra"))
 			continue
 		}
-		
+
 		// Handle require block
 		if line == "require (" {
 			inRequire = true
@@ -128,7 +128,7 @@ func ParseModFile(path string) (*Module, error) {
 			}
 			continue
 		}
-		
+
 		// Handle single require
 		if strings.HasPrefix(line, "require ") {
 			parts := strings.Fields(strings.TrimPrefix(line, "require "))
@@ -140,7 +140,7 @@ func ParseModFile(path string) (*Module, error) {
 			}
 			continue
 		}
-		
+
 		// Handle replace block
 		if line == "replace (" {
 			inReplace = true
@@ -169,7 +169,7 @@ func ParseModFile(path string) (*Module, error) {
 			}
 			continue
 		}
-		
+
 		// Handle exclude block
 		if line == "exclude (" {
 			inExclude = true
@@ -184,7 +184,7 @@ func ParseModFile(path string) (*Module, error) {
 			continue
 		}
 	}
-	
+
 	return mod, scanner.Err()
 }
 
@@ -195,17 +195,17 @@ func WriteModFile(path string, mod *Module) error {
 		return fmt.Errorf("failed to create mod file: %w", err)
 	}
 	defer file.Close()
-	
+
 	writer := bufio.NewWriter(file)
-	
+
 	// Write module declaration
 	fmt.Fprintf(writer, "module %s\n\n", mod.Module)
-	
+
 	// Write sentra version if specified
 	if mod.Sentra != "" {
 		fmt.Fprintf(writer, "sentra %s\n\n", mod.Sentra)
 	}
-	
+
 	// Write requirements
 	if len(mod.Require) > 0 {
 		if len(mod.Require) == 1 {
@@ -215,10 +215,11 @@ func WriteModFile(path string, mod *Module) error {
 			for _, req := range mod.Require {
 				fmt.Fprintf(writer, "\t%s %s\n", req.Path, req.Version)
 			}
-			fmt.Fprintln(writer, ")\n")
+			fmt.Fprintln(writer, ")")
+			fmt.Fprintln(writer)
 		}
 	}
-	
+
 	// Write replacements
 	if len(mod.Replace) > 0 {
 		fmt.Fprintln(writer, "replace (")
@@ -229,9 +230,10 @@ func WriteModFile(path string, mod *Module) error {
 				fmt.Fprintf(writer, "\t%s => %s\n", old, repl.New)
 			}
 		}
-		fmt.Fprintln(writer, ")\n")
+		fmt.Fprintln(writer, ")")
+		fmt.Fprintln(writer)
 	}
-	
+
 	// Write excludes
 	if len(mod.Exclude) > 0 {
 		fmt.Fprintln(writer, "exclude (")
@@ -240,7 +242,7 @@ func WriteModFile(path string, mod *Module) error {
 		}
 		fmt.Fprintln(writer, ")")
 	}
-	
+
 	return writer.Flush()
 }
 
@@ -251,7 +253,7 @@ func (mc *ModuleCache) FetchModule(path, version string) (*CachedModule, error) 
 	if cached, ok := mc.modules[cacheKey]; ok {
 		return cached, nil
 	}
-	
+
 	// Determine source URL
 	sourceURL := ""
 	if strings.HasPrefix(path, "github.com/") {
@@ -272,17 +274,17 @@ func (mc *ModuleCache) FetchModule(path, version string) (*CachedModule, error) 
 		// Local path
 		return mc.loadLocalModule(path, version)
 	}
-	
+
 	if sourceURL == "" {
 		return nil, fmt.Errorf("unable to determine source URL for %s", path)
 	}
-	
+
 	// Download module
 	destDir := filepath.Join(mc.BaseDir, strings.ReplaceAll(path, "/", "_"), version)
 	if err := mc.downloadAndExtract(sourceURL, destDir); err != nil {
 		return nil, fmt.Errorf("failed to download module: %w", err)
 	}
-	
+
 	// Parse module file
 	modFile := filepath.Join(destDir, "sentra.mod")
 	mod, err := ParseModFile(modFile)
@@ -293,7 +295,7 @@ func (mc *ModuleCache) FetchModule(path, version string) (*CachedModule, error) 
 			Sentra: "1.0",
 		}
 	}
-	
+
 	// Cache the module
 	cached := &CachedModule{
 		Path:      path,
@@ -303,7 +305,7 @@ func (mc *ModuleCache) FetchModule(path, version string) (*CachedModule, error) 
 		SourceDir: destDir,
 	}
 	mc.modules[cacheKey] = cached
-	
+
 	return cached, nil
 }
 
@@ -313,18 +315,18 @@ func (mc *ModuleCache) downloadAndExtract(url, destDir string) error {
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return err
 	}
-	
+
 	// Download file
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download: HTTP %d", resp.StatusCode)
 	}
-	
+
 	// Save to temporary file
 	tempFile := filepath.Join(destDir, "download.tmp")
 	out, err := os.Create(tempFile)
@@ -332,19 +334,19 @@ func (mc *ModuleCache) downloadAndExtract(url, destDir string) error {
 		return err
 	}
 	defer out.Close()
-	
+
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
 		return err
 	}
-	
+
 	// Extract based on file type
 	if strings.HasSuffix(url, ".zip") {
 		return extractZip(tempFile, destDir)
 	} else if strings.HasSuffix(url, ".tar.gz") || strings.HasSuffix(url, ".tgz") {
 		return extractTarGz(tempFile, destDir)
 	}
-	
+
 	return fmt.Errorf("unsupported archive format")
 }
 
@@ -354,12 +356,12 @@ func (mc *ModuleCache) loadLocalModule(path, version string) (*CachedModule, err
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Check if path exists
 	if _, err := os.Stat(absPath); err != nil {
 		return nil, fmt.Errorf("local module not found: %s", path)
 	}
-	
+
 	// Parse module file
 	modFile := filepath.Join(absPath, "sentra.mod")
 	mod, err := ParseModFile(modFile)
@@ -370,7 +372,7 @@ func (mc *ModuleCache) loadLocalModule(path, version string) (*CachedModule, err
 			Sentra: "1.0",
 		}
 	}
-	
+
 	// Cache the module
 	cacheKey := fmt.Sprintf("%s@%s", path, version)
 	cached := &CachedModule{
@@ -381,7 +383,7 @@ func (mc *ModuleCache) loadLocalModule(path, version string) (*CachedModule, err
 		SourceDir: absPath,
 	}
 	mc.modules[cacheKey] = cached
-	
+
 	return cached, nil
 }
 
@@ -389,7 +391,7 @@ func (mc *ModuleCache) loadLocalModule(path, version string) (*CachedModule, err
 func (mc *ModuleCache) ResolveDependencies(mod *Module) ([]*CachedModule, error) {
 	var resolved []*CachedModule
 	visited := make(map[string]bool)
-	
+
 	var resolve func(*Module) error
 	resolve = func(m *Module) error {
 		for _, req := range m.Require {
@@ -398,7 +400,7 @@ func (mc *ModuleCache) ResolveDependencies(mod *Module) ([]*CachedModule, error)
 				continue
 			}
 			visited[key] = true
-			
+
 			// Check for replacements
 			if repl, ok := m.Replace[req.Path]; ok {
 				req.Path = repl.New
@@ -406,15 +408,15 @@ func (mc *ModuleCache) ResolveDependencies(mod *Module) ([]*CachedModule, error)
 					req.Version = repl.Version
 				}
 			}
-			
+
 			// Fetch the dependency
 			cached, err := mc.FetchModule(req.Path, req.Version)
 			if err != nil {
 				return fmt.Errorf("failed to fetch %s@%s: %w", req.Path, req.Version, err)
 			}
-			
+
 			resolved = append(resolved, cached)
-			
+
 			// Recursively resolve dependencies
 			if err := resolve(cached.Module); err != nil {
 				return err
@@ -422,11 +424,11 @@ func (mc *ModuleCache) ResolveDependencies(mod *Module) ([]*CachedModule, error)
 		}
 		return nil
 	}
-	
+
 	if err := resolve(mod); err != nil {
 		return nil, err
 	}
-	
+
 	return resolved, nil
 }
 

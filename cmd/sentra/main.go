@@ -27,10 +27,9 @@ import (
 	"time"
 )
 
-const VERSION = "1.0.0"
-
-// Build variables - can be set during build with ldflags
+// Build variables - set during release builds with ldflags
 var (
+	VERSION   = "0.0.1-dev"
 	BuildDate = time.Now().Format("2006-01-02")
 	GitCommit = "unknown"
 )
@@ -1433,7 +1432,7 @@ func generateCompletion(shell string) {
 	case "zsh":
 		fmt.Println(zshCompletion)
 	case "fish":
-		fmt.Println(fishCompletion)
+		fmt.Print(fishCompletion)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown shell: %s\n", shell)
 		fmt.Fprintf(os.Stderr, "Supported shells: bash, zsh, fish\n")
