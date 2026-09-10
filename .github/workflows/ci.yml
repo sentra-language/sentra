@@ -36,7 +36,7 @@ jobs:
         shell: bash
 
       - name: Smoke test
-        run: ./sentra run examples/basics/hello.sn && ./sentra run examples/basics/control_flow.sn
+        run: ./sentra run examples/basics/hello.sn && ./sentra run examples/basics/math.sn
         shell: bash
 
   vet:

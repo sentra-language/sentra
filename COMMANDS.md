@@ -2,34 +2,27 @@
 
 ## Project Management Commands
 
-### `sentra init [project-name] [template]`
-Creates a new Sentra project from predefined templates.
-
-**Templates:**
-- `security-scanner` - Network security scanner application
-- `web-api` - RESTful API server
-- `cli-tool` - Command-line application
-- `library` - Reusable Sentra library
+### `sentra init [project-name]`
+Creates a new Sentra project (a `sentra.json` manifest, a starter `main.sn`,
+and a `.gitignore`). With no name it initializes the current directory.
 
 **Example:**
 ```bash
-sentra init myapp web-api
+sentra init myapp
 cd myapp
 sentra run main.sn
 ```
 
-### `sentra build`
-Compiles a Sentra project into an executable wrapper.
+### `sentra build [dir]`
+Compiles a Sentra project into a bytecode bundle (`.snb`).
 
-- Reads configuration from `sentra.toml`
-- Default input: `main.sn`
-- Default output: `output` (or `output.exe` on Windows)
-- Creates a platform-specific executable wrapper
+- Reads configuration from `sentra.json`
+- Default output: `dist/<project>.snb` (override with `-o <path>`)
 
 **Example:**
 ```bash
 sentra build
-./output  # Run the built executable
+sentra build -o dist/myapp.snb
 ```
 
 ### `sentra clean`

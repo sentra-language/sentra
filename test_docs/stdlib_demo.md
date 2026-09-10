@@ -1,2 +1,0 @@
-# stdlib_demo.sn
-
